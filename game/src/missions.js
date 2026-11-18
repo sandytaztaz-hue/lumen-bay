@@ -1,223 +1,267 @@
-// The 12 story missions of LUMEN BAY. A mission is an ordered list of stages
-// from config.js; this module runs the state machine over them. The game loop
-// owns the world (player position, car, wanted level, kills); this module owns
-// only mission progress and asks the game loop questions through a small
-// context object, so the logic stays testable in a headless probe:
-//
-//   ctx = { px, pz, inCar, carSpeed, kills, wanted, time, nearCar, nearPoliceCar,
-//           onEnterCar, onStageEvent }
-//
-// Stages and their verbs:
-//   go     — reach a radius around a point (on foot or in a car)
-//   drive  — reach a radius while in a car (timed when the stage says so)
-//   steal  — press E next to the mission car
-//   stealPolice — press E next to any police cruiser
-//   shoot  — kill N cordon officers (the game loop spawns the cordon)
-//   wait   — stay inside a radius for N seconds (Lena hacks)
-//   evade  — survive until wanted heat reaches zero
-//
-// The module reports events back through ctx.emit: 'stage', 'mission',
-// 'failed', 'dialogue', 'cordon' (spawn N officers at a point), 'heat'
-// (set wanted to a value), 'banner' (show a job-done banner with cash).
+// The 12 story missions of LUMEN BAY. Each mission is a list of stages; a stage
+// is one verb — walk to a point, steal a car, drive somewhere (sometimes against
+// a timer), lose the heat, shoot a cordon, wait for a hack, rescue a crew member.
+// The manager only tracks state and completion; the world effects (spawning the
+// target car, the cordon police, the courier van) live in main.js, called through
+// the hooks the manager is given.
+import { MISSION_REWARDS } from './config.js';
 
-import { MISSIONS } from './config.js';
+const V = (x, z) => ({ x, z });
+const MARINA = V(0, -258);
+const SAFEHOUSE = V(-65, 195);
+const MERCADO = V(-130, 0);
+const GARAGE = V(130, 130);
+const TOWER = V(0, -200);
+const LIGHTHOUSE = V(230, 265);
+const CASINO = V(195, -65);
+const BEACH = V(-40, 292);
 
-export function createMissionState(save) {
-  const done = save && Array.isArray(save.missionsDone) ? save.missionsDone.slice() : [];
-  let current = 0;
-  if (save && Number.isInteger(save.missionIndex)) current = save.missionIndex;
-  else {
-    // First uncompleted mission in order.
-    for (let i = 0; i < MISSIONS.length; i += 1) {
-      if (!done.includes(MISSIONS[i].id)) { current = i; break; }
-      current = MISSIONS.length;
+export const MISSIONS = [
+  {
+    id: 1, name: 'First Keys', giver: 'Tio Reyes',
+    brief: 'Steal the Comet GT from the marina docks and bring it to the safehouse.',
+    dialogue: [
+      'TIO REYES: "Mara, the Comet GT is sitting at the marina. Keys in it. Take it."',
+      'MARA: "First job, first car. On my way."',
+    ],
+    stages: [
+      { type: 'goto', name: 'Reach the marina', text: 'Walk to the Comet GT at the marina docks', pos: MARINA },
+      { type: 'steal', name: 'Steal the Comet GT', text: 'Press E to steal the Comet GT', carKind: 'gt', pos: MARINA },
+      { type: 'driveTo', name: 'Drive to the safehouse', text: 'Drive the Comet GT to the safehouse', pos: SAFEHOUSE },
+    ],
+  },
+  {
+    id: 2, name: 'The Drop', giver: 'Tio Reyes',
+    brief: 'A package for Mercado Viejo. Ninety seconds. Do not be late.',
+    dialogue: ['TIO REYES: "Package in the trunk. Mercado Viejo, ninety seconds. Go."'],
+    stages: [
+      { type: 'timed', name: 'Deliver to Mercado Viejo', text: 'Drive the package to Mercado Viejo — 90 seconds!', pos: MERCADO, time: 90 },
+    ],
+  },
+  {
+    id: 3, name: 'Hot Wheels', giver: 'Lena Cruz',
+    brief: 'Two stars on you. Break line of sight and let the heat die.',
+    dialogue: ['LENA: "Cops are on you. Duck down a side street and stay hidden till it cools off."'],
+    stages: [
+      { type: 'evade', name: 'Lose the police', text: 'Stay out of police sight until your wanted level drops to zero', heat: 2 },
+    ],
+  },
+  {
+    id: 4, name: 'The Marina Job', giver: 'Lena Cruz',
+    brief: 'Pick up my cargo crate at the docks and run it to Taller Lumen.',
+    dialogue: ['LENA: "Crate is on pier two. Patrol cars are out — keep moving."'],
+    stages: [
+      { type: 'pickup', name: 'Collect the crate', text: 'Pick up Lena\'s crate at the marina docks', pos: MARINA },
+      { type: 'driveTo', name: 'Deliver to Taller Lumen', text: 'Deliver the crate to Taller Lumen', pos: GARAGE, patrols: true },
+    ],
+  },
+  {
+    id: 5, name: 'Payday', giver: 'Tio Reyes',
+    brief: 'Ambush the courier van on the coast road, grab the cash, get out.',
+    dialogue: ['TIO REYES: "Courier van, coast road, one escort. Take the cash, leave the van."'],
+    stages: [
+      { type: 'goto', name: 'Reach the coast road', text: 'Get to the ambush point on the coast road', pos: V(195, 130) },
+      { type: 'shoot', name: 'Stop the escort', text: 'Shoot out the courier escort (3 guards)', pos: V(195, 130), count: 3 },
+      { type: 'pickup', name: 'Grab the cash', text: 'Grab the courier cash', pos: V(195, 130) },
+      { type: 'driveTo', name: 'Escape to the safehouse', text: 'Escape to the safehouse with the cash', pos: SAFEHOUSE },
+    ],
+  },
+  {
+    id: 6, name: 'The Informant', giver: 'Lena Cruz',
+    brief: 'Dario is pinned in a police cordon at the market. Get him out.',
+    dialogue: ['LENA: "They have Dario cornered in the market square. Clear the cordon, Mara."'],
+    stages: [
+      { type: 'shoot', name: 'Break the cordon', text: 'Shoot the cordon police at Mercado Viejo (4 officers)', pos: MERCADO, count: 4 },
+      { type: 'goto', name: 'Reach Dario', text: 'Reach Dario in the market square', pos: MERCADO },
+      { type: 'driveTo', name: 'Drive Dario out', text: 'Drive Dario out of the market', pos: SAFEHOUSE },
+    ],
+  },
+  {
+    id: 7, name: 'Night Shift', giver: 'Lena Cruz',
+    brief: 'Drive Lena to three hack checkpoints. Wait at each until her hack finishes.',
+    dialogue: ['LENA: "Three checkpoints, one night. Park, wait for my hack, move. No patrols."'],
+    stages: [
+      { type: 'wait', name: 'Hack checkpoint 1', text: 'Wait at the tower checkpoint while Lena hacks', pos: TOWER, time: 8 },
+      { type: 'wait', name: 'Hack checkpoint 2', text: 'Wait at the casino checkpoint while Lena hacks', pos: CASINO, time: 8 },
+      { type: 'wait', name: 'Hack checkpoint 3', text: 'Wait at the garage checkpoint while Lena hacks', pos: GARAGE, time: 8 },
+    ],
+  },
+  {
+    id: 8, name: 'The Swap', giver: 'Big Dario',
+    brief: 'Steal a police cruiser and deliver it to Taller Lumen. Loud job.',
+    dialogue: ['BIG DARIO: "I need a cruiser. Take one. Bring it to the garage. Try not to die."'],
+    stages: [
+      { type: 'steal', name: 'Steal a police cruiser', text: 'Steal a police cruiser (press E near one)', carKind: 'police', heat: 3 },
+      { type: 'driveTo', name: 'Deliver the cruiser', text: 'Deliver the cruiser to Taller Lumen', pos: GARAGE },
+    ],
+  },
+  {
+    id: 9, name: 'Beach Run', giver: 'Tio Reyes',
+    brief: 'Smuggle crates down Playa Dorada to the lighthouse. Two minutes.',
+    dialogue: ['TIO REYES: "Crates to the lighthouse, coast road, two minutes. Beach patrols are out."'],
+    stages: [
+      { type: 'timed', name: 'Run the coast road', text: 'Drive the coast road to the Farol Rojo lighthouse — 120 seconds!', pos: LIGHTHOUSE, time: 120, patrols: true },
+    ],
+  },
+  {
+    id: 10, name: 'High Tide', giver: 'Lena Cruz',
+    brief: 'Four stars and a helicopter. Reach the lighthouse, then vanish in the dunes.',
+    dialogue: ['LENA: "The helicopter is up. Get to the lighthouse and lose them in the dunes."'],
+    stages: [
+      { type: 'driveTo', name: 'Reach the lighthouse', text: 'Reach the Farol Rojo lighthouse under helicopter pursuit', pos: LIGHTHOUSE, heat: 4 },
+      { type: 'evade', name: 'Lose the helicopter', text: 'Hide in the dunes until the heat drops to zero', heat: 0 },
+    ],
+  },
+  {
+    id: 11, name: 'The Getaway', giver: 'Tio Reyes',
+    brief: 'Rob the casino vault, fight the guards, escape by car to the marina boat.',
+    dialogue: ['TIO REYES: "Casino Sol vault. Guards inside. Cash out, boat at the marina."'],
+    stages: [
+      { type: 'shoot', name: 'Fight through the guards', text: 'Fight through the casino guards (5 guards)', pos: CASINO, count: 5 },
+      { type: 'pickup', name: 'Grab the vault cash', text: 'Grab the vault cash', pos: CASINO },
+      { type: 'driveTo', name: 'Escape to the marina boat', text: 'Escape by car to the marina boat', pos: MARINA },
+    ],
+  },
+  {
+    id: 12, name: 'The Last Sunset', giver: 'Tio Reyes',
+    brief: 'The finale: vault heist at Torre Lumen, then a beach escape in the Comet GT.',
+    dialogue: [
+      'TIO REYES: "Last one, Mara. Torre Lumen vault, then the coast road to the boat."',
+      'MARA: "One last sunset. Let\'s make it count."',
+    ],
+    stages: [
+      { type: 'shoot', name: 'Clear the tower guards', text: 'Clear the tower guards (5 guards)', pos: TOWER, count: 5 },
+      { type: 'pickup', name: 'Take the vault cash', text: 'Take the Torre Lumen vault cash', pos: TOWER },
+      { type: 'driveTo', name: 'Beach escape', text: 'Drive the Comet GT down the coast road to the boat', pos: BEACH, heat: 5 },
+    ],
+  },
+];
+
+export function missionReward(id) { return MISSION_REWARDS[id - 1] || 500; }
+
+/** Mission state machine: which mission is active, which stage, timers and kill
+ *  counts. It calls back into main.js for world effects and for the HUD. */
+export class MissionManager {
+  constructor(hooks) {
+    this.hooks = hooks;
+    this.nextIndex = 0;        // index into MISSIONS of the next mission to start
+    this.active = null;        // the mission object currently running
+    this.stageIndex = 0;
+    this.stageTimer = 0;
+    this.stageKills = 0;
+    this.stageProgress = 0;
+    this.completedCount = 0;
+    this.totalEarned = 0;
+  }
+
+  get current() { return this.active; }
+  get stage() { return this.active ? this.active.stages[this.stageIndex] : null; }
+
+  objectiveText() {
+    if (!this.active) {
+      return this.nextIndex < MISSIONS.length
+        ? `Press M — next job: ${MISSIONS[this.nextIndex].name}`
+        : 'All 12 jobs done. Puerto Lumen is yours.';
     }
-  }
-  return {
-    index: current, // index into MISSIONS, or MISSIONS.length when all done
-    stage: 0,
-    done,
-    active: false, // M starts the current mission
-    timer: 0, timerMax: 0,
-    waitLeft: 0, killsLeft: 0,
-    stageDone: false,
-    dialogue: null, dialogueAt: 0,
-    banner: null, bannerAt: 0,
-    log: [],
-  };
-}
-
-export function currentMission(state) {
-  return state.index < MISSIONS.length ? MISSIONS[state.index] : null;
-}
-
-export function currentStage(state) {
-  const m = currentMission(state);
-  return m ? m.stages[state.stage] : null;
-}
-
-export function stageText(state) {
-  const m = currentMission(state);
-  if (!m) return 'All 12 missions complete — Puerto Lumen is yours, Mara.';
-  if (!state.active) return `Next job: ${m.name} — press M to start`;
-  const s = currentStage(state);
-  if (!s) return m.name;
-  let text = `Job ${m.id}/12 ${m.name}: ${s.text}`;
-  if (s.timed && state.timer > 0) text += ` — ${Math.ceil(state.timer)}s`;
-  if (s.verb === 'shoot' && state.killsLeft > 0) text += ` (${state.killsLeft} left)`;
-  if (s.verb === 'wait' && state.waitLeft > 0) text += ` (${Math.ceil(state.waitLeft)}s)`;
-  return text;
-}
-
-// Start the current mission: reset stage, timer and dialogue, set the heat
-// the mission opens with, and spawn a cordon if the first stage needs one.
-export function startMission(state, emit) {
-  const m = currentMission(state);
-  if (!m || state.active) return false;
-  state.active = true;
-  state.stage = 0;
-  state.killsLeft = 0;
-  state.waitLeft = 0;
-  state.timer = m.timer || 0;
-  state.timerMax = m.timer || 0;
-  state.dialogue = m.dialogue;
-  state.dialogueAt = 0;
-  emit('dialogue', m.dialogue);
-  emit('log', `Job ${m.id} started: ${m.name} — ${m.brief}`);
-  emit('heat', m.heat || 0);
-  const s = m.stages[0];
-  if (s && s.verb === 'shoot') {
-    state.killsLeft = s.kills || 1;
-    emit('cordon', { x: s.x, z: s.z, count: s.kills || 1 });
-  }
-  return true;
-}
-
-function advanceStage(state, emit) {
-  const m = currentMission(state);
-  if (!m) return;
-  state.stage += 1;
-  state.waitLeft = 0;
-  if (state.stage >= m.stages.length) {
-    completeMission(state, emit);
-    return;
-  }
-  const s = m.stages[state.stage];
-  emit('log', `Stage: ${s.text}`);
-  if (s.verb === 'shoot') {
-    state.killsLeft = s.kills || 1;
-    emit('cordon', { x: s.x, z: s.z, count: s.kills || 1 });
-  }
-  if (s.verb === 'wait') state.waitLeft = s.wait || 5;
-}
-
-function completeMission(state, emit) {
-  const m = currentMission(state);
-  state.active = false;
-  state.done.push(m.id);
-  state.index += 1;
-  state.stage = 0;
-  state.banner = { title: 'JOB DONE', sub: `${m.name} — +$${m.reward.toLocaleString('en-US')}`, cash: m.reward };
-  state.bannerAt = 0;
-  emit('banner', state.banner);
-  emit('log', `JOB DONE: ${m.name} — +$${m.reward}`);
-  emit('cash', m.reward);
-  const next = currentMission(state);
-  if (next) emit('log', `Next job unlocked: ${next.name} (press M)`);
-  else emit('log', 'ALL 12 JOBS DONE — Mara owns the sunset.');
-}
-
-// One fixed step. Returns nothing; all effects go through emit. `ctx` carries
-// the live world: player position, car state, kill count since the stage
-// started, and the wanted level.
-export function updateMissions(state, ctx, dt, emit) {
-  const m = currentMission(state);
-  if (!m) return;
-  if (state.banner) {
-    state.bannerAt += dt;
-    if (state.bannerAt > 4) state.banner = null;
-  }
-  if (!state.active) return;
-  const s = currentStage(state);
-  if (!s) return;
-
-  // Mission timers (The Drop, Beach Run) tick down whenever the job is live.
-  if (s.timed && state.timer > 0) {
-    state.timer -= dt;
-    if (state.timer <= 0) {
-      state.timer = 0;
-      state.active = false;
-      state.stage = 0;
-      emit('failed', `${m.name}: out of time — press M to retry`);
-      emit('log', `${m.name} failed: time ran out`);
-      return;
-    }
+    const s = this.stage;
+    let text = `JOB ${this.active.id}/12 — ${this.active.name}: ${s.text}`;
+    if (s.type === 'timed' && this.stageTimer > 0) text += `  [${Math.ceil(this.stageTimer)}s]`;
+    if (s.type === 'wait' && this.stageProgress > 0) text += `  [${Math.floor(this.stageProgress / s.time * 100)}%]`;
+    if (s.type === 'shoot') text += `  [${this.stageKills}/${s.count}]`;
+    return text;
   }
 
-  const dist = Math.hypot(ctx.px - s.x, ctx.pz - s.z);
-  switch (s.verb) {
-    case 'go':
-      if (dist < s.radius) advanceStage(state, emit);
-      break;
-    case 'drive':
-      if (ctx.inCar && dist < s.radius) advanceStage(state, emit);
-      break;
-    case 'steal':
-      // The game loop sets ctx.stoleMissionCar when E is pressed near the car.
-      if (ctx.stoleMissionCar) advanceStage(state, emit);
-      break;
-    case 'stealPolice':
-      if (ctx.stolePoliceCar) advanceStage(state, emit);
-      break;
-    case 'shoot': {
-      // ctx.kills is the running kill count; the stage completes when the
-      // required number of officers are down.
-      if (ctx.kills >= state.killsLeft) advanceStage(state, emit);
-      break;
-    }
-    case 'wait':
-      if (dist < s.radius) {
-        state.waitLeft -= dt;
-        if (state.waitLeft <= 0) advanceStage(state, emit);
-      } else {
-        state.waitLeft = s.wait || 5; // leaving the mark resets the hack
+  markerPos() {
+    const s = this.stage;
+    if (!s || !s.pos) return null;
+    return { x: s.pos.x, z: s.pos.z };
+  }
+
+  startNext() {
+    if (this.active || this.nextIndex >= MISSIONS.length) return false;
+    this.active = MISSIONS[this.nextIndex];
+    this.stageIndex = 0;
+    this.beginStage();
+    for (const line of this.active.dialogue) this.hooks.log(line);
+    this.hooks.log(`JOB ${this.active.id} STARTED — ${this.active.name}: ${this.active.brief}`);
+    this.hooks.onMissionStart(this.active);
+    return true;
+  }
+
+  beginStage() {
+    const s = this.stage;
+    this.stageTimer = s.type === 'timed' ? s.time : 0;
+    this.stageKills = 0;
+    this.stageProgress = 0;
+    if (s.heat) this.hooks.setWanted(s.heat);
+    this.hooks.onStageStart(this.active, s);
+    this.hooks.log(`> ${s.name}: ${s.text}`);
+  }
+
+  noteKill() { this.stageKills += 1; }
+
+  noteSteal(carKind) {
+    const s = this.stage;
+    if (s && s.type === 'steal' && (!s.carKind || s.carKind === carKind)) this.advance();
+  }
+
+  advance() {
+    this.hooks.log(`✓ ${this.stage.name} complete`);
+    this.stageIndex += 1;
+    if (this.stageIndex >= this.active.stages.length) this.completeMission();
+    else this.beginStage();
+  }
+
+  completeMission() {
+    const m = this.active;
+    const reward = missionReward(m.id);
+    this.completedCount += 1;
+    this.totalEarned += reward;
+    this.nextIndex += 1;
+    this.active = null;
+    this.hooks.onMissionComplete(m, reward);
+  }
+
+  update(dt, ctx) {
+    if (!this.active) return;
+    const s = this.stage;
+    const dx = s.pos ? ctx.playerPos.x - s.pos.x : 0;
+    const dz = s.pos ? ctx.playerPos.z - s.pos.z : 0;
+    const dist = Math.hypot(dx, dz);
+    switch (s.type) {
+      case 'goto':
+      case 'pickup':
+        if (dist < 6) this.advance();
+        break;
+      case 'driveTo':
+        if (dist < 9) this.advance();
+        break;
+      case 'timed':
+        this.stageTimer -= dt;
+        if (dist < 9) { this.advance(); break; }
+        if (this.stageTimer <= 0) {
+          this.stageTimer = s.time;
+          this.hooks.log('Too slow — the drop window closed. Try again.');
+          this.hooks.onStageStart(this.active, s);
+        }
+        break;
+      case 'evade':
+        if (ctx.wanted <= 0) this.advance();
+        break;
+      case 'shoot':
+        if (this.stageKills >= s.count) this.advance();
+        break;
+      case 'wait': {
+        if (dist < 10) {
+          this.stageProgress += dt;
+          if (this.stageProgress >= s.time) this.advance();
+        } else {
+          this.stageProgress = 0;
+        }
+        break;
       }
-      break;
-    case 'evade':
-      if (ctx.wanted <= 0.05) advanceStage(state, emit);
-      break;
-    default:
-      break;
+      default:
+        break;
+    }
   }
-}
-
-// Called by the game loop when Mara kills a cordon officer during a shoot stage.
-export function registerKill(state, emit) {
-  const m = currentMission(state);
-  if (!m || !state.active) return;
-  const s = currentStage(state);
-  if (s && s.verb === 'shoot') {
-    emit('log', `Officer down — ${Math.max(0, state.killsLeft - 1)} to go`);
-  }
-}
-
-// The shoot stage counts kills through ctx.kills, which the game loop resets
-// to zero whenever a shoot stage begins. This helper is what the loop calls
-// at that moment so the count and the stage agree.
-export function resetStageKills(ctx) {
-  ctx.kills = 0;
-  return ctx;
-}
-
-// Save-friendly snapshot: mission index, completed ids, nothing else.
-export function missionSave(state) {
-  return { missionIndex: state.index, missionsDone: state.done.slice() };
-}
-
-// Human-readable mission list for the pause menu and the dossier text.
-export function missionListText(state) {
-  return MISSIONS.map((m) => {
-    const mark = state.done.includes(m.id) ? '[DONE]' : (currentMission(state) === m ? '[NEXT]' : '[LOCKED]');
-    return `${mark} ${m.id}. ${m.name} — $${m.reward} — ${m.brief}`;
-  }).join('\n');
 }
