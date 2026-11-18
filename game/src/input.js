@@ -2,7 +2,7 @@
 // Also exposes edge-triggered "pressed" keys (E, M, R, P, digits) so the
 // main loop can act on them exactly once per keypress. Touch drag orbits
 // the camera too, so the game is at least viewable on a tablet.
-export function freshInput() {
+export function newInput() {
   const input = {
     forward: false, back: false, left: false, right: false,
     run: false, fire: false, aiming: false,
@@ -83,8 +83,9 @@ export function freshInput() {
   return input;
 }
 
-/** Synthetic input for the screenshot autopilot: drives straight ahead. */
-export function scriptedInput(forward = true) {
+/** Synthetic input for the screenshot autopilot: drives straight ahead.
+ * The shots module builds its own inputs, but probes use this one. */
+export function fakeInput(forward = true) {
   return {
     forward, back: false, left: false, right: false, run: false,
     fire: false, aiming: false, camHeading: 0, camYaw: 0, camPitch: 0.32,
@@ -93,10 +94,10 @@ export function scriptedInput(forward = true) {
 }
 
 /** True once, for the frame the key went down. Call after reading. */
-export function justPressed(input, code) {
+export function wasPressed(input, code) {
   return input.pressed.has(code);
 }
 
-export function clearEdges(input) {
+export function clearPressed(input) {
   input.pressed.clear();
 }

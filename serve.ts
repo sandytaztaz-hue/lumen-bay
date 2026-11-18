@@ -1,4 +1,4 @@
-// LUMEN BAY — tiny static server for local play-testing.
+// LUMEN BAY — tiny static server for local play-testing and screenshots.
 // Serves this directory on http://localhost:8080 (game at /, screenshots
 // under /screenshots/). Node 22, standard library only — no dependencies
 // to install. Note: the game itself is served from game/ — open

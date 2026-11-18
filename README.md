@@ -11,7 +11,8 @@ helicopter, traffic and pedestrians, cars to steal, combat with
 health/armour/SMG pickups, car repair at Taller Lumen, a HUD with a minimap,
 a save, and an original synth radio. Everything — the city, the characters,
 the cars, the story, the art, the sound and the music — is invented here.
-Nothing from Rockstar Games, nothing from any other game.
+Nothing from Rockstar Games, nothing from any other game. The sun never
+sets on Puerto Lumen: the whole game plays at 18:40, golden hour.
 
 ## Run it
 
@@ -35,7 +36,8 @@ Informant, High Tide, The Last Sunset. Wanted stars rise on crime and fall
 when you stay hidden; at 3 stars the LCPD helicopter joins the chase, and
 getting caught on foot means BUSTED. Damaged cars can be repaired at Taller
 Lumen ($150). Progress saves to the browser (localStorage) — continue from
-the title screen.
+the title screen. Twelve traffic cars loop the blocks and twenty-four
+pedestrians walk the streets — and run when the shooting starts.
 
 ## Screenshots
 
@@ -53,7 +55,7 @@ written for this entry. Verified: `node --check` clean on every file,
 `main.ts` byte-identical across two runs, all four `?shot=` scenes render
 in headless Chrome with zero console errors, and the live gameplay probe
 (title → Job 1 → steal the Comet GT → +$400 → wanted 3 with police +
-helicopter) passes.
+helicopter → shootout at the cordon) passes.
 
 ---
 

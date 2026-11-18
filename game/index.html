@@ -10,7 +10,13 @@
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; }
   .panel { background: rgba(12, 8, 28, 0.62); border: 1px solid rgba(255, 190, 90, 0.35); border-radius: 12px; backdrop-filter: blur(2px); }
-  #topleft { position: absolute; top: 14px; left: 14px; padding: 10px 14px; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(20, 4, 30, 0.45) 100%); }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: none; }
+  #crosshair:before, #crosshair:after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 4px #000; }
+  #crosshair:before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair:after { left: 0; top: 8px; width: 18px; height: 2px; }
+  #topleft { position: absolute; top: 14px; left: 14px; padding: 10px 14px; } /* stars + health */
   #stars { font-size: 26px; letter-spacing: 4px; color: #ffd23e; text-shadow: 0 0 8px rgba(255, 210, 62, 0.7); line-height: 1; }
   #stars .off { color: rgba(255, 255, 255, 0.25); text-shadow: none; }
   #healthbar { width: 200px; height: 12px; background: rgba(255,255,255,0.18); border-radius: 6px; margin-top: 8px; overflow: hidden; }
@@ -24,13 +30,13 @@
   #clock { font-size: 13px; opacity: 0.9; margin-top: 2px; }
   #radio { font-size: 12px; color: #ffb03a; margin-top: 2px; }
   #eventlog { position: absolute; left: 14px; bottom: 218px; font-size: 13px; line-height: 1.5; text-shadow: 0 1px 3px #000; }
+  #minimapwrap { position: absolute; left: 14px; bottom: 14px; padding: 8px; }
+  #minimap { display: block; border-radius: 6px; }
+  #maplabel { font-size: 11px; letter-spacing: 2px; opacity: 0.85; margin-top: 4px; text-align: center; }
   #speedo { position: absolute; right: 14px; bottom: 14px; padding: 10px 16px; text-align: right; }
   #speed { font-size: 34px; font-weight: 800; line-height: 1; }
   #speedunit { font-size: 12px; opacity: 0.8; }
   #weapon { font-size: 14px; margin-top: 4px; color: #ffd23e; }
-  #minimapwrap { position: absolute; left: 14px; bottom: 14px; padding: 8px; }
-  #minimap { display: block; border-radius: 6px; }
-  #maplabel { font-size: 11px; letter-spacing: 2px; opacity: 0.85; margin-top: 4px; text-align: center; }
   #dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 10px 18px; max-width: 620px; text-align: center; font-size: 15px; display: none; }
   #dialog b { color: #ffd23e; }
   #banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); font-size: 46px; font-weight: 900; letter-spacing: 6px; color: #ffd23e; text-shadow: 0 0 24px rgba(255, 150, 40, 0.9), 0 2px 0 #7a2d00; display: none; text-align: center; }
@@ -42,12 +48,6 @@
   #screen .keys { font-size: 13px; color: #cfc4e8; line-height: 1.9; }
   #screen .keys b { color: #fff; }
   #screen button { pointer-events: auto; font-size: 18px; font-weight: 700; padding: 12px 34px; border-radius: 10px; border: 2px solid #ffd23e; background: #ff8c2e; color: #1a0f2e; cursor: pointer; margin-top: 14px; }
-  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: none; }
-  #crosshair:before, #crosshair:after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 4px #000; }
-  #crosshair:before { left: 8px; top: 0; width: 2px; height: 18px; }
-  #crosshair:after { left: 0; top: 8px; width: 18px; height: 2px; }
-  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(20, 4, 30, 0.45) 100%); }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
 <script type="importmap">{"imports": {"three": "./vendor/three/three.module.min.js"}}</script>
 </head>

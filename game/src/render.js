@@ -2,10 +2,10 @@
 // camera, the mission beacon, tracers and muzzle flashes. No shadow maps
 // (SwiftShader friendly) — fake blob shadows live on the meshes themselves.
 import * as THREE from 'three';
-import { SUNSET } from './config.js';
-import { mix, easeRate } from './random.js';
+import { PALETTE } from './config.js';
+import { lerp, damp } from './random.js';
 
-export function startRenderer(canvas) {
+export function makeRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -15,16 +15,16 @@ export function startRenderer(canvas) {
   return renderer;
 }
 
-export function buildSky() {
+export function makeSky() {
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0xff9d5e, 180, 620);
   // Gradient sky dome: violet zenith, orange mid, gold at the horizon.
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: {
-      top: { value: new THREE.Color(SUNSET.skyTop) },
-      mid: { value: new THREE.Color(SUNSET.skyMid) },
-      low: { value: new THREE.Color(SUNSET.skyLow) },
+      top: { value: new THREE.Color(PALETTE.skyTop) },
+      mid: { value: new THREE.Color(PALETTE.skyMid) },
+      low: { value: new THREE.Color(PALETTE.skyLow) },
     },
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low;
@@ -34,7 +34,7 @@ export function buildSky() {
   // Low golden sun disc hanging west over the ocean, with a warm halo.
   const sun = new THREE.Mesh(
     new THREE.CircleGeometry(34, 32),
-    new THREE.MeshBasicMaterial({ color: SUNSET.sunDisc, fog: false }),
+    new THREE.MeshBasicMaterial({ color: PALETTE.sunDisc, fog: false }),
   );
   sun.position.set(-620, 95, 60);
   sun.lookAt(0, 95, 60);
@@ -64,8 +64,10 @@ export function buildSky() {
   return { scene, clouds };
 }
 
-/** Chase camera: follows behind the player or the car, mouse drag orbits. */
-export function freshCamera() {
+/** Chase camera: follows behind the player or the car, mouse drag orbits.
+ * dist eases between the on-foot and driving distances so the switch
+ * never snaps. */
+export function newChaseCam() {
   const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1500);
   return {
     camera, yaw: 0, pitch: 0.32, dist: 10,
@@ -73,24 +75,24 @@ export function freshCamera() {
   };
 }
 
-export function trackCamera(cam, target, inCar, dt) {
+export function followCam(cam, target, inCar, dt) {
   const wantDist = inCar ? 10.5 : 7;
   const wantHeight = inCar ? 3.4 : 2.8;
-  cam.dist = mix(cam.dist, wantDist, easeRate(3, dt));
+  cam.dist = lerp(cam.dist, wantDist, damp(3, dt));
   const yaw = target.heading + Math.PI + cam.yaw;
   const cx = target.x + Math.sin(yaw) * cam.dist * Math.cos(cam.pitch);
   const cz = target.z + Math.cos(yaw) * cam.dist * Math.cos(cam.pitch);
   const cy = wantHeight + Math.sin(cam.pitch) * cam.dist * 0.6;
-  const w = easeRate(7, dt);
-  cam.smooth.x = mix(cam.smooth.x, cx, w);
-  cam.smooth.y = mix(cam.smooth.y, cy, w);
-  cam.smooth.z = mix(cam.smooth.z, cz, w);
+  const w = damp(7, dt);
+  cam.smooth.x = lerp(cam.smooth.x, cx, w);
+  cam.smooth.y = lerp(cam.smooth.y, cy, w);
+  cam.smooth.z = lerp(cam.smooth.z, cz, w);
   cam.camera.position.copy(cam.smooth);
   cam.camera.lookAt(target.x, inCar ? 1.6 : 1.5, target.z);
 }
 
 /** Mission beacon: a golden light pillar + spinning diamond at the marker. */
-export function freshBeacon(scene) {
+export function newBeacon(scene) {
   const group = new THREE.Group();
   const beam = new THREE.Mesh(
     new THREE.CylinderGeometry(1.1, 1.6, 60, 10, 1, true),
@@ -116,7 +118,7 @@ export function freshBeacon(scene) {
   return { group, diamond, ring };
 }
 
-export function moveBeacon(beacon, marker, t) {
+export function placeBeacon(beacon, marker, t) {
   if (!marker) {
     beacon.group.visible = false;
     return;
@@ -130,7 +132,7 @@ export function moveBeacon(beacon, marker, t) {
 }
 
 /** Tracer pool: short-lived glowing lines for gunfire. */
-export function freshTracers(scene) {
+export function newTracers(scene) {
   const pool = [];
   for (let i = 0; i < 12; i++) {
     const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
@@ -142,7 +144,7 @@ export function freshTracers(scene) {
   return pool;
 }
 
-export function shootTracer(pool, from, to) {
+export function fireTracer(pool, from, to) {
   const t = pool.find((p) => p.life <= 0) || pool[0];
   t.line.geometry.setFromPoints([from, to]);
   t.line.visible = true;
@@ -150,7 +152,7 @@ export function shootTracer(pool, from, to) {
   t.life = 0.09;
 }
 
-export function fadeTracers(pool, dt) {
+export function ageTracers(pool, dt) {
   for (const t of pool) {
     if (t.life > 0) {
       t.life -= dt;
@@ -161,7 +163,7 @@ export function fadeTracers(pool, dt) {
 }
 
 /** Muzzle flash: a quick point light + glowing sprite at the gun. */
-export function freshMuzzle(scene) {
+export function newMuzzle(scene) {
   const light = new THREE.PointLight(0xffc46b, 0, 18);
   scene.add(light);
   const sprite = new THREE.Mesh(
@@ -172,7 +174,7 @@ export function freshMuzzle(scene) {
   return { light, sprite, life: 0 };
 }
 
-export function burstMuzzle(muzzle, pos) {
+export function flashMuzzle(muzzle, pos) {
   muzzle.light.position.copy(pos);
   muzzle.light.intensity = 60;
   muzzle.sprite.position.copy(pos);
@@ -181,7 +183,7 @@ export function burstMuzzle(muzzle, pos) {
   muzzle.life = 0.06;
 }
 
-export function fadeMuzzle(muzzle, dt) {
+export function ageMuzzle(muzzle, dt) {
   if (muzzle.life > 0) {
     muzzle.life -= dt;
     if (muzzle.life <= 0) {
@@ -192,7 +194,7 @@ export function fadeMuzzle(muzzle, dt) {
 }
 
 /** Drift the clouds slowly east; they wrap around the far edge. */
-export function driftClouds(clouds, dt) {
+export function moveClouds(clouds, dt) {
   for (const c of clouds) {
     c.position.x += dt * 1.2;
     if (c.position.x > 480) c.position.x = -480;
@@ -200,7 +202,7 @@ export function driftClouds(clouds, dt) {
 }
 
 /** Resize the renderer + camera when the window changes size. */
-export function handleResize(renderer, cam) {
+export function onResize(renderer, cam) {
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setSize(w, h);

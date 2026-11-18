@@ -1,11 +1,11 @@
 // The HUD: wanted stars, health + armour, cash, clock, radio, objective,
 // minimap, speedometer, weapon, event log, dialogue and banners — all DOM
 // plus one 2D minimap canvas, updated every frame from the game state.
-import { CITY, PLACES, streetList, CLOCK_LABEL } from './config.js';
+import { TOWN, SPOTS, streets, CLOCK_TEXT } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 
-export function freshHud() {
+export function newHud() {
   return {
     logLines: [],
     dialogTimer: 0,
@@ -13,20 +13,20 @@ export function freshHud() {
   };
 }
 
-function starStrip(stars) {
+function starRow(stars) {
   let s = '';
   for (let i = 0; i < 5; i++) s += i < stars ? '★' : '<span class="off">★</span>';
   return s;
 }
 
-export function refreshHud(hud, g, dt) {
-  $('stars').innerHTML = starStrip(g.wanted.stars);
+export function drawHud(hud, g, dt) {
+  $('stars').innerHTML = starRow(g.wanted.stars);
   const hp = Math.max(0, Math.round(g.player.health));
   $('healthfill').style.width = `${hp}%`;
   const armour = Math.max(0, Math.round(g.player.armour || 0));
   $('healthtext').textContent = `HEALTH ${hp}${armour > 0 ? `  ·  ARMOUR ${armour}` : ''}${g.player.inCar ? `  ·  ${g.player.inCar.model.name}` : ''}`;
   $('cash').textContent = `$${g.cash.toLocaleString('en-US')}`;
-  $('clock').textContent = CLOCK_LABEL;
+  $('clock').textContent = CLOCK_TEXT;
   $('radio').textContent = `♪ ${g.radioName}`;
   const speed = g.player.inCar
     ? Math.round(Math.abs(g.player.inCar.speed) * 3.6)
@@ -46,22 +46,22 @@ export function refreshHud(hud, g, dt) {
     hud.bannerTimer -= dt;
     if (hud.bannerTimer <= 0) $('banner').style.display = 'none';
   }
-  paintMinimap(g);
+  drawMap(g);
 }
 
-export function noteEvent(hud, text) {
+export function logEvent(hud, text) {
   hud.logLines.push(text);
   if (hud.logLines.length > 4) hud.logLines.shift();
   $('eventlog').innerHTML = hud.logLines.map((l) => `<div>${l}</div>`).join('');
 }
 
-export function sayLine(hud, speaker, text, seconds = 5) {
+export function speak(hud, speaker, text, seconds = 5) {
   $('dialog').innerHTML = `<b>${speaker}:</b> ${text}`;
   $('dialog').style.display = 'block';
   hud.dialogTimer = seconds;
 }
 
-export function flashBanner(hud, text, sub = '', seconds = 2.6) {
+export function showBanner(hud, text, sub = '', seconds = 2.6) {
   $('bannertext').textContent = text;
   $('bannersub').textContent = sub;
   $('banner').style.display = 'block';
@@ -69,11 +69,11 @@ export function flashBanner(hud, text, sub = '', seconds = 2.6) {
 }
 
 /** Minimap: streets, blocks, beach, player arrow, mission marker, police. */
-export function paintMinimap(g) {
+export function drawMap(g) {
   const cv = $('minimap');
   const ctx = cv.getContext('2d');
   const S = 180;
-  const half = CITY.half;
+  const half = TOWN.half;
   const toMap = (x, z) => [(x + half) / (half * 2) * S, (z + half) / (half * 2) * S];
   ctx.fillStyle = '#241a3e';
   ctx.fillRect(0, 0, S, S);
@@ -90,7 +90,7 @@ export function paintMinimap(g) {
   }
   ctx.strokeStyle = '#8d8578';
   ctx.lineWidth = 2;
-  for (const s of streetList()) {
+  for (const s of streets()) {
     const [x] = toMap(s, 0);
     const [, z] = toMap(0, s);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke();
@@ -98,7 +98,7 @@ export function paintMinimap(g) {
   }
   ctx.fillStyle = '#ffd23e';
   ctx.font = 'bold 9px system-ui, sans-serif';
-  const [tx, tz] = toMap(PLACES.torre.x, PLACES.torre.z);
+  const [tx, tz] = toMap(SPOTS.torre.x, SPOTS.torre.z);
   ctx.beginPath(); ctx.arc(tx, tz, 3, 0, 7); ctx.fill();
   ctx.fillText('TORRE', tx + 5, tz + 3);
   if (g.marker) {
@@ -138,18 +138,19 @@ export function paintMinimap(g) {
   ctx.restore();
 }
 
-export function openScreen(html) {
+export function showScreen(html) {
   const el = $('screen');
   el.innerHTML = html;
   el.style.display = 'flex';
 }
 
-export function closeScreen() {
+export function hideScreen() {
   $('screen').style.display = 'none';
 }
 
-/** Title screen HTML: name, story hook, controls, save state. */
-export function titleMarkup(hasSave, cash, jobsDone) {
+/** Title screen HTML: name, story hook, controls, save state.
+ * The play button id is the hook the probes click — keep it. */
+export function titleHtml(hasSave, cash, jobsDone) {
   return `
     <h1>LUMEN BAY</h1>
     <h2>SUNSET GETAWAY &middot; PUERTO LUMEN</h2>
