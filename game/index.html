@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LUMEN BAY: Sunset Getaway</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f2e; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; }
+  .panel { background: rgba(12, 8, 28, 0.62); border: 1px solid rgba(255, 190, 90, 0.35); border-radius: 10px; backdrop-filter: blur(2px); }
+  #topleft { position: absolute; top: 14px; left: 14px; padding: 10px 14px; }
+  #stars { font-size: 26px; letter-spacing: 4px; color: #ffd23e; text-shadow: 0 0 8px rgba(255, 210, 62, 0.7); line-height: 1; }
+  #stars .off { color: rgba(255, 255, 255, 0.25); text-shadow: none; }
+  #healthbar { width: 190px; height: 12px; background: rgba(255,255,255,0.18); border-radius: 6px; margin-top: 8px; overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff5a5a, #ffb03a); }
+  #healthtext { font-size: 12px; margin-top: 4px; opacity: 0.9; }
+  #topright { position: absolute; top: 14px; right: 14px; padding: 10px 14px; text-align: right; }
+  #cash { font-size: 24px; font-weight: 800; color: #7dff9b; }
+  #clock { font-size: 13px; opacity: 0.9; margin-top: 2px; }
+  #radio { font-size: 12px; color: #ffb03a; margin-top: 2px; }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 9px 18px; text-align: center; max-width: 560px; }
+  #objtitle { font-size: 13px; letter-spacing: 2px; color: #ffd23e; font-weight: 700; }
+  #objtext { font-size: 15px; margin-top: 2px; }
+  #minimapwrap { position: absolute; left: 14px; bottom: 14px; padding: 8px; }
+  #minimap { display: block; border-radius: 6px; }
+  #maplabel { font-size: 11px; letter-spacing: 2px; opacity: 0.85; margin-top: 4px; text-align: center; }
+  #speedo { position: absolute; right: 14px; bottom: 14px; padding: 10px 16px; text-align: right; }
+  #speed { font-size: 34px; font-weight: 800; line-height: 1; }
+  #speedunit { font-size: 12px; opacity: 0.8; }
+  #weapon { font-size: 14px; margin-top: 4px; color: #ffd23e; }
+  #eventlog { position: absolute; left: 14px; bottom: 218px; font-size: 13px; line-height: 1.5; text-shadow: 0 1px 3px #000; }
+  #dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 10px 18px; max-width: 620px; text-align: center; font-size: 15px; display: none; }
+  #dialog b { color: #ffd23e; }
+  #banner { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); font-size: 44px; font-weight: 900; letter-spacing: 6px; color: #ffd23e; text-shadow: 0 0 24px rgba(255, 150, 40, 0.9), 0 2px 0 #7a2d00; display: none; text-align: center; }
+  #bannersub { font-size: 18px; letter-spacing: 2px; color: #fff; margin-top: 6px; text-shadow: 0 1px 4px #000; }
+  #screen { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; background: linear-gradient(180deg, rgba(26, 8, 46, 0.55), rgba(10, 4, 20, 0.78)); pointer-events: auto; }
+  #screen h1 { font-size: 64px; margin: 0; letter-spacing: 8px; color: #ffd23e; text-shadow: 0 0 30px rgba(255, 140, 40, 0.8); }
+  #screen h2 { font-size: 20px; margin: 6px 0 0; color: #ffb03a; letter-spacing: 3px; font-weight: 600; }
+  #screen p { font-size: 15px; max-width: 560px; line-height: 1.6; color: #f2e9ff; }
+  #screen .keys { font-size: 13px; color: #cfc4e8; line-height: 1.9; }
+  #screen .keys b { color: #fff; }
+  #screen button { pointer-events: auto; font-size: 18px; font-weight: 700; padding: 12px 34px; border-radius: 10px; border: 2px solid #ffd23e; background: #ff8c2e; color: #1a0f2e; cursor: pointer; margin-top: 14px; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: none; }
+  #crosshair:before, #crosshair:after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 4px #000; }
+  #crosshair:before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair:after { left: 0; top: 8px; width: 18px; height: 2px; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(20, 4, 30, 0.45) 100%); }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+<script type="importmap">{"imports": {"three": "./vendor/three/three.module.min.js"}}</script>
+</head>
+<body>
+<canvas id="game" aria-label="LUMEN BAY: Sunset Getaway, open-world crime game in Puerto Lumen"></canvas>
+<div id="hud">
+  <div id="topleft" class="panel"><div id="stars"></div><div id="healthbar"><div id="healthfill"></div></div><div id="healthtext">HEALTH 100</div></div>
+  <div id="topright" class="panel"><div id="cash">$0</div><div id="clock">18:40 &middot; PUERTO LUMEN</div><div id="radio">&#9834; RADIO LUMEN 97.5 &mdash; Sunset Drive</div></div>
+  <div id="objective" class="panel"><div id="objtitle">FREE ROAM</div><div id="objtext">Explore Puerto Lumen. Press M for a job.</div></div>
+  <div id="minimapwrap" class="panel"><canvas id="minimap" width="180" height="180"></canvas><div id="maplabel">PUERTO LUMEN</div></div>
+  <div id="speedo" class="panel"><div id="speed">0</div><div id="speedunit">KM/H</div><div id="weapon">FISTS</div></div>
+  <div id="eventlog"></div>
+  <div id="dialog" class="panel"></div>
+  <div id="banner"><div id="bannertext"></div><div id="bannersub"></div></div>
+  <div id="crosshair"></div>
+  <div id="screen"></div>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
