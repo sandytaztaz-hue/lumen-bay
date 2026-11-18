@@ -1,103 +1,109 @@
-// Input: keyboard state + mouse drag to orbit the camera + click to shoot.
-// Also exposes edge-triggered "pressed" keys (E, M, R, P, digits) so the
-// main loop can act on them exactly once per keypress. Touch drag orbits
-// the camera too, so the game is at least viewable on a tablet.
-export function newInput() {
+// LUMEN BAY — keyboard and mouse input.
+// WASD move/drive, mouse orbit + click to shoot, E enter/steal, Shift sprint,
+// Space handbrake, 1/2 weapons, M start job, R radio, Esc pause, Enter confirm.
+export const ACTION_CONFIRM = 1;
+export const ACTION_PAUSE = 2;
+export const ACTION_MISSION = 4;
+export const ACTION_RADIO = 8;
+export const ACTION_ENTER = 16;
+
+export function createInput(canvas) {
   const input = {
-    forward: false, back: false, left: false, right: false,
-    run: false, fire: false, aiming: false,
-    camHeading: 0, camYaw: 0, camPitch: 0.32,
-    pressed: new Set(),
-    mouseDown: false, lastX: 0, lastY: 0,
+    keys: new Set(),
+    mouseDX: 0,
+    mouseDY: 0,
+    mouseDown: false,
+    clicked: false,
+    actions: 0,
+    pointerLocked: false,
   };
-  const heldKeys = {
-    KeyW: 'forward', ArrowUp: 'forward',
-    KeyS: 'back', ArrowDown: 'back',
-    KeyA: 'left', ArrowLeft: 'left',
-    KeyD: 'right', ArrowRight: 'right',
-    ShiftLeft: 'run', ShiftRight: 'run',
-  };
-  window.addEventListener('keydown', (e) => {
-    if (heldKeys[e.code] !== undefined) {
-      input[heldKeys[e.code]] = true;
-      e.preventDefault();
-    }
-    if (!e.repeat) input.pressed.add(e.code);
-    if (e.code === 'Space') e.preventDefault();
-    // C snaps the camera back behind the player/car.
-    if (e.code === 'KeyC' && !e.repeat) {
-      input.camYaw = 0;
-      input.camPitch = 0.32;
-    }
+
+  window.addEventListener('keydown', (event) => {
+    if (event.repeat) return;
+    input.keys.add(event.code);
+    if (event.code === 'Enter' || event.code === 'Space') input.actions |= ACTION_CONFIRM;
+    if (event.code === 'Escape') input.actions |= ACTION_PAUSE;
+    if (event.code === 'KeyM') input.actions |= ACTION_MISSION;
+    if (event.code === 'KeyR') input.actions |= ACTION_RADIO;
+    if (event.code === 'KeyE') input.actions |= ACTION_ENTER;
+    if (event.code === 'Space') event.preventDefault();
   });
-  window.addEventListener('keyup', (e) => {
-    if (heldKeys[e.code] !== undefined) input[heldKeys[e.code]] = false;
+  window.addEventListener('keyup', (event) => {
+    input.keys.delete(event.code);
   });
   window.addEventListener('blur', () => {
-    input.forward = input.back = input.left = input.right = input.run = false;
-  });
-  const canvas = document.getElementById('game');
-  canvas.addEventListener('mousedown', (e) => {
-    input.mouseDown = true;
-    input.lastX = e.clientX;
-    input.lastY = e.clientY;
-    if (e.button === 0) input.fire = true;
-  });
-  window.addEventListener('mouseup', (e) => {
-    if (e.button === 0) input.fire = false;
+    input.keys.clear();
     input.mouseDown = false;
   });
-  const dragLook = (dx, dy) => {
-    input.camYaw -= dx * 0.005;
-    input.camPitch = Math.max(-0.1, Math.min(0.9, input.camPitch + dy * 0.003));
-  };
-  window.addEventListener('mousemove', (e) => {
-    if (!input.mouseDown) return;
-    const dx = e.clientX - input.lastX;
-    const dy = e.clientY - input.lastY;
-    input.lastX = e.clientX;
-    input.lastY = e.clientY;
-    dragLook(dx, dy);
-  });
-  // Touch: drag anywhere to look around.
-  let touchId = null;
-  canvas.addEventListener('touchstart', (e) => {
-    const t = e.changedTouches[0];
-    touchId = t.identifier;
-    input.lastX = t.clientX;
-    input.lastY = t.clientY;
-    e.preventDefault();
-  }, { passive: false });
-  canvas.addEventListener('touchmove', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier !== touchId) continue;
-      const dx = t.clientX - input.lastX;
-      const dy = t.clientY - input.lastY;
-      input.lastX = t.clientX;
-      input.lastY = t.clientY;
-      dragLook(dx, dy);
+  canvas.addEventListener('mousedown', (event) => {
+    if (event.button === 0) {
+      input.mouseDown = true;
+      input.clicked = true;
+      if (!input.pointerLocked && document.pointerLockElement !== canvas) {
+        canvas.requestPointerLock?.();
+      }
     }
-    e.preventDefault();
-  }, { passive: false });
-  canvas.addEventListener('touchend', () => { touchId = null; });
+  });
+  window.addEventListener('mouseup', (event) => {
+    if (event.button === 0) input.mouseDown = false;
+  });
+  document.addEventListener('pointerlockchange', () => {
+    input.pointerLocked = document.pointerLockElement === canvas;
+  });
+  document.addEventListener('mousemove', (event) => {
+    if (input.pointerLocked) {
+      input.mouseDX += event.movementX || 0;
+      input.mouseDY += event.movementY || 0;
+    }
+  });
   return input;
 }
 
-/** Synthetic input for the screenshot autopilot: drives straight ahead.
- * The shots module builds its own inputs, but probes use this one. */
-export function fakeInput(forward = true) {
+// Read the current movement state, normalised for the frame.
+export function readMove(input) {
+  const keys = input.keys;
   return {
-    forward, back: false, left: false, right: false, run: false,
-    fire: false, aiming: false, camHeading: 0, camYaw: 0, camPitch: 0.32,
-    pressed: new Set(), mouseDown: false, lastX: 0, lastY: 0,
+    forward: keys.has('KeyW') || keys.has('ArrowUp'),
+    back: keys.has('KeyS') || keys.has('ArrowDown'),
+    left: keys.has('KeyA') || keys.has('ArrowLeft'),
+    right: keys.has('KeyD') || keys.has('ArrowRight'),
+    sprint: keys.has('ShiftLeft') || keys.has('ShiftRight'),
+    handbrake: keys.has('Space'),
   };
 }
 
-/** True once, for the frame the key went down. Call after reading. */
-export function wasPressed(input, code) {
-  return input.pressed.has(code);
+// Consume the mouse deltas accumulated since the last frame.
+export function takeMouse(input) {
+  const dx = input.mouseDX;
+  const dy = input.mouseDY;
+  input.mouseDX = 0;
+  input.mouseDY = 0;
+  return { dx, dy };
 }
 
-export function clearPressed(input) {
-  input.pressed.clear();
+// Consume one-shot actions (M, R, E, Esc, Enter) raised since the last frame.
+export function takeActions(input) {
+  const actions = input.actions;
+  input.actions = 0;
+  return actions;
+}
+
+export function takeClick(input) {
+  const clicked = input.clicked;
+  input.clicked = false;
+  return clicked;
+}
+
+// Weapon switching and fire-rate helpers, kept beside input so the main loop
+// stays readable: which keys switch weapons, and whether the trigger is live
+// this frame (pistol fires on click, SMG on hold).
+export function weaponKey(input) {
+  if (input.keys.has('Digit1')) return 'pistol';
+  if (input.keys.has('Digit2')) return 'smg';
+  return null;
+}
+
+export function triggerLive(input, weapon) {
+  if (weapon.auto) return input.mouseDown;
+  return takeClick(input);
 }

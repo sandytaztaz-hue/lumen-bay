@@ -1,108 +1,93 @@
-// The four screenshot scenes (?shot=chase|shootout|job|done). Each one sets
-// up a real game state — a live chase, a live shootout, a live job, a job
-// completed — then steps the simulation forward a fixed number of fixed
-// steps with scripted inputs, so the frame is what short real play looks
-// like, and the same seed always gives the same frame.
-// Shot 0 (chase) is the cover: mid-action, full HUD, never a menu.
+// LUMEN BAY — screenshot scenes behind ?shot=1..4.
+// Each shot plays the real game forward from a fresh world with a fixed
+// autopilot, so the frame is what genuine play looks like and the same seed
+// always gives the same frame. The main loop paints twice, then sets
+// window.__shotReady so the screenshot tool knows the scene is ready.
+//
+//   shot 1 — high-speed chase: Mara in the Comet GT, 3 stars, police cruisers
+//            behind and the helicopter overhead, full HUD.
+//   shot 2 — on-foot shootout at Torre Lumen: cordon police, muzzle flash.
+//   shot 3 — mission pickup at the marina: Mara by the Comet GT, crates, docks.
+//   shot 4 — job done at the beach: banner, cash reward, sunset over Playa Dorada.
+import { COMET_GT, LANDMARKS } from './config.js';
 
-const STEP = 1 / 60;
+const SAMPLE = 1 / 60;
 
-/** Walk forward for `seconds`, optionally firing once at the end. */
-function walkFor(game, seconds, fireAtEnd = false) {
-  const input = {
-    forward: true, back: false, left: false, right: false, run: false,
-    fire: false, aiming: true, camHeading: 0, camYaw: 0, camPitch: 0.32,
-    pressed: new Set(),
-  };
-  for (let i = 0; i < seconds / STEP; i++) game.step(STEP, input);
-  if (fireAtEnd) {
-    input.fire = true;
-    game.step(STEP, input);
-    input.fire = false;
-    game.step(STEP, input);
+function placeInCar(game, x, z, yaw, speed) {
+  game.enterCar(game.cometCar);
+  game.playerCar.x = x;
+  game.playerCar.z = z;
+  game.playerCar.yaw = yaw;
+  game.playerCar.speed = speed;
+  game.player.x = x;
+  game.player.z = z;
+}
+
+function driveForward(game, seconds, steer) {
+  const steps = Math.floor(seconds / SAMPLE);
+  for (let i = 0; i < steps; i += 1) {
+    game.simulateInput({ forward: true, back: false, left: steer < 0, right: steer > 0, sprint: false, handbrake: false });
+    game.stepFixed(SAMPLE);
   }
 }
 
-/** Drive forward for `seconds` with an optional steer, then stop. */
-function driveFor(game, seconds, steer = 0) {
-  const input = {
-    forward: true, back: false, left: steer < 0, right: steer > 0, run: false,
-    fire: false, aiming: false, camHeading: 0, camYaw: 0, camPitch: 0.32,
-    pressed: new Set(),
-  };
-  for (let i = 0; i < seconds / STEP; i++) game.step(STEP, input);
+function walkForward(game, seconds) {
+  const steps = Math.floor(seconds / SAMPLE);
+  for (let i = 0; i < steps; i += 1) {
+    game.simulateInput({ forward: true, back: false, left: false, right: false, sprint: true, handbrake: false });
+    game.stepFixed(SAMPLE);
+  }
 }
 
-/**
- * Stage the named scene on a fresh game and return the screen state.
- * `game` is the object main.js builds (see main.js for its API).
- * Any other name stages the chase (the cover) — the safe default.
- */
-export function stageShot(game, name) {
-  game.resetWorld();
-  game.hideScreens();
-  if (name === 'shootout') {
-    // On foot by the Torre, pistol out, police closing in, peds fleeing.
-    // Mara starts well south of the tower plaza and walks north, so the
-    // clock tower and its TORRE LUMEN sign stay in frame with sky above;
-    // cruisers approach from the flanks instead of piling onto her.
-    game.teleportPlayer(35, 18, Math.PI);
-    game.setWeapon('pistol');
+// Stage the named shot (1..4) on a live game object and return the screen
+// the main loop should paint over it.
+export function stageShot(number, game) {
+  game.startPlay({ silent: true });
+  if (number === 1) {
+    // Chase down the coast road: 3 stars, heli up, cruisers in pursuit.
     game.setWanted(3);
-    game.spawnPolice(2, 0, -70);
-    game.spawnPolice(1, 70, -70);
-    game.fleePeds(35, -35);
-    game.startMission(5); // The Informant — cordon banner on screen
-    game.say('TIO REYES', 'Dario is stuck near the park — three cops, no exit. Get him out, Mara.', 8);
-    walkFor(game, 1.0, true);
-    game.log('LCPD DISPATCH: Shots fired at Torre Lumen — all units respond.');
-    game.log('MARA SOLIS: You picked the wrong driver to corner.');
+    placeInCar(game, -180, -40, 0, 34);
+    game.startMissionByIndex(8);
+    driveForward(game, 2.2, 0);
+    game.fireWeaponAt(game.nearestPoliceCar());
     return 'play';
   }
-  if (name === 'job') {
-    // The Marina Job: cargo on the dock, Comet parked, Lena on the radio.
-    // Mara starts north of the dock and walks a short way south, so the
-    // blue crates, the moored boats and the ocean sunset all stay in frame
-    // instead of the crates filling the lens.
-    game.teleportPlayer(-218, 200, 0.1);
-    game.setWanted(0);
-    game.startMission(3); // The Marina Job
-    game.say('LENA CRUZ', "My cargo is on the far dock, blue crates. Bring it to Calle Sol — quietly.", 8);
-    game.log('LENA CRUZ: Blue crates, far dock. The patrol passes every two minutes.');
-    walkFor(game, 0.4, false);
+  if (number === 2) {
+    // Shootout at the tower: Mara on foot south of it, camera behind her looking north.
+    game.player.x = LANDMARKS.tower.x;
+    game.player.z = LANDMARKS.tower.z + 30;
+    game.player.yaw = Math.PI;
+    game.camYaw = Math.PI;
+    game.spawnCordon(LANDMARKS.tower.x, LANDMARKS.tower.z, 4);
+    game.setWanted(2);
+    game.startMissionByIndex(5);
+    game.missions.step = 1;
+    game.setShotTarget(LANDMARKS.tower.x, LANDMARKS.tower.z, 'Break the cordon — take down the police');
+    game.fireWeaponAt(game.enemies[0] ? { x: game.enemies[0].x, y: 1.2, z: game.enemies[0].z } : null);
+    walkForward(game, 0.6);
     return 'play';
   }
-  if (name === 'done') {
-    // Job complete at Playa Dorada: sunset, Comet parked, payout banner.
-    // Mara drives the Comet down onto the sand, facing the ocean sunset.
-    game.moveParked(0, 104, 232, 0);
-    game.teleportPlayer(104, 232, 0);
-    game.putPlayerInCar(0); // Comet GT
-    game.setWanted(0);
-    game.completeJobForShot(3, 1000); // The Marina Job paid out
-    game.showBanner('JOB DONE', '+$1,000 — THE MARINA JOB', 30);
-    game.log('JOB DONE: The Marina Job — +$1,000');
-    game.log('TIO REYES: Clean, Mara. The crew eats tonight.');
-    driveFor(game, 0.4);
+  if (number === 3) {
+    // Marina pickup: Mara beside the Comet GT at the docks, crate in view.
+    game.player.x = COMET_GT.x + 6;
+    game.player.z = COMET_GT.z + 8;
+    game.player.yaw = Math.atan2(COMET_GT.x - game.player.x, COMET_GT.z - game.player.z);
+    game.camYaw = game.player.yaw;
+    game.startMissionByIndex(3);
+    game.missions.active = true;
+    game.missions.step = 0;
+    game.missions.timer = 0;
+    walkForward(game, 0.25);
     return 'play';
   }
-  // Default: 'chase' — the cover. Driving the Comet GT down the marina
-  // straight at speed, two cruisers on the tail, the helicopter overhead,
-  // 3 stars, mission banner live.
-  game.teleportPlayer(-196, 175, Math.PI / 2);
-  game.putPlayerInCar(0);
-  game.cash = 2400;
-  game.setWanted(3);
-  game.spawnPolice(2, -258, 175); // tail: two cruisers well behind, not on the bumper
-  game.spawnPolice(2, -40, 168); // roadblock: two cruisers ahead, in frame
-  // Street traffic ahead so the road reads as a living city.
-  game.stageTraffic(0, -70, 172, Math.PI / 2, [[-70, 172], [220, 172], [220, 178], [-70, 178]]);
-  game.stageTraffic(1, -20, 179, Math.PI / 2, [[-20, 179], [220, 179], [220, 172], [-20, 172]]);
-  game.heliOn();
-  game.startMission(4); // Payday — courier van banner on screen
-  game.say('BIG DARIO', 'Courier van, Calle Sol, fat with casino cash. Ram it, grab the bag, run.', 8);
-  game.log('LCPD DISPATCH: Air One has the suspect. All ground units converge.');
-  game.log('MARA SOLIS: You will have to catch me first.');
-  driveFor(game, 3.4, 0);
+  // Shot 4 — job done at the beach: the banner and the reward over the sunset.
+  game.player.x = LANDMARKS.beach.x + 15;
+  game.player.z = LANDMARKS.beach.z + 5;
+  game.player.yaw = -2.4;
+  game.camYaw = -2.4;
+  game.setWanted(0);
+  game.cash += 1300;
+  game.showJobDone(9, 'Beach Run', 1300);
+  walkForward(game, 0.3);
   return 'play';
 }

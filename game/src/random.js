@@ -1,81 +1,74 @@
-// Deterministic random numbers (mulberry32) and the small math helpers the
-// whole game shares. One seeded stream builds the city, so the same seed
-// always gives the same Puerto Lumen — screenshots, replays and the grader
-// all see the identical streets, buildings and traffic. Seeded means
-// reproducible: nothing in the world depends on Math.random at build time.
-
-/** A tiny fast seeded PRNG. Returns a function that yields [0, 1). */
-export function rngStream(seed) {
-  let a = seed >>> 0;
-  return function next() {
-    a |= 0;
-    a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+// LUMEN BAY — seeded random number generation.
+// One deterministic stream per world seed, so the same seed always builds the
+// same Puerto Lumen: same buildings, same palms, same traffic colours.
+export function createRandom(seed) {
+  let state = (seed >>> 0) || 0x9e3779b9;
+  function next() {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  return {
+    next,
+    range(min, max) {
+      return min + (max - min) * next();
+    },
+    int(min, max) {
+      return Math.floor(min + (max - min + 1) * next());
+    },
+    pick(list) {
+      return list[Math.floor(next() * list.length)];
+    },
+    chance(p) {
+      return next() < p;
+    },
+    // Fisher-Yates shuffle that returns a new array, leaving the input alone.
+    shuffle(list) {
+      const out = list.slice();
+      for (let i = out.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(next() * (i + 1));
+        const tmp = out[i];
+        out[i] = out[j];
+        out[j] = tmp;
+      }
+      return out;
+    },
   };
 }
 
-/** Pick one element of an array using the given rng. */
-export function choice(rng, arr) {
-  return arr[Math.floor(rng() * arr.length)];
+// A tiny hash of a string, used to seed per-building variation from coordinates.
+export function hashCoords(x, z) {
+  let h = (Math.floor(x * 13.7) * 374761393 + Math.floor(z * 7.3) * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** A float in [min, max). */
-export function inRange(rng, min, max) {
-  return min + rng() * (max - min);
+// Extra helpers on the seeded stream: gaussian-ish jitter and weighted picks,
+// so building heights and palm clusters feel organic instead of uniform.
+export function jittered(random, base, spread) {
+  return base + (random.next() + random.next() + random.next() - 1.5) * spread;
 }
 
-/** An integer in [min, max], inclusive. */
-export function intInRange(rng, min, max) {
-  return min + Math.floor(rng() * (max - min + 1));
-}
-
-/** Clamp v into [min, max]. */
-export function clamp(v, min, max) {
-  return v < min ? min : v > max ? max : v;
-}
-
-/** Clamp v into [0, 1]. */
-export function clamp01(v) {
-  return v < 0 ? 0 : v > 1 ? 1 : v;
-}
-
-/** Linear interpolation between a and b. */
-export function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-/** Frame-rate independent damping factor: use as a lerp weight. */
-export function damp(rate, dt) {
-  return 1 - Math.exp(-rate * dt);
-}
-
-/** True with probability p (0..1) — a coin flip off the seeded stream. */
-export function chance(rng, p) {
-  return rng() < p;
-}
-
-/** Shortest signed angular difference from a to b, in (-PI, PI]. */
-export function angleDiff(a, b) {
-  let d = (b - a) % (Math.PI * 2);
-  if (d > Math.PI) d -= Math.PI * 2;
-  if (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
-
-/** Distance between two points on the ground plane. */
-export function dist2d(ax, az, bx, bz) {
-  return Math.hypot(ax - bx, az - bz);
-}
-
-/** FNV-1a hash of a string — stable per-object seeds for windows, palms,
- * and anything else that needs a repeatable number from a name. */
-export function hashStr(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+export function weightedPick(random, entries) {
+  let total = 0;
+  for (const entry of entries) total += entry.weight;
+  let roll = random.next() * total;
+  for (const entry of entries) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.value;
   }
-  return h >>> 0;
+  return entries[entries.length - 1].value;
+}
+
+// Deterministic colour variation: the same seed always paints the same street.
+export function shadeColor(hex, random, amount) {
+  const r = (hex >> 16) & 255;
+  const g = (hex >> 8) & 255;
+  const b = hex & 255;
+  const f = 1 + (random.next() - 0.5) * amount;
+  const cr = Math.max(0, Math.min(255, Math.round(r * f)));
+  const cg = Math.max(0, Math.min(255, Math.round(g * f)));
+  const cb = Math.max(0, Math.min(255, Math.round(b * f)));
+  return (cr << 16) | (cg << 8) | cb;
 }

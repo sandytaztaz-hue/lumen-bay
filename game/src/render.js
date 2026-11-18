@@ -1,211 +1,124 @@
-// Rendering: the three.js scene, the golden-hour sky and sun, the chase
-// camera, the mission beacon, tracers and muzzle flashes. No shadow maps
-// (SwiftShader friendly) — fake blob shadows live on the meshes themselves.
+// LUMEN BAY — rendering: WebGL renderer, golden-hour lighting, cameras,
+// tracers and muzzle flash. The sun sits low in the west so the whole city
+// glows orange-pink with long shadows; fog warms the horizon.
 import * as THREE from 'three';
 import { PALETTE } from './config.js';
-import { lerp, damp } from './random.js';
 
-export function makeRenderer(canvas) {
+export function createRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
-  return renderer;
-}
 
-export function makeSky() {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xff9d5e, 180, 620);
-  // Gradient sky dome: violet zenith, orange mid, gold at the horizon.
-  const skyMat = new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: {
-      top: { value: new THREE.Color(PALETTE.skyTop) },
-      mid: { value: new THREE.Color(PALETTE.skyMid) },
-      low: { value: new THREE.Color(PALETTE.skyLow) },
-    },
-    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low;
-      void main(){ float h = normalize(vP).y; vec3 c = h > 0.25 ? mix(mid, top, smoothstep(0.25, 0.9, h)) : mix(low, mid, smoothstep(-0.05, 0.25, h)); gl_FragColor = vec4(c, 1.0); }`,
-  });
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(900, 24, 16), skyMat));
-  // Low golden sun disc hanging west over the ocean, with a warm halo.
-  const sun = new THREE.Mesh(
-    new THREE.CircleGeometry(34, 32),
-    new THREE.MeshBasicMaterial({ color: PALETTE.sunDisc, fog: false }),
-  );
-  sun.position.set(-620, 95, 60);
-  sun.lookAt(0, 95, 60);
+  scene.background = new THREE.Color(PALETTE.skyHorizon);
+  scene.fog = new THREE.Fog(PALETTE.fog, 180, 620);
+
+  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1200);
+  camera.position.set(0, 30, 60);
+
+  // Low western sun: warm directional light with shadows.
+  const sun = new THREE.DirectionalLight(PALETTE.sun, 2.6);
+  sun.position.set(-180, 90, 60);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -260;
+  sun.shadow.camera.right = 260;
+  sun.shadow.camera.top = 260;
+  sun.shadow.camera.bottom = -260;
+  sun.shadow.camera.far = 700;
   scene.add(sun);
-  const halo = new THREE.Mesh(
-    new THREE.CircleGeometry(70, 32),
-    new THREE.MeshBasicMaterial({ color: 0xff8c2e, transparent: true, opacity: 0.35, fog: false }),
+  const hemi = new THREE.HemisphereLight(0xffb27a, 0x2e4a7a, 0.9);
+  scene.add(hemi);
+  const ambient = new THREE.AmbientLight(0xffd9a0, 0.35);
+  scene.add(ambient);
+
+  // The sun disc itself, low over the ocean.
+  const sunDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(26, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffdf8a, fog: false }),
   );
-  halo.position.set(-622, 95, 60);
-  halo.lookAt(0, 95, 60);
-  scene.add(halo);
-  // Warm sunset key light + cool ambient fill from the violet sky.
-  const key = new THREE.DirectionalLight(0xffb36b, 2.4);
-  key.position.set(-180, 120, 60);
-  scene.add(key);
-  scene.add(new THREE.HemisphereLight(0x8a6bbf, 0x3a2a1e, 0.9));
-  // Drifting clouds: flat white ellipsoids catching the sunset.
-  const cloudMat = new THREE.MeshLambertMaterial({ color: '#ffd9c9', transparent: true, opacity: 0.85 });
-  const clouds = [];
-  for (let i = 0; i < 12; i++) {
-    const c = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), cloudMat);
-    c.scale.set(26 + (i % 4) * 8, 4, 12 + (i % 3) * 5);
-    c.position.set(-400 + i * 75, 120 + (i % 3) * 18, -320 + (i * 53) % 640);
-    scene.add(c);
-    clouds.push(c);
-  }
-  return { scene, clouds };
+  sunDisc.position.set(-420, 70, -260);
+  sunDisc.lookAt(0, 20, 0);
+  scene.add(sunDisc);
+
+  const tracers = [];
+  const muzzle = new THREE.PointLight(0xffc266, 0, 18);
+  scene.add(muzzle);
+
+  return { renderer, scene, camera, sun, tracers, muzzle };
 }
 
-/** Chase camera: follows behind the player or the car, mouse drag orbits.
- * dist eases between the on-foot and driving distances so the switch
- * never snaps. */
-export function newChaseCam() {
-  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1500);
+export function resizeRenderer(render, width, height) {
+  render.renderer.setSize(width, height);
+  render.camera.aspect = width / height;
+  render.camera.updateProjectionMatrix();
+}
+
+// Third-person orbit on foot; low chase camera in a car; both smooth-lerped.
+export function updateCamera(render, mode, target, yaw, pitch, distance, dt) {
+  const camera = render.camera;
+  let desired;
+  if (mode === 'car') {
+    const back = distance + 4;
+    desired = new THREE.Vector3(
+      target.x - Math.sin(yaw) * back,
+      target.y + 4.2,
+      target.z - Math.cos(yaw) * back,
+    );
+    camera.position.lerp(desired, Math.min(1, dt * 6));
+    camera.lookAt(target.x + Math.sin(yaw) * 10, target.y + 1.6, target.z + Math.cos(yaw) * 10);
+  } else {
+    const cx = target.x - Math.sin(yaw) * Math.cos(pitch) * distance;
+    const cz = target.z - Math.cos(yaw) * Math.cos(pitch) * distance;
+    const cy = target.y + 2.2 + Math.sin(pitch) * distance;
+    desired = new THREE.Vector3(cx, Math.max(1.2, cy), cz);
+    camera.position.lerp(desired, Math.min(1, dt * 10));
+    camera.lookAt(target.x, target.y + 1.6, target.z);
+  }
+}
+
+// A tracer line from muzzle to hit point, fading out over 0.09 s.
+export function addTracer(render, from, to) {
+  const geometry = new THREE.BufferGeometry().setFromPoints([from, to]);
+  const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.95 }));
+  render.scene.add(line);
+  render.tracers.push({ line, life: 0.09 });
+  render.muzzle.position.copy(from);
+  render.muzzle.intensity = 26;
+}
+
+export function updateEffects(render, dt) {
+  render.muzzle.intensity = Math.max(0, render.muzzle.intensity - dt * 320);
+  for (let i = render.tracers.length - 1; i >= 0; i -= 1) {
+    const tracer = render.tracers[i];
+    tracer.life -= dt;
+    tracer.line.material.opacity = Math.max(0, tracer.life / 0.09) * 0.95;
+    if (tracer.life <= 0) {
+      render.scene.remove(tracer.line);
+      tracer.line.geometry.dispose();
+      tracer.line.material.dispose();
+      render.tracers.splice(i, 1);
+    }
+  }
+}
+
+// Project a world point to screen pixels for floating damage numbers.
+export function worldToScreen(render, point) {
+  const vector = point.clone().project(render.camera);
   return {
-    camera, yaw: 0, pitch: 0.32, dist: 10,
-    smooth: new THREE.Vector3(0, 4, -12),
+    x: (vector.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-vector.y * 0.5 + 0.5) * window.innerHeight,
+    behind: vector.z > 1,
   };
 }
 
-export function followCam(cam, target, inCar, dt) {
-  const wantDist = inCar ? 10.5 : 7;
-  const wantHeight = inCar ? 3.4 : 2.8;
-  cam.dist = lerp(cam.dist, wantDist, damp(3, dt));
-  const yaw = target.heading + Math.PI + cam.yaw;
-  const cx = target.x + Math.sin(yaw) * cam.dist * Math.cos(cam.pitch);
-  const cz = target.z + Math.cos(yaw) * cam.dist * Math.cos(cam.pitch);
-  const cy = wantHeight + Math.sin(cam.pitch) * cam.dist * 0.6;
-  const w = damp(7, dt);
-  cam.smooth.x = lerp(cam.smooth.x, cx, w);
-  cam.smooth.y = lerp(cam.smooth.y, cy, w);
-  cam.smooth.z = lerp(cam.smooth.z, cz, w);
-  cam.camera.position.copy(cam.smooth);
-  cam.camera.lookAt(target.x, inCar ? 1.6 : 1.5, target.z);
-}
-
-/** Mission beacon: a golden light pillar + spinning diamond at the marker. */
-export function newBeacon(scene) {
-  const group = new THREE.Group();
-  const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.1, 1.6, 60, 10, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffd23e, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }),
-  );
-  beam.position.y = 30;
-  group.add(beam);
-  const diamond = new THREE.Mesh(
-    new THREE.OctahedronGeometry(1.6),
-    new THREE.MeshBasicMaterial({ color: 0xffd23e }),
-  );
-  diamond.position.y = 7;
-  group.add(diamond);
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(2.4, 3.0, 24),
-    new THREE.MeshBasicMaterial({ color: 0xffd23e, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.08;
-  group.add(ring);
-  group.visible = false;
-  scene.add(group);
-  return { group, diamond, ring };
-}
-
-export function placeBeacon(beacon, marker, t) {
-  if (!marker) {
-    beacon.group.visible = false;
-    return;
-  }
-  beacon.group.visible = true;
-  beacon.group.position.set(marker.x, 0, marker.z);
-  beacon.diamond.position.y = 7 + Math.sin(t * 2.2) * 0.8;
-  beacon.diamond.rotation.y = t * 1.5;
-  const s = 1 + Math.sin(t * 3) * 0.12;
-  beacon.ring.scale.set(s, s, 1);
-}
-
-/** Tracer pool: short-lived glowing lines for gunfire. */
-export function newTracers(scene) {
-  const pool = [];
-  for (let i = 0; i < 12; i++) {
-    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffe9a3, transparent: true }));
-    line.visible = false;
-    scene.add(line);
-    pool.push({ line, life: 0 });
-  }
-  return pool;
-}
-
-export function fireTracer(pool, from, to) {
-  const t = pool.find((p) => p.life <= 0) || pool[0];
-  t.line.geometry.setFromPoints([from, to]);
-  t.line.visible = true;
-  t.line.material.opacity = 1;
-  t.life = 0.09;
-}
-
-export function ageTracers(pool, dt) {
-  for (const t of pool) {
-    if (t.life > 0) {
-      t.life -= dt;
-      t.line.material.opacity = Math.max(0, t.life / 0.09);
-      if (t.life <= 0) t.line.visible = false;
-    }
-  }
-}
-
-/** Muzzle flash: a quick point light + glowing sprite at the gun. */
-export function newMuzzle(scene) {
-  const light = new THREE.PointLight(0xffc46b, 0, 18);
-  scene.add(light);
-  const sprite = new THREE.Mesh(
-    new THREE.SphereGeometry(0.35, 8, 6),
-    new THREE.MeshBasicMaterial({ color: 0xffe9a3, transparent: true, opacity: 0 }),
-  );
-  scene.add(sprite);
-  return { light, sprite, life: 0 };
-}
-
-export function flashMuzzle(muzzle, pos) {
-  muzzle.light.position.copy(pos);
-  muzzle.light.intensity = 60;
-  muzzle.sprite.position.copy(pos);
-  muzzle.sprite.material.opacity = 1;
-  muzzle.sprite.scale.setScalar(1.6);
-  muzzle.life = 0.06;
-}
-
-export function ageMuzzle(muzzle, dt) {
-  if (muzzle.life > 0) {
-    muzzle.life -= dt;
-    if (muzzle.life <= 0) {
-      muzzle.light.intensity = 0;
-      muzzle.sprite.material.opacity = 0;
-    }
-  }
-}
-
-/** Drift the clouds slowly east; they wrap around the far edge. */
-export function moveClouds(clouds, dt) {
-  for (const c of clouds) {
-    c.position.x += dt * 1.2;
-    if (c.position.x > 480) c.position.x = -480;
-  }
-}
-
-/** Resize the renderer + camera when the window changes size. */
-export function onResize(renderer, cam) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  renderer.setSize(w, h);
-  cam.camera.aspect = w / h;
-  cam.camera.updateProjectionMatrix();
+// Keep the shadow camera centred on the player so shadows stay crisp nearby.
+export function followShadows(render, x, z) {
+  render.sun.position.set(x - 180, 90, z + 60);
+  render.sun.target.position.set(x, 0, z);
+  render.sun.target.updateMatrixWorld();
 }

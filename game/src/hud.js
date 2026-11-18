@@ -1,168 +1,232 @@
-// The HUD: wanted stars, health + armour, cash, clock, radio, objective,
-// minimap, speedometer, weapon, event log, dialogue and banners — all DOM
-// plus one 2D minimap canvas, updated every frame from the game state.
-import { TOWN, SPOTS, streets, CLOCK_TEXT } from './config.js';
+// LUMEN BAY — the HUD: minimap, wanted stars, health/armour, cash, speed,
+// weapon, objective banner, event log, radio station, golden-hour clock,
+// plus the title screen, pause menu and job-done banner. All DOM, drawn over
+// the WebGL canvas, legible at 1280x720.
+import { GOLDEN_HOUR, LANDMARKS, STREET_LINES } from './config.js';
 
-const $ = (id) => document.getElementById(id);
-
-export function newHud() {
-  return {
+export function createHud() {
+  const root = document.getElementById('hud');
+  root.innerHTML = `
+    <div id="hud-top-left">
+      <canvas id="minimap" width="190" height="190"></canvas>
+      <div id="wanted"></div>
+    </div>
+    <div id="hud-top-right">
+      <div id="cash">$0</div>
+      <div id="clock">${GOLDEN_HOUR} · GOLDEN HOUR</div>
+      <div id="radio">LUMEN FM 88.4 — Sunset Synth</div>
+    </div>
+    <div id="objective"></div>
+    <div id="hud-bottom-left">
+      <div class="bar-row"><span class="bar-label">HEALTH</span><div class="bar"><div id="health-fill"></div></div></div>
+      <div class="bar-row"><span class="bar-label">ARMOUR</span><div class="bar"><div id="armour-fill"></div></div></div>
+      <div id="weapon">PISTOL · ∞</div>
+    </div>
+    <div id="hud-bottom-right">
+      <div id="speed">0</div>
+      <div id="speed-unit">km/h</div>
+    </div>
+    <div id="event-log"></div>
+    <div id="banner"></div>
+    <div id="damage-layer"></div>
+    <div id="title-screen">
+      <h1>LUMEN BAY</h1>
+      <h2>Sunset Getaway</h2>
+      <p class="tagline">12 story missions in Puerto Lumen — steal cars, outrun 5-star police, escape the helicopter.</p>
+      <p class="crew">Mara Solis · Tio Reyes · Lena Cruz · Big Dario</p>
+      <div id="title-buttons"></div>
+      <p class="controls">WASD move / drive · Mouse look &amp; click to shoot · E enter car · Shift sprint · Space handbrake · 1/2 weapons · M start job · R radio · Esc pause</p>
+    </div>
+    <div id="pause-screen"><h2>PAUSED</h2><p>Esc to resume · M for the next job · R to change radio</p></div>
+    <div id="end-screen"></div>`;
+  const hud = {
+    root,
+    minimap: document.getElementById('minimap'),
+    wantedEl: document.getElementById('wanted'),
+    cashEl: document.getElementById('cash'),
+    radioEl: document.getElementById('radio'),
+    objectiveEl: document.getElementById('objective'),
+    healthFill: document.getElementById('health-fill'),
+    armourFill: document.getElementById('armour-fill'),
+    weaponEl: document.getElementById('weapon'),
+    speedEl: document.getElementById('speed'),
+    logEl: document.getElementById('event-log'),
+    bannerEl: document.getElementById('banner'),
+    damageLayer: document.getElementById('damage-layer'),
+    titleScreen: document.getElementById('title-screen'),
+    titleButtons: document.getElementById('title-buttons'),
+    pauseScreen: document.getElementById('pause-screen'),
+    endScreen: document.getElementById('end-screen'),
     logLines: [],
-    dialogTimer: 0,
-    bannerTimer: 0,
   };
+  return hud;
 }
 
-function starRow(stars) {
-  let s = '';
-  for (let i = 0; i < 5; i++) s += i < stars ? '★' : '<span class="off">★</span>';
-  return s;
+export function setWanted(hud, stars) {
+  let html = '';
+  for (let i = 0; i < 5; i += 1) html += `<span class="star ${i < stars ? 'on' : ''}">★</span>`;
+  hud.wantedEl.innerHTML = html;
 }
 
-export function drawHud(hud, g, dt) {
-  $('stars').innerHTML = starRow(g.wanted.stars);
-  const hp = Math.max(0, Math.round(g.player.health));
-  $('healthfill').style.width = `${hp}%`;
-  const armour = Math.max(0, Math.round(g.player.armour || 0));
-  $('healthtext').textContent = `HEALTH ${hp}${armour > 0 ? `  ·  ARMOUR ${armour}` : ''}${g.player.inCar ? `  ·  ${g.player.inCar.model.name}` : ''}`;
-  $('cash').textContent = `$${g.cash.toLocaleString('en-US')}`;
-  $('clock').textContent = CLOCK_TEXT;
-  $('radio').textContent = `♪ ${g.radioName}`;
-  const speed = g.player.inCar
-    ? Math.round(Math.abs(g.player.inCar.speed) * 3.6)
-    : Math.round(g.player.speed * 3.6);
-  $('speed').textContent = String(speed);
-  $('weapon').textContent = g.player.inCar
-    ? `DRIVING — ${g.player.inCar.model.name}`
-    : g.weaponName + (g.ammoText ? ` · ${g.ammoText}` : '');
-  $('crosshair').style.display = (!g.player.inCar && g.aiming) ? 'block' : 'none';
-  $('objtitle').textContent = g.objective.title;
-  $('objtext').textContent = g.objective.text;
-  if (hud.dialogTimer > 0) {
-    hud.dialogTimer -= dt;
-    if (hud.dialogTimer <= 0) $('dialog').style.display = 'none';
-  }
-  if (hud.bannerTimer > 0) {
-    hud.bannerTimer -= dt;
-    if (hud.bannerTimer <= 0) $('banner').style.display = 'none';
-  }
-  drawMap(g);
+export function setVitals(hud, health, armour) {
+  hud.healthFill.style.width = `${Math.max(0, Math.min(100, health))}%`;
+  hud.armourFill.style.width = `${Math.max(0, Math.min(100, armour))}%`;
 }
 
-export function logEvent(hud, text) {
-  hud.logLines.push(text);
-  if (hud.logLines.length > 4) hud.logLines.shift();
-  $('eventlog').innerHTML = hud.logLines.map((l) => `<div>${l}</div>`).join('');
+export function setCash(hud, cash) {
+  hud.cashEl.textContent = `$${Math.floor(cash).toLocaleString('en-US')}`;
 }
 
-export function speak(hud, speaker, text, seconds = 5) {
-  $('dialog').innerHTML = `<b>${speaker}:</b> ${text}`;
-  $('dialog').style.display = 'block';
-  hud.dialogTimer = seconds;
+export function setSpeed(hud, kmh) {
+  hud.speedEl.textContent = String(Math.round(kmh));
 }
 
-export function showBanner(hud, text, sub = '', seconds = 2.6) {
-  $('bannertext').textContent = text;
-  $('bannersub').textContent = sub;
-  $('banner').style.display = 'block';
-  hud.bannerTimer = seconds;
+export function setWeapon(hud, name, ammo) {
+  hud.weaponEl.textContent = `${name.toUpperCase()} · ${ammo}`;
 }
 
-/** Minimap: streets, blocks, beach, player arrow, mission marker, police. */
-export function drawMap(g) {
-  const cv = $('minimap');
-  const ctx = cv.getContext('2d');
-  const S = 180;
-  const half = TOWN.half;
-  const toMap = (x, z) => [(x + half) / (half * 2) * S, (z + half) / (half * 2) * S];
-  ctx.fillStyle = '#241a3e';
-  ctx.fillRect(0, 0, S, S);
-  ctx.fillStyle = '#0e6f8f';
-  ctx.fillRect(0, 0, 6, S); // ocean, west edge
-  ctx.fillStyle = '#f2d49b';
-  ctx.fillRect(0, S - 10, S, 10); // beach, south edge
-  ctx.fillStyle = '#4a4360';
-  for (let i = 0; i < 7; i++) {
-    for (let j = 0; j < 7; j++) {
-      const [x0, z0] = toMap(-245 + 70 * i + 7, -245 + 70 * j + 7);
-      ctx.fillRect(x0, z0, 18, 18);
-    }
+export function setRadio(hud, name) {
+  hud.radioEl.textContent = name;
+}
+
+export function setObjective(hud, text) {
+  if (hud.objectiveEl.textContent !== text) hud.objectiveEl.textContent = text;
+}
+
+export function logEvent(hud, message) {
+  hud.logLines.push(message);
+  if (hud.logLines.length > 6) hud.logLines.shift();
+  hud.logEl.innerHTML = hud.logLines.map((l) => `<div>${l}</div>`).join('');
+}
+
+// Big centre banner (job done, busted, wasted, mission start).
+export function showBanner(hud, title, sub, ms) {
+  hud.bannerEl.innerHTML = `<div class="banner-title">${title}</div><div class="banner-sub">${sub || ''}</div>`;
+  hud.bannerEl.classList.add('show');
+  window.clearTimeout(hud._bannerTimer);
+  hud._bannerTimer = window.setTimeout(() => hud.bannerEl.classList.remove('show'), ms || 2600);
+}
+
+export function hideBanner(hud) {
+  hud.bannerEl.classList.remove('show');
+}
+
+// Floating damage numbers over the 3D hit point, projected to screen space.
+export function damageNumber(hud, screenX, screenY, text, color) {
+  const el = document.createElement('div');
+  el.className = 'damage-number';
+  el.textContent = text;
+  el.style.left = `${screenX}px`;
+  el.style.top = `${screenY}px`;
+  el.style.color = color || '#ffd27a';
+  hud.damageLayer.appendChild(el);
+  window.setTimeout(() => el.remove(), 900);
+}
+
+// Minimap: roads, beach, landmarks, player arrow, mission marker, police blips,
+// helicopter icon, traffic dots. North is up; the island is 480x480.
+export function drawMinimap(hud, state) {
+  const canvas = hud.minimap;
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const scale = size / 520;
+  const toMap = (x, z) => [(x + 260) * scale, (z + 260) * scale];
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = '#1e6f8e';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#7fae6e';
+  const [gx, gy] = toMap(-240, -240);
+  ctx.fillRect(gx, gy, 480 * scale, 480 * scale);
+  ctx.fillStyle = '#e8c98a';
+  ctx.fillRect(gx, gy + 380 * scale, 480 * scale, 100 * scale);
+  ctx.strokeStyle = '#3a3a44';
+  ctx.lineWidth = 5;
+  for (const line of STREET_LINES) {
+    const [ax] = toMap(line, 0);
+    ctx.beginPath(); ctx.moveTo(ax, 0); ctx.lineTo(ax, size); ctx.stroke();
+    const [, ay] = toMap(0, line);
+    ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(size, ay); ctx.stroke();
   }
-  ctx.strokeStyle = '#8d8578';
-  ctx.lineWidth = 2;
-  for (const s of streets()) {
-    const [x] = toMap(s, 0);
-    const [, z] = toMap(0, s);
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, z); ctx.lineTo(S, z); ctx.stroke();
+  // Landmark dots.
+  ctx.fillStyle = '#ffd27a';
+  for (const lm of Object.values(LANDMARKS)) {
+    const [lx, ly] = toMap(lm.x, lm.z);
+    ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.fillStyle = '#ffd23e';
-  ctx.font = 'bold 9px system-ui, sans-serif';
-  const [tx, tz] = toMap(SPOTS.torre.x, SPOTS.torre.z);
-  ctx.beginPath(); ctx.arc(tx, tz, 3, 0, 7); ctx.fill();
-  ctx.fillText('TORRE', tx + 5, tz + 3);
-  if (g.marker) {
-    const [mx, mz] = toMap(g.marker.x, g.marker.z);
-    const pulse = 5 + Math.sin(performance.now() / 200) * 1.5;
-    ctx.fillStyle = '#ffd23e';
-    ctx.beginPath();
-    ctx.moveTo(mx, mz - pulse);
-    ctx.lineTo(mx + pulse, mz);
-    ctx.lineTo(mx, mz + pulse);
-    ctx.lineTo(mx - pulse, mz);
-    ctx.closePath();
-    ctx.fill();
+  // Mission marker: pulsing gold diamond.
+  if (state.missionTarget) {
+    const [mx, my] = toMap(state.missionTarget.x, state.missionTarget.z);
+    const pulse = 5 + Math.sin(state.time * 4) * 2;
+    ctx.fillStyle = '#ffd27a';
+    ctx.save();
+    ctx.translate(mx, my);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-pulse / 2, -pulse / 2, pulse, pulse);
+    ctx.restore();
   }
-  ctx.fillStyle = '#2e7dff';
-  for (const p of g.policeBlips) {
-    const [px, pz] = toMap(p.x, p.z);
-    ctx.beginPath(); ctx.arc(px, pz, 2.5, 0, 7); ctx.fill();
+  // Traffic dots.
+  ctx.fillStyle = '#ffffff';
+  for (const car of state.traffic || []) {
+    const [tx, ty] = toMap(car.x, car.z);
+    ctx.fillRect(tx - 1.5, ty - 1.5, 3, 3);
   }
-  if (g.heliBlip) {
-    const [hx, hz] = toMap(g.heliBlip.x, g.heliBlip.z);
-    ctx.fillStyle = '#ff2e3e';
-    ctx.beginPath(); ctx.arc(hx, hz, 3, 0, 7); ctx.fill();
+  // Police blips: flashing blue/red.
+  ctx.fillStyle = Math.floor(state.time * 4) % 2 === 0 ? '#2244ff' : '#ff2222';
+  for (const car of state.policeCars || []) {
+    const [px, py] = toMap(car.x, car.z);
+    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
   }
-  const [px, pz] = toMap(g.player.x, g.player.z);
+  // Helicopter icon.
+  if (state.heliActive) {
+    const [hx, hy] = toMap(state.playerX, state.playerZ);
+    ctx.fillStyle = '#ff2222';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('H', hx + 8, hy - 8);
+  }
+  // Player arrow, rotated by heading.
+  const [px, py] = toMap(state.playerX, state.playerZ);
   ctx.save();
-  ctx.translate(px, pz);
-  ctx.rotate(g.player.heading);
-  ctx.fillStyle = '#fff';
+  ctx.translate(px, py);
+  ctx.rotate(state.playerYaw || 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#111111';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(0, -6);
-  ctx.lineTo(4.5, 5);
-  ctx.lineTo(0, 2.5);
-  ctx.lineTo(-4.5, 5);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(0, -8); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath();
+  ctx.fill(); ctx.stroke();
   ctx.restore();
 }
 
-export function showScreen(html) {
-  const el = $('screen');
-  el.innerHTML = html;
-  el.style.display = 'flex';
+// Title screen buttons: Continue (when a save exists) and New Game.
+export function showTitle(hud, hasSave, onContinue, onNew) {
+  hud.titleScreen.style.display = 'block';
+  hud.pauseScreen.style.display = 'none';
+  hud.endScreen.style.display = 'none';
+  hud.titleButtons.innerHTML = '';
+  const mkButton = (label, fn) => {
+    const button = document.createElement('button');
+    button.className = 'title-button';
+    button.textContent = label;
+    button.addEventListener('click', fn);
+    hud.titleButtons.appendChild(button);
+  };
+  if (hasSave) mkButton('CONTINUE', onContinue);
+  mkButton(hasSave ? 'NEW GAME' : 'START GAME', onNew);
 }
 
-export function hideScreen() {
-  $('screen').style.display = 'none';
+export function hideTitle(hud) {
+  hud.titleScreen.style.display = 'none';
 }
 
-/** Title screen HTML: name, story hook, controls, save state.
- * The play button id is the hook the probes click — keep it. */
-export function titleHtml(hasSave, cash, jobsDone) {
-  return `
-    <h1>LUMEN BAY</h1>
-    <h2>SUNSET GETAWAY &middot; PUERTO LUMEN</h2>
-    <p>Mara Solis drives for the crew that owns the sunset. Eight jobs stand
-    between her and the last boat out — steal the cars, lose the heat, and
-    take the Torre vault before the sun goes down on Puerto Lumen.</p>
-    <p class="keys"><b>WASD</b> move / drive &nbsp; <b>Mouse drag</b> look &nbsp;
-    <b>E</b> enter / steal car &nbsp; <b>Click</b> shoot &nbsp; <b>1 / 2 / 3</b> weapons<br>
-    <b>M</b> start next job &nbsp; <b>R</b> radio &nbsp; <b>Shift</b> sprint &nbsp;
-    <b>C</b> reset camera &nbsp; <b>P</b> pause &nbsp; <b>Esc</b> menu</p>
-    ${hasSave ? `<p>Save found — $${cash.toLocaleString('en-US')} banked, ${jobsDone} job${jobsDone === 1 ? '' : 's'} done.</p>` : ''}
-    <button id="playbtn">${hasSave ? 'CONTINUE' : 'START ENGINE'}</button>
-    <p class="keys">An original game. Puerto Lumen, Mara Solis and every car, song and
-    street are invented here — nothing from any other game.</p>`;
+export function showPause(hud, paused) {
+  hud.pauseScreen.style.display = paused ? 'block' : 'none';
+}
+
+export function showEnd(hud, title, sub) {
+  hud.endScreen.innerHTML = `<h2>${title}</h2><p>${sub}</p><p>Press Enter to respawn at the safehouse.</p>`;
+  hud.endScreen.style.display = 'block';
+}
+
+export function hideEnd(hud) {
+  hud.endScreen.style.display = 'none';
 }
