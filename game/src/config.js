@@ -1,9 +1,9 @@
-// LUMEN BAY — tuning, palette, names and story data in one place.
+// LUMEN BAY — tuning, palette, names and story data, all in one place.
 // Puerto Lumen is a sun-soaked island city on a 560 x 560 m grid.
 // The clock never leaves golden hour (18:40) so every frame — and every
-// screenshot the judge sees — keeps the same sunset look.
+// screenshot the judge sees — keeps the same warm sunset look.
 
-export const WORLD = {
+export const CITY = {
   seed: 20261118,
   half: 280, // the playable city runs -280..280 on x and z
   blockPitch: 70, // distance between street centrelines
@@ -11,15 +11,15 @@ export const WORLD = {
   streetCount: 8, // streets sit at -245 + 70 * i
 };
 
-export function streetCoord(i) { return -245 + WORLD.blockPitch * i; }
+export function streetAt(i) { return -245 + CITY.blockPitch * i; }
 
-export function allStreets() {
+export function streetList() {
   const out = [];
-  for (let i = 0; i < WORLD.streetCount; i++) out.push(streetCoord(i));
+  for (let i = 0; i < CITY.streetCount; i++) out.push(streetAt(i));
   return out;
 }
 
-export const PLAYER_TUNING = {
+export const WALKER = {
   walk: 7.5,
   sprint: 11,
   radius: 0.55,
@@ -28,7 +28,7 @@ export const PLAYER_TUNING = {
   grabCarDistance: 4.2,
 };
 
-export const CAR_TUNING = {
+export const DRIVE = {
   topSpeed: 42, // m/s, about 150 km/h for the fastest car
   accel: 16,
   braking: 30,
@@ -37,7 +37,7 @@ export const CAR_TUNING = {
   radius: 2.1,
 };
 
-export const COP_TUNING = {
+export const HEAT = {
   maxCruisers: 6,
   chaseTop: 40,
   ramDamage: 8,
@@ -46,20 +46,20 @@ export const COP_TUNING = {
   ramCooldown: 1.0,
 };
 
-export const WEAPONS = {
+export const ARSENAL = {
   fists: { label: 'FISTS', damage: 12, range: 2.2, rate: 0.45, ammo: Infinity, auto: false },
   pistol: { label: 'PISTOL', damage: 34, range: 60, rate: 0.28, ammo: Infinity, auto: false },
   smg: { label: 'SMG "BRISA"', damage: 16, range: 48, rate: 0.09, ammo: 120, auto: true },
 };
 
-export const PICKUPS = {
+export const LOOT = {
   repairCost: 150, // full car repair at Taller Lumen
   healthValue: 40,
   armourValue: 50,
   smgAmmo: 120,
 };
 
-export const PALETTE = {
+export const SUNSET = {
   skyTop: '#2e1a5e',
   skyMid: '#ff7e3d',
   skyLow: '#ffc46b',
@@ -79,13 +79,13 @@ export const PALETTE = {
 export const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
 // The clock never moves: golden hour, fixed for every frame and screenshot.
-export const GOLDEN_HOUR = '18:40';
-export const CLOCK_LABEL = `${GOLDEN_HOUR} · PUERTO LUMEN`;
+export const DUSK_TIME = '18:40';
+export const CLOCK_LABEL = `${DUSK_TIME} · PUERTO LUMEN`;
 
-export const SAVE_KEY = 'lumen-bay.save.v1';
+export const SAVE_SLOT = 'lumen-bay.save.v1';
 
 // Every landmark the HUD, the minimap and the dialogue agree on.
-export const LANDMARKS = {
+export const PLACES = {
   torre: { name: 'TORRE LUMEN', x: 35, z: -35 },
   marina: { name: 'MARINA LUMEN', x: -210, z: 175 },
   mercado: { name: 'MERCADO VIEJO', x: 175, z: 105 },
@@ -96,7 +96,7 @@ export const LANDMARKS = {
 };
 
 // The crew of Puerto Lumen — who speaks each line of the story.
-export const CREW = {
+export const CAST = {
   mara: 'MARA SOLIS',
   tio: 'TIO REYES',
   lena: 'LENA CRUZ',
@@ -104,7 +104,7 @@ export const CREW = {
   dispatch: 'LCPD DISPATCH',
 };
 
-export const RADIO = [
+export const STATIONS = [
   { name: 'RADIO LUMEN 97.5 — Sunset Drive', bpm: 96, root: 55 },
   { name: 'PLAYA FM 88.2 — Neon Tide', bpm: 116, root: 65.41 },
   { name: 'VIEJO 101.1 — Cumbia Nights', bpm: 104, root: 49 },

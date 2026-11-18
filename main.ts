@@ -23,12 +23,17 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-mkdirSync(out, { recursive: true });
-cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
-mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) {
-  cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+/** Copy the static game and its screenshots into the output directory. */
+function copyEntry(hereDir: string, outDir: string): void {
+  mkdirSync(outDir, { recursive: true });
+  cpSync(join(hereDir, 'game'), join(outDir, 'game'), { recursive: true });
+  mkdirSync(join(outDir, 'screenshots'), { recursive: true });
+  if (existsSync(join(hereDir, 'screenshots'))) {
+    cpSync(join(hereDir, 'screenshots'), join(outDir, 'screenshots'), { recursive: true });
+  }
 }
+
+copyEntry(here, out);
 
 // The scorer's own caps (reference/gate.json): only text_max_bytes shapes
 // the bytes; the others refuse an entry the scorer would refuse (more than

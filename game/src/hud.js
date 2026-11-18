@@ -1,11 +1,11 @@
 // The HUD: wanted stars, health + armour, cash, clock, radio, objective,
 // minimap, speedometer, weapon, event log, dialogue and banners — all DOM
 // plus one 2D minimap canvas, updated every frame from the game state.
-import { WORLD, LANDMARKS, allStreets, CLOCK_LABEL } from './config.js';
+import { CITY, PLACES, streetList, CLOCK_LABEL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 
-export function makeHud() {
+export function freshHud() {
   return {
     logLines: [],
     dialogTimer: 0,
@@ -13,14 +13,14 @@ export function makeHud() {
   };
 }
 
-function starRow(stars) {
+function starStrip(stars) {
   let s = '';
   for (let i = 0; i < 5; i++) s += i < stars ? '★' : '<span class="off">★</span>';
   return s;
 }
 
-export function updateHud(hud, g, dt) {
-  $('stars').innerHTML = starRow(g.wanted.stars);
+export function refreshHud(hud, g, dt) {
+  $('stars').innerHTML = starStrip(g.wanted.stars);
   const hp = Math.max(0, Math.round(g.player.health));
   $('healthfill').style.width = `${hp}%`;
   const armour = Math.max(0, Math.round(g.player.armour || 0));
@@ -46,22 +46,22 @@ export function updateHud(hud, g, dt) {
     hud.bannerTimer -= dt;
     if (hud.bannerTimer <= 0) $('banner').style.display = 'none';
   }
-  drawMinimap(g);
+  paintMinimap(g);
 }
 
-export function logEvent(hud, text) {
+export function noteEvent(hud, text) {
   hud.logLines.push(text);
   if (hud.logLines.length > 4) hud.logLines.shift();
   $('eventlog').innerHTML = hud.logLines.map((l) => `<div>${l}</div>`).join('');
 }
 
-export function showDialogue(hud, speaker, text, seconds = 5) {
+export function sayLine(hud, speaker, text, seconds = 5) {
   $('dialog').innerHTML = `<b>${speaker}:</b> ${text}`;
   $('dialog').style.display = 'block';
   hud.dialogTimer = seconds;
 }
 
-export function showBanner(hud, text, sub = '', seconds = 2.6) {
+export function flashBanner(hud, text, sub = '', seconds = 2.6) {
   $('bannertext').textContent = text;
   $('bannersub').textContent = sub;
   $('banner').style.display = 'block';
@@ -69,11 +69,11 @@ export function showBanner(hud, text, sub = '', seconds = 2.6) {
 }
 
 /** Minimap: streets, blocks, beach, player arrow, mission marker, police. */
-export function drawMinimap(g) {
+export function paintMinimap(g) {
   const cv = $('minimap');
   const ctx = cv.getContext('2d');
   const S = 180;
-  const half = WORLD.half;
+  const half = CITY.half;
   const toMap = (x, z) => [(x + half) / (half * 2) * S, (z + half) / (half * 2) * S];
   ctx.fillStyle = '#241a3e';
   ctx.fillRect(0, 0, S, S);
@@ -90,7 +90,7 @@ export function drawMinimap(g) {
   }
   ctx.strokeStyle = '#8d8578';
   ctx.lineWidth = 2;
-  for (const s of allStreets()) {
+  for (const s of streetList()) {
     const [x] = toMap(s, 0);
     const [, z] = toMap(0, s);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke();
@@ -98,7 +98,7 @@ export function drawMinimap(g) {
   }
   ctx.fillStyle = '#ffd23e';
   ctx.font = 'bold 9px system-ui, sans-serif';
-  const [tx, tz] = toMap(LANDMARKS.torre.x, LANDMARKS.torre.z);
+  const [tx, tz] = toMap(PLACES.torre.x, PLACES.torre.z);
   ctx.beginPath(); ctx.arc(tx, tz, 3, 0, 7); ctx.fill();
   ctx.fillText('TORRE', tx + 5, tz + 3);
   if (g.marker) {
@@ -138,18 +138,18 @@ export function drawMinimap(g) {
   ctx.restore();
 }
 
-export function showScreen(html) {
+export function openScreen(html) {
   const el = $('screen');
   el.innerHTML = html;
   el.style.display = 'flex';
 }
 
-export function hideScreen() {
+export function closeScreen() {
   $('screen').style.display = 'none';
 }
 
 /** Title screen HTML: name, story hook, controls, save state. */
-export function titleHtml(hasSave, cash, jobsDone) {
+export function titleMarkup(hasSave, cash, jobsDone) {
   return `
     <h1>LUMEN BAY</h1>
     <h2>SUNSET GETAWAY &middot; PUERTO LUMEN</h2>

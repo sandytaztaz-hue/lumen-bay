@@ -3,13 +3,13 @@
 // placed from the seeded RNG, so the city is identical on every run.
 // Exports the collision boxes and the traffic loops other systems use.
 import * as THREE from 'three';
-import { WORLD, PALETTE, LANDMARKS, allStreets, streetCoord } from './config.js';
-import { makeRng, choice, between } from './random.js';
-import { paintFacade, paintRoad, paintPavement, paintSand, paintSign, paintOcean } from './textures.js';
+import { CITY, SUNSET, PLACES, streetList, streetAt } from './config.js';
+import { seededStream, pickOne, span } from './random.js';
+import { facadeTexture, roadTexture, pavementTexture, sandTexture, signTexture, oceanTexture } from './textures.js';
 
 // Story places kept clear of buildings, so the marina, market, safehouse,
 // garage, park, tower plaza, beach and lighthouse are real open spaces.
-const OPEN_PLOTS = [
+const CLEARINGS = [
   { x: -210, z: 175, why: 'marina' },
   { x: 175, z: 105, why: 'mercado' },
   { x: 105, z: -105, why: 'safehouse' },
@@ -19,32 +19,32 @@ const OPEN_PLOTS = [
   { x: 105, z: 245, why: 'playa' },
   { x: -245, z: -245, why: 'lighthouse' },
 ];
-const OPEN_RADIUS = 55;
+const CLEAR_RADIUS = 55;
 
-export function buildCity(scene) {
-  const rng = makeRng(WORLD.seed);
+export function raiseCity(scene) {
+  const rng = seededStream(CITY.seed);
   const colliders = [];
   const roadLoops = [];
   const group = new THREE.Group();
   group.name = 'PuertoLumen';
   scene.add(group);
 
-  const addBox = (x, z, hw, hd) => {
+  const addCollider = (x, z, hw, hd) => {
     colliders.push({ minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd });
   };
-  const isOpenPlot = (x, z) => OPEN_PLOTS.some((p) => Math.hypot(p.x - x, p.z - z) < OPEN_RADIUS);
+  const inClearing = (x, z) => CLEARINGS.some((p) => Math.hypot(p.x - x, p.z - z) < CLEAR_RADIUS);
 
   // --- ground: pavement base, beach strip in the south, ocean west + south ---
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(WORLD.half * 2, WORLD.half * 2),
-    new THREE.MeshLambertMaterial({ map: paintPavement() }),
+    new THREE.PlaneGeometry(CITY.half * 2, CITY.half * 2),
+    new THREE.MeshLambertMaterial({ map: pavementTexture() }),
   );
   ground.rotation.x = -Math.PI / 2;
   group.add(ground);
 
   const beach = new THREE.Mesh(
     new THREE.PlaneGeometry(560, 36),
-    new THREE.MeshLambertMaterial({ map: paintSand(7) }),
+    new THREE.MeshLambertMaterial({ map: sandTexture(7) }),
   );
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(0, 0.02, 262);
@@ -52,39 +52,39 @@ export function buildCity(scene) {
 
   const oceanW = new THREE.Mesh(
     new THREE.PlaneGeometry(900, 900),
-    new THREE.MeshLambertMaterial({ map: paintOcean(11) }),
+    new THREE.MeshLambertMaterial({ map: oceanTexture(11) }),
   );
   oceanW.rotation.x = -Math.PI / 2;
   oceanW.position.set(-330, -0.4, 120);
   group.add(oceanW);
   const oceanS = new THREE.Mesh(
     new THREE.PlaneGeometry(900, 300),
-    new THREE.MeshLambertMaterial({ map: paintOcean(12) }),
+    new THREE.MeshLambertMaterial({ map: oceanTexture(12) }),
   );
   oceanS.rotation.x = -Math.PI / 2;
   oceanS.position.set(0, -0.4, 430);
   group.add(oceanS);
 
   // --- roads: one dark strip per street, both directions ---
-  const roadMat = new THREE.MeshLambertMaterial({ map: paintRoad() });
-  for (const s of allStreets()) {
-    const ns = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.roadWidth, WORLD.half * 2), roadMat);
+  const roadMat = new THREE.MeshLambertMaterial({ map: roadTexture() });
+  for (const s of streetList()) {
+    const ns = new THREE.Mesh(new THREE.PlaneGeometry(CITY.roadWidth, CITY.half * 2), roadMat);
     ns.rotation.x = -Math.PI / 2;
     ns.position.set(s, 0.05, 0);
     group.add(ns);
-    const ew = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.half * 2, WORLD.roadWidth), roadMat);
+    const ew = new THREE.Mesh(new THREE.PlaneGeometry(CITY.half * 2, CITY.roadWidth), roadMat);
     ew.rotation.x = -Math.PI / 2;
     ew.position.set(0, 0.05, s);
     group.add(ew);
   }
 
   // --- traffic loops: one rounded rectangle around each inner block ---
-  for (let i = 0; i < WORLD.streetCount - 1; i++) {
-    for (let j = 0; j < WORLD.streetCount - 1; j++) {
-      const x0 = streetCoord(i);
-      const x1 = streetCoord(i + 1);
-      const z0 = streetCoord(j);
-      const z1 = streetCoord(j + 1);
+  for (let i = 0; i < CITY.streetCount - 1; i++) {
+    for (let j = 0; j < CITY.streetCount - 1; j++) {
+      const x0 = streetAt(i);
+      const x1 = streetAt(i + 1);
+      const z0 = streetAt(j);
+      const z1 = streetAt(j + 1);
       roadLoops.push([
         [x0 + 3.5, z0 + 3.5], [x1 - 3.5, z0 + 3.5],
         [x1 - 3.5, z1 - 3.5], [x0 + 3.5, z1 - 3.5],
@@ -93,22 +93,22 @@ export function buildCity(scene) {
   }
 
   // --- buildings: one or two per block, varied heights, warm stucco ---
-  const facadeMats = PALETTE.stucco.map((c, i) => new THREE.MeshLambertMaterial({ map: paintFacade(c, 100 + i) }));
+  const facadeMats = SUNSET.stucco.map((c, i) => new THREE.MeshLambertMaterial({ map: facadeTexture(c, 100 + i) }));
   const roofMat = new THREE.MeshLambertMaterial({ color: '#4a3348' });
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
-  for (let i = 0; i < WORLD.streetCount - 1; i++) {
-    for (let j = 0; j < WORLD.streetCount - 1; j++) {
-      const cx = (streetCoord(i) + streetCoord(i + 1)) / 2;
-      const cz = (streetCoord(j) + streetCoord(j + 1)) / 2;
-      if (isOpenPlot(cx, cz)) continue;
+  for (let i = 0; i < CITY.streetCount - 1; i++) {
+    for (let j = 0; j < CITY.streetCount - 1; j++) {
+      const cx = (streetAt(i) + streetAt(i + 1)) / 2;
+      const cz = (streetAt(j) + streetAt(j + 1)) / 2;
+      if (inClearing(cx, cz)) continue;
       const count = rng() < 0.7 ? 2 : 1;
       for (let k = 0; k < count; k++) {
-        const w = between(rng, 16, 24);
-        const d = between(rng, 16, 24);
-        const h = between(rng, 9, rng() < 0.18 ? 42 : 20);
+        const w = span(rng, 16, 24);
+        const d = span(rng, 16, 24);
+        const h = span(rng, 9, rng() < 0.18 ? 42 : 20);
         const x = count === 1 ? cx : cx + (k === 0 ? -4.4 : 4.4);
         const z = count === 1 ? cz : cz + (k === 0 ? -4.4 : 4.4);
-        const tower = new THREE.Mesh(unitBox, choice(rng, facadeMats));
+        const tower = new THREE.Mesh(unitBox, pickOne(rng, facadeMats));
         tower.scale.set(w, h, d);
         tower.position.set(x, h / 2, z);
         group.add(tower);
@@ -124,30 +124,30 @@ export function buildCity(scene) {
           // neon trim along the roof edge so tall towers glow at dusk
           const neon = new THREE.Mesh(
             unitBox,
-            new THREE.MeshBasicMaterial({ color: PALETTE.neon[Math.floor(rng() * PALETTE.neon.length)] }),
+            new THREE.MeshBasicMaterial({ color: SUNSET.neon[Math.floor(rng() * SUNSET.neon.length)] }),
           );
           neon.scale.set(w + 0.3, 0.35, 0.35);
           neon.position.set(x, h + 0.9, z + d / 2 + 0.1);
           group.add(neon);
         }
-        addBox(x, z, w / 2 + 0.4, d / 2 + 0.4);
+        addCollider(x, z, w / 2 + 0.4, d / 2 + 0.4);
       }
     }
   }
 
-  buildTorre(group, addBox);
-  buildLighthouse(group, addBox);
-  buildMarina(group, addBox, rng);
-  buildMercado(group, addBox);
-  buildPark(group);
-  plantPalms(group, rng);
-  plantLamps(group);
+  towerOfLumen(group, addCollider);
+  lighthouseRojo(group, addCollider);
+  marinaDocks(group, addCollider, rng);
+  mercadoStalls(group, addCollider);
+  centralPark(group);
+  growPalms(group, rng);
+  raiseLamps(group);
 
   return { colliders, roadLoops, group };
 }
 
 /** Torre Lumen — the 46 m clock tower on the plaza at (35, -35). */
-function buildTorre(group, addBox) {
+function towerOfLumen(group, addCollider) {
   const g = new THREE.Group();
   const stone = new THREE.MeshLambertMaterial({ color: '#f7e8c9' });
   const trim = new THREE.MeshLambertMaterial({ color: '#c94f5e' });
@@ -175,17 +175,17 @@ function buildTorre(group, addBox) {
   g.add(spire);
   const sign = new THREE.Mesh(
     new THREE.PlaneGeometry(22, 5.5),
-    new THREE.MeshBasicMaterial({ map: paintSign('TORRE LUMEN') }),
+    new THREE.MeshBasicMaterial({ map: signTexture('TORRE LUMEN') }),
   );
   sign.position.set(0, 12, 6.4);
   g.add(sign);
-  g.position.set(LANDMARKS.torre.x, 0, LANDMARKS.torre.z);
+  g.position.set(PLACES.torre.x, 0, PLACES.torre.z);
   group.add(g);
-  addBox(LANDMARKS.torre.x, LANDMARKS.torre.z, 7, 7);
+  addCollider(PLACES.torre.x, PLACES.torre.z, 7, 7);
 }
 
 /** Farol Rojo — red-and-white striped lighthouse in the north-west corner. */
-function buildLighthouse(group, addBox) {
+function lighthouseRojo(group, addCollider) {
   const g = new THREE.Group();
   const red = new THREE.MeshLambertMaterial({ color: '#c94f5e' });
   const white = new THREE.MeshLambertMaterial({ color: '#fff3d6' });
@@ -203,13 +203,13 @@ function buildLighthouse(group, addBox) {
   const cap = new THREE.Mesh(new THREE.ConeGeometry(3, 3.5, 10), red);
   cap.position.y = 35;
   g.add(cap);
-  g.position.set(LANDMARKS.lighthouse.x, 0, LANDMARKS.lighthouse.z);
+  g.position.set(PLACES.lighthouse.x, 0, PLACES.lighthouse.z);
   group.add(g);
-  addBox(LANDMARKS.lighthouse.x, LANDMARKS.lighthouse.z, 4.5, 4.5);
+  addCollider(PLACES.lighthouse.x, PLACES.lighthouse.z, 4.5, 4.5);
 }
 
 /** Marina Lumen — wooden docks, moored boats, crates and a neon sign. */
-function buildMarina(group, addBox, rng) {
+function marinaDocks(group, addCollider, rng) {
   const g = new THREE.Group();
   const wood = new THREE.MeshLambertMaterial({ color: '#8a6b4a' });
   const dock = new THREE.Mesh(new THREE.BoxGeometry(70, 1, 8), wood);
@@ -229,29 +229,29 @@ function buildMarina(group, addBox, rng) {
     cab.position.set(0, 1.8, -1);
     boat.add(cab);
     boat.position.set(-225 + i * 16, -0.2, 216 + (i % 2) * 6);
-    boat.rotation.y = between(rng, -0.15, 0.15);
+    boat.rotation.y = span(rng, -0.15, 0.15);
     g.add(boat);
   }
   const crateMat = new THREE.MeshLambertMaterial({ color: '#b08d4f' });
   for (let i = 0; i < 8; i++) {
     const crate = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 2.2), crateMat);
     crate.position.set(-232 + (i % 4) * 5, 1.1, 192 + Math.floor(i / 4) * 5);
-    crate.rotation.y = between(rng, 0, 1);
+    crate.rotation.y = span(rng, 0, 1);
     g.add(crate);
-    addBox(crate.position.x, crate.position.z, 1.4, 1.4);
+    addCollider(crate.position.x, crate.position.z, 1.4, 1.4);
   }
   // Lena's cargo: blue crates on the far dock — the job's target.
   const cargoMat = new THREE.MeshLambertMaterial({ color: '#2e7dff' });
   for (const [cx, cz] of [[-222, 218], [-218, 219.5], [-214, 218], [-208, 219]]) {
     const crate = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 2.4), cargoMat);
     crate.position.set(cx, 1.2, cz);
-    crate.rotation.y = between(rng, 0, 0.6);
+    crate.rotation.y = span(rng, 0, 0.6);
     g.add(crate);
-    addBox(cx, cz, 1.5, 1.5);
+    addCollider(cx, cz, 1.5, 1.5);
   }
   const sign = new THREE.Mesh(
     new THREE.PlaneGeometry(24, 6),
-    new THREE.MeshBasicMaterial({ map: paintSign('MARINA LUMEN', '#00e5ff') }),
+    new THREE.MeshBasicMaterial({ map: signTexture('MARINA LUMEN', '#00e5ff') }),
   );
   sign.position.set(-210, 9, 176);
   g.add(sign);
@@ -259,7 +259,7 @@ function buildMarina(group, addBox, rng) {
 }
 
 /** Mercado Viejo — striped-awning stalls on the plaza. */
-function buildMercado(group, addBox) {
+function mercadoStalls(group, addCollider) {
   const g = new THREE.Group();
   const awnColors = ['#ff2e88', '#00e5ff', '#ffd23e', '#7dff9b'];
   for (let i = 0; i < 6; i++) {
@@ -272,13 +272,13 @@ function buildMercado(group, addBox) {
     awn.position.set(x, 3.8, z);
     awn.rotation.y = Math.PI / 4;
     g.add(awn);
-    addBox(x, z, 4.4, 3.4);
+    addCollider(x, z, 4.4, 3.4);
   }
   group.add(g);
 }
 
 /** Central park — lawn, fountain and a jet. */
-function buildPark(group) {
+function centralPark(group) {
   const g = new THREE.Group();
   const lawn = new THREE.Mesh(new THREE.CircleGeometry(20, 24), new THREE.MeshLambertMaterial({ color: '#3f9e5f' }));
   lawn.rotation.x = -Math.PI / 2;
@@ -298,15 +298,15 @@ function buildPark(group) {
 }
 
 /** Palms on street corners and a row along the beach. */
-function plantPalms(group, rng) {
+function growPalms(group, rng) {
   const trunkGeo = new THREE.CylinderGeometry(0.22, 0.34, 5, 6);
-  const trunkMat = new THREE.MeshLambertMaterial({ color: PALETTE.palmTrunk });
-  const crownMat = new THREE.MeshLambertMaterial({ color: PALETTE.palmGreen });
+  const trunkMat = new THREE.MeshLambertMaterial({ color: SUNSET.palmTrunk });
+  const crownMat = new THREE.MeshLambertMaterial({ color: SUNSET.palmGreen });
   const leafGeo = new THREE.ConeGeometry(1.7, 3.2, 5);
   const plant = (x, z) => {
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.set(x, 2.5, z);
-    trunk.rotation.z = between(rng, -0.1, 0.1);
+    trunk.rotation.z = span(rng, -0.1, 0.1);
     group.add(trunk);
     const crown = new THREE.Mesh(leafGeo, crownMat);
     crown.position.set(x, 6.2, z);
@@ -319,8 +319,8 @@ function plantPalms(group, rng) {
     crown2.rotation.y = 1.2;
     group.add(crown2);
   };
-  for (const s of allStreets()) {
-    for (const t of allStreets()) {
+  for (const s of streetList()) {
+    for (const t of streetList()) {
       if (rng() < 0.45) continue;
       const x = s + (rng() < 0.5 ? -9 : 9);
       const z = t + (rng() < 0.5 ? -9 : 9);
@@ -329,18 +329,18 @@ function plantPalms(group, rng) {
     }
   }
   for (let i = 0; i < 14; i++) {
-    plant(-240 + i * 36 + between(rng, -6, 6), 248);
+    plant(-240 + i * 36 + span(rng, -6, 6), 248);
   }
 }
 
 /** Street lamps: pole + warm globe on every other corner. */
-function plantLamps(group) {
+function raiseLamps(group) {
   const poleGeo = new THREE.CylinderGeometry(0.09, 0.12, 6, 5);
   const poleMat = new THREE.MeshLambertMaterial({ color: '#2c2438' });
   const globeGeo = new THREE.SphereGeometry(0.5, 8, 6);
   const globeMat = new THREE.MeshBasicMaterial({ color: '#ffd76b' });
-  for (const s of allStreets()) {
-    for (const t of allStreets()) {
+  for (const s of streetList()) {
+    for (const t of streetList()) {
       if ((s + t) % 140 !== 0) continue;
       const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.set(s + 8, 3, t + 8);

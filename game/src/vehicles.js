@@ -3,11 +3,11 @@
 // physics for the player's car; traffic AI that loops the blocks; police
 // cruisers that chase and ram.
 import * as THREE from 'three';
-import { CAR_TUNING, COP_TUNING } from './config.js';
-import { clamp, angleDiff, dist2d } from './random.js';
-import { paintBlob } from './textures.js';
+import { DRIVE, HEAT } from './config.js';
+import { clampNum, turnDiff, flatDist } from './random.js';
+import { blobTexture } from './textures.js';
 
-export const CAR_MODELS = [
+export const FLEET = [
   { name: 'COMET GT', color: '#ff2e63', top: 44 },
   { name: 'BRISA SEDAN', color: '#4fc3f7', top: 34 },
   { name: 'SOL TAXI', color: '#ffd23e', top: 32 },
@@ -18,16 +18,16 @@ export const CAR_MODELS = [
   { name: 'CALLE HATCH', color: '#7dff9b', top: 31 },
 ];
 
-export const POLICE_MODEL = { name: 'LCPD CRUISER', color: '#1c2733', top: 40 };
+export const CRUISER_MODEL = { name: 'LCPD CRUISER', color: '#1c2733', top: 40 };
 
 let blobTex = null;
 function blob() {
-  if (!blobTex) blobTex = paintBlob();
+  if (!blobTex) blobTex = blobTexture();
   return blobTex;
 }
 
 /** Build a stylised low-poly car mesh. Returns { group, wheels, body }. */
-export function buildCarMesh(model, isPolice = false) {
+export function assembleCar(model, isPolice = false) {
   const group = new THREE.Group();
   group.name = model.name;
   const paint = new THREE.MeshLambertMaterial({ color: model.color });
@@ -83,8 +83,8 @@ export function buildCarMesh(model, isPolice = false) {
 }
 
 /** A car in the world: position, heading, speed, steering, loop state. */
-export function spawnCar(model, x, z, heading, isPolice = false) {
-  const mesh = buildCarMesh(model, isPolice);
+export function placeCar(model, x, z, heading, isPolice = false) {
+  const mesh = assembleCar(model, isPolice);
   mesh.group.position.set(x, 0, z);
   mesh.group.rotation.y = heading;
   return {
@@ -95,34 +95,34 @@ export function spawnCar(model, x, z, heading, isPolice = false) {
   };
 }
 
-function syncMesh(car) {
+function syncCar(car) {
   car.mesh.group.position.set(car.x, 0, car.z);
   car.mesh.group.rotation.y = car.heading;
 }
 
 /** Top speed of a model in m/s, scaled from its rated top. */
-export function modelTopSpeed(model) {
-  return CAR_TUNING.topSpeed * (model.top / 44);
+export function topOf(model) {
+  return DRIVE.topSpeed * (model.top / 44);
 }
 
 /** Arcade driving step for the player's car. Mutates the car in place. */
-export function drivePlayerCar(car, input, dt, collide) {
-  const top = modelTopSpeed(car.model);
-  if (input.forward) car.speed += CAR_TUNING.accel * dt;
-  else if (input.back) car.speed -= (car.speed > 0.5 ? CAR_TUNING.braking : CAR_TUNING.accel * 0.6) * dt;
+export function driveCar(car, input, dt, collide) {
+  const top = topOf(car.model);
+  if (input.forward) car.speed += DRIVE.accel * dt;
+  else if (input.back) car.speed -= (car.speed > 0.5 ? DRIVE.braking : DRIVE.accel * 0.6) * dt;
   else car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 8 * dt);
-  car.speed = clamp(car.speed, -CAR_TUNING.reverseTop, top);
+  car.speed = clampNum(car.speed, -DRIVE.reverseTop, top);
   const steerIn = (input.left ? 1 : 0) - (input.right ? 1 : 0);
-  const grip = clamp(Math.abs(car.speed) / 12, 0, 1);
-  car.steer = clamp(steerIn * CAR_TUNING.maxSteer * grip, -CAR_TUNING.maxSteer, CAR_TUNING.maxSteer);
+  const grip = clampNum(Math.abs(car.speed) / 12, 0, 1);
+  car.steer = clampNum(steerIn * DRIVE.maxSteer * grip, -DRIVE.maxSteer, DRIVE.maxSteer);
   car.heading += (car.speed >= 0 ? 1 : -1) * car.steer * (Math.abs(car.speed) / 6.5) * dt;
   const nx = car.x + Math.sin(car.heading) * car.speed * dt;
   const nz = car.z + Math.cos(car.heading) * car.speed * dt;
-  const fixed = collide(nx, nz, CAR_TUNING.radius);
+  const fixed = collide(nx, nz, DRIVE.radius);
   car.x = fixed.x;
   car.z = fixed.z;
   if (fixed.hit) car.speed *= 0.55;
-  syncMesh(car);
+  syncCar(car);
   for (let i = 0; i < car.mesh.wheels.length; i++) {
     const w = car.mesh.wheels[i];
     w.rotation.x += car.speed * dt * 1.2;
@@ -131,7 +131,7 @@ export function drivePlayerCar(car, input, dt, collide) {
 }
 
 /** Traffic AI: follow the assigned road loop, slow for the car ahead. */
-export function stepTrafficCar(car, cars, dt, collide) {
+export function cruiseTraffic(car, cars, dt, collide) {
   if (!car.loop) return;
   const wp = car.loop[car.loopIndex % car.loop.length];
   const dx = wp[0] - car.x;
@@ -142,21 +142,21 @@ export function stepTrafficCar(car, cars, dt, collide) {
     return;
   }
   const want = Math.atan2(dx, dz);
-  car.heading += clamp(angleDiff(car.heading, want), -1.6 * dt, 1.6 * dt);
+  car.heading += clampNum(turnDiff(car.heading, want), -1.6 * dt, 1.6 * dt);
   let blocked = false;
   for (const other of cars) {
     if (other === car) continue;
-    const od = dist2d(car.x, car.z, other.x, other.z);
-    if (od < 7 && Math.abs(angleDiff(car.heading, Math.atan2(other.x - car.x, other.z - car.z))) < 0.5) {
+    const od = flatDist(car.x, car.z, other.x, other.z);
+    if (od < 7 && Math.abs(turnDiff(car.heading, Math.atan2(other.x - car.x, other.z - car.z))) < 0.5) {
       blocked = true;
       break;
     }
   }
   const target = blocked ? 0 : 9 + (car.model.top / 44) * 3;
-  car.speed += clamp(target - car.speed, -14 * dt, 7 * dt);
+  car.speed += clampNum(target - car.speed, -14 * dt, 7 * dt);
   const nx = car.x + Math.sin(car.heading) * car.speed * dt;
   const nz = car.z + Math.cos(car.heading) * car.speed * dt;
-  const fixed = collide(nx, nz, CAR_TUNING.radius);
+  const fixed = collide(nx, nz, DRIVE.radius);
   car.x = fixed.x;
   car.z = fixed.z;
   if (fixed.hit) {
@@ -169,30 +169,30 @@ export function stepTrafficCar(car, cars, dt, collide) {
   } else {
     car.stuck = 0;
   }
-  syncMesh(car);
+  syncCar(car);
 }
 
 /** Police chase: steer at the target, ram it, keep up at high speed. */
-export function stepPoliceCar(car, tx, tz, dt, collide) {
+export function huntPolice(car, tx, tz, dt, collide) {
   const dx = tx - car.x;
   const dz = tz - car.z;
   const d = Math.hypot(dx, dz);
   const want = Math.atan2(dx, dz);
-  car.heading += clamp(angleDiff(car.heading, want), -2.4 * dt, 2.4 * dt);
-  const target = d > 30 ? COP_TUNING.chaseTop : COP_TUNING.chaseTop * 0.85;
-  car.speed += clamp(target - car.speed, -20 * dt, 12 * dt);
+  car.heading += clampNum(turnDiff(car.heading, want), -2.4 * dt, 2.4 * dt);
+  const target = d > 30 ? HEAT.chaseTop : HEAT.chaseTop * 0.85;
+  car.speed += clampNum(target - car.speed, -20 * dt, 12 * dt);
   const nx = car.x + Math.sin(car.heading) * car.speed * dt;
   const nz = car.z + Math.cos(car.heading) * car.speed * dt;
-  const fixed = collide(nx, nz, CAR_TUNING.radius);
+  const fixed = collide(nx, nz, DRIVE.radius);
   car.x = fixed.x;
   car.z = fixed.z;
   if (fixed.hit) car.speed *= 0.5;
-  syncMesh(car);
+  syncCar(car);
   return d;
 }
 
 /** Parked cars the player can steal: on street edges near the landmarks. */
-export function parkedCarSpots() {
+export function parkedSpots() {
   return [
     { model: 0, x: -196, z: 175, heading: Math.PI / 2 }, // Comet GT, marina straight, facing east
     { model: 4, x: 168, z: 98, heading: 0 }, // Neon Coupe at Mercado

@@ -2,9 +2,9 @@
 // The engine hum follows speed, the sirens wail with the wanted level,
 // and the radio plays an original synthwave loop (bass + arp + hats)
 // on three stations, all invented here.
-import { RADIO } from './config.js';
+import { STATIONS } from './config.js';
 
-export function makeAudio() {
+export function freshAudio() {
   return {
     ctx: null, master: null, musicGain: null,
     engineOsc: null, engineGain: null,
@@ -14,7 +14,7 @@ export function makeAudio() {
   };
 }
 
-export function ensureAudio(audio) {
+export function startAudio(audio) {
   if (audio.started) return true;
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -48,14 +48,15 @@ export function ensureAudio(audio) {
     audio.sirenGain.connect(audio.master);
     audio.sirenOsc.start();
     audio.started = true;
-    startRadio(audio);
+    startStationLoop(audio);
     return true;
   } catch (e) {
     return false;
   }
 }
 
-function playNote(audio, freq, t, dur, type, gain, dest) {
+function playTone(audio, freq, t, dur, type, gain, dest) {
+  if (!audio.ctx || !Number.isFinite(freq)) return;
   const o = audio.ctx.createOscillator();
   o.type = type;
   o.frequency.value = freq;
@@ -69,12 +70,13 @@ function playNote(audio, freq, t, dur, type, gain, dest) {
   o.stop(t + dur + 0.05);
 }
 
-const BASS_STEPS = [0, 0, 7, 0, 5, 0, 3, 2]; // scale steps over the root
-const ARP_STEPS = [0, 2, 4, 7, 9, 7, 4, 2];
-const SCALE = [1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.782];
+const BASS_LINE = [0, 0, 7, 0, 5, 3, 2, 7]; // scale steps over the root
+const ARP_LINE = [0, 2, 4, 7, 9, 7, 4, 2];
+// Ten scale degrees so every ARP_LINE step (up to 9) has a ratio.
+const SCALE = [1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.782, 2, 2.244, 2.52];
 
-function startRadio(audio) {
-  const station = RADIO[audio.station];
+function startStationLoop(audio) {
+  const station = STATIONS[audio.station];
   const beat = 60 / station.bpm / 2; // eighth notes
   audio.step = 0;
   const tick = () => {
@@ -82,42 +84,42 @@ function startRadio(audio) {
     const t = audio.ctx.currentTime + 0.05;
     const i = audio.step % 16;
     const root = station.root;
-    if (i % 2 === 0) playNote(audio, root * SCALE[BASS_STEPS[(i / 2) % 8] % 7] / 2, t, beat * 1.8, 'triangle', 0.5);
-    if (i % 2 === 1) playNote(audio, root * 2 * SCALE[ARP_STEPS[i % 8]], t, beat * 0.9, 'square', 0.08);
-    if (i % 4 === 2) playNote(audio, 6000, t, 0.03, 'square', 0.03); // hat tick
+    if (i % 2 === 0) playTone(audio, root * SCALE[BASS_LINE[(i / 2) % 8] % 7] / 2, t, beat * 1.8, 'triangle', 0.5);
+    if (i % 2 === 1) playTone(audio, root * 2 * SCALE[ARP_LINE[i % 8]], t, beat * 0.9, 'square', 0.08);
+    if (i % 4 === 2) playTone(audio, 6000, t, 0.03, 'square', 0.03); // hat tick
     audio.step++;
   };
   audio.musicTimer = setInterval(tick, beat * 1000);
 }
 
-export function setStation(audio, i) {
-  audio.station = ((i % RADIO.length) + RADIO.length) % RADIO.length;
+export function tuneStation(audio, i) {
+  audio.station = ((i % STATIONS.length) + STATIONS.length) % STATIONS.length;
   if (audio.musicTimer) {
     clearInterval(audio.musicTimer);
-    startRadio(audio);
+    startStationLoop(audio);
   }
-  return RADIO[audio.station].name;
+  return STATIONS[audio.station].name;
 }
 
 /** Name of the station currently playing. */
-export function currentStationName(audio) {
-  return RADIO[audio.station].name;
+export function stationName(audio) {
+  return STATIONS[audio.station].name;
 }
 
-export function toggleMute(audio) {
+export function flipMute(audio) {
   audio.muted = !audio.muted;
   if (audio.master) audio.master.gain.value = audio.muted ? 0 : 0.5;
   return audio.muted;
 }
 
-export function setEngineSound(audio, speed01, inCar) {
+export function engineSound(audio, speed01, inCar) {
   if (!audio.started) return;
   const t = audio.ctx.currentTime;
   audio.engineGain.gain.setTargetAtTime(inCar ? 0.05 + speed01 * 0.06 : 0, t, 0.1);
   audio.engineOsc.frequency.setTargetAtTime(48 + speed01 * 130, t, 0.1);
 }
 
-export function setSirenSound(audio, stars) {
+export function sirenSound(audio, stars) {
   if (!audio.started) return;
   const t = audio.ctx.currentTime;
   audio.sirenGain.gain.setTargetAtTime(stars > 0 ? 0.05 : 0, t, 0.2);
@@ -142,21 +144,21 @@ export function playSfx(audio, kind) {
     src.connect(g);
     g.connect(audio.master);
     src.start(t);
-    playNote(audio, 160, t, 0.08, 'square', 0.25, audio.master);
+    playTone(audio, 160, t, 0.08, 'square', 0.25, audio.master);
   } else if (kind === 'pickup') {
-    playNote(audio, 880, t, 0.12, 'sine', 0.3, audio.master);
-    playNote(audio, 1318, t + 0.09, 0.18, 'sine', 0.3, audio.master);
+    playTone(audio, 880, t, 0.12, 'sine', 0.3, audio.master);
+    playTone(audio, 1318, t + 0.09, 0.18, 'sine', 0.3, audio.master);
   } else if (kind === 'crash') {
-    playNote(audio, 70, t, 0.3, 'sawtooth', 0.4, audio.master);
+    playTone(audio, 70, t, 0.3, 'sawtooth', 0.4, audio.master);
   } else if (kind === 'sting') {
-    playNote(audio, 523, t, 0.4, 'triangle', 0.3, audio.master);
-    playNote(audio, 659, t + 0.1, 0.4, 'triangle', 0.3, audio.master);
-    playNote(audio, 784, t + 0.2, 0.6, 'triangle', 0.35, audio.master);
+    playTone(audio, 523, t, 0.4, 'triangle', 0.3, audio.master);
+    playTone(audio, 659, t + 0.1, 0.4, 'triangle', 0.3, audio.master);
+    playTone(audio, 784, t + 0.2, 0.6, 'triangle', 0.35, audio.master);
   } else if (kind === 'busted') {
-    playNote(audio, 392, t, 0.5, 'sawtooth', 0.3, audio.master);
-    playNote(audio, 311, t + 0.4, 0.8, 'sawtooth', 0.3, audio.master);
+    playTone(audio, 392, t, 0.5, 'sawtooth', 0.3, audio.master);
+    playTone(audio, 311, t + 0.4, 0.8, 'sawtooth', 0.3, audio.master);
   } else if (kind === 'siren-blip') {
-    playNote(audio, 980, t, 0.15, 'triangle', 0.25, audio.master);
-    playNote(audio, 720, t + 0.15, 0.15, 'triangle', 0.25, audio.master);
+    playTone(audio, 980, t, 0.15, 'triangle', 0.25, audio.master);
+    playTone(audio, 720, t + 0.15, 0.15, 'triangle', 0.25, audio.master);
   }
 }

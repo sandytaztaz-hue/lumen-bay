@@ -2,13 +2,13 @@
 // LCPD helicopter, and the wanted system — stars rise on crime, fall
 // when Mara stays hidden.
 import * as THREE from 'three';
-import { PLAYER_TUNING, COP_TUNING } from './config.js';
-import { clamp, angleDiff, dist2d, between, makeRng } from './random.js';
-import { paintBlob } from './textures.js';
+import { WALKER, HEAT } from './config.js';
+import { clampNum, flatDist, span, seededStream } from './random.js';
+import { blobTexture } from './textures.js';
 
 let blobTex = null;
 function blob() {
-  if (!blobTex) blobTex = paintBlob();
+  if (!blobTex) blobTex = blobTexture();
   return blobTex;
 }
 
@@ -16,7 +16,7 @@ const SHIRTS = ['#ff2e63', '#4fc3f7', '#ffd23e', '#7dff9b', '#ff8c2e', '#c9b8f2'
 const SKINS = ['#e8b88a', '#c98d5f', '#8a5a3b', '#f2c9a0'];
 
 /** A stylised person: torso, head, legs that swing while walking. */
-export function buildPersonMesh(shirt, skin, isMara = false) {
+export function assemblePerson(shirt, skin, isMara = false) {
   const group = new THREE.Group();
   const shirtMat = new THREE.MeshLambertMaterial({ color: shirt });
   const skinMat = new THREE.MeshLambertMaterial({ color: skin });
@@ -64,7 +64,7 @@ export function buildPersonMesh(shirt, skin, isMara = false) {
   return { group, legL, legR, armL, armR };
 }
 
-function animateWalk(mesh, phase, speed) {
+function swingWalk(mesh, phase, speed) {
   const swing = speed > 0 ? Math.sin(phase) * 0.55 : 0;
   mesh.legL.rotation.x = swing;
   mesh.legR.rotation.x = -swing;
@@ -72,20 +72,20 @@ function animateWalk(mesh, phase, speed) {
   mesh.armR.rotation.x = swing * 0.8;
 }
 
-export function makePlayer(x, z) {
-  const mesh = buildPersonMesh('#ff2e63', '#e8b88a', true);
+export function spawnMara(x, z) {
+  const mesh = assemblePerson('#ff2e63', '#e8b88a', true);
   mesh.group.position.set(x, 0, z);
   return {
     mesh, x, z, heading: 0, speed: 0,
-    health: PLAYER_TUNING.maxHealth, armour: 0, walkPhase: 0,
+    health: WALKER.maxHealth, armour: 0, walkPhase: 0,
     weapon: 'pistol', ammo: { smg: 120 },
     inCar: null, fireCooldown: 0,
   };
 }
 
 /** Walk the player on foot, camera-relative. Returns true if moving. */
-export function stepPlayerOnFoot(player, input, dt, collide) {
-  const speed = input.run ? PLAYER_TUNING.sprint : PLAYER_TUNING.walk;
+export function walkMara(player, input, dt, collide) {
+  const speed = input.run ? WALKER.sprint : WALKER.walk;
   let mx = 0;
   let mz = 0;
   if (input.forward) mz += 1;
@@ -101,7 +101,7 @@ export function stepPlayerOnFoot(player, input, dt, collide) {
     const cos = Math.cos(cam);
     const wx = mx * cos - mz * sin;
     const wz = -mx * sin - mz * cos;
-    const fixed = collide(player.x + wx * speed * dt, player.z + wz * speed * dt, PLAYER_TUNING.radius);
+    const fixed = collide(player.x + wx * speed * dt, player.z + wz * speed * dt, WALKER.radius);
     player.x = fixed.x;
     player.z = fixed.z;
     player.heading = Math.atan2(wx, wz);
@@ -112,25 +112,25 @@ export function stepPlayerOnFoot(player, input, dt, collide) {
   }
   player.mesh.group.position.set(player.x, 0, player.z);
   player.mesh.group.rotation.y = player.heading;
-  animateWalk(player.mesh, player.walkPhase, player.speed);
+  swingWalk(player.mesh, player.walkPhase, player.speed);
   return len > 0;
 }
 
 /** A pedestrian: strolls a sidewalk loop, flees from gunfire. */
-export function makePedestrian(rng, x, z) {
+export function spawnWalker(rng, x, z) {
   const shirt = SHIRTS[Math.floor(rng() * SHIRTS.length)];
   const skin = SKINS[Math.floor(rng() * SKINS.length)];
-  const mesh = buildPersonMesh(shirt, skin, false);
+  const mesh = assemblePerson(shirt, skin, false);
   mesh.group.position.set(x, 0, z);
   return {
     mesh, x, z, heading: rng() * Math.PI * 2,
     speed: 1.4 + rng() * 0.8, walkPhase: rng() * 6,
     flee: 0, panic: 0, targetX: x, targetZ: z,
-    rng: makeRng(Math.floor(rng() * 1e9)),
+    rng: seededStream(Math.floor(rng() * 1e9)),
   };
 }
 
-export function stepPedestrian(ped, dt, danger, collide) {
+export function strollWalker(ped, dt, danger, collide) {
   if (danger) {
     ped.flee = 3;
     ped.panic = 1;
@@ -144,9 +144,9 @@ export function stepPedestrian(ped, dt, danger, collide) {
       ped.heading = Math.atan2(ped.x - danger.x, ped.z - danger.z)
         + (ped.panic > 0 ? Math.sin(ped.walkPhase * 2) * 0.3 : 0);
     }
-  } else if (dist2d(ped.x, ped.z, ped.targetX, ped.targetZ) < 3) {
-    ped.targetX = clamp(ped.x + between(ped.rng, -60, 60), -270, 270);
-    ped.targetZ = clamp(ped.z + between(ped.rng, -60, 60), -270, 270);
+  } else if (flatDist(ped.x, ped.z, ped.targetX, ped.targetZ) < 3) {
+    ped.targetX = clampNum(ped.x + span(ped.rng, -60, 60), -270, 270);
+    ped.targetZ = clampNum(ped.z + span(ped.rng, -60, 60), -270, 270);
     ped.heading = Math.atan2(ped.targetX - ped.x, ped.targetZ - ped.z);
   }
   const fixed = collide(
@@ -159,11 +159,11 @@ export function stepPedestrian(ped, dt, danger, collide) {
   ped.walkPhase += dt * speed * 1.8;
   ped.mesh.group.position.set(ped.x, 0, ped.z);
   ped.mesh.group.rotation.y = ped.heading;
-  animateWalk(ped.mesh, ped.walkPhase, speed);
+  swingWalk(ped.mesh, ped.walkPhase, speed);
 }
 
 /** The LCPD helicopter: circles the player with a spotlight cone. */
-export function makeHelicopter() {
+export function spawnChopper() {
   const group = new THREE.Group();
   group.name = 'LCPD HELICOPTER';
   const bodyMat = new THREE.MeshLambertMaterial({ color: '#1c2733' });
@@ -189,14 +189,14 @@ export function makeHelicopter() {
   }
   const cone = new THREE.Mesh(
     new THREE.ConeGeometry(5, 20, 12, 1, true),
-    new THREE.MeshBasicMaterial({ color: '#fff3c9', transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: '#fff3c9', transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }),
   );
   cone.position.y = -10;
   cone.rotation.x = Math.PI;
   group.add(cone);
   const pool = new THREE.Mesh(
     new THREE.CircleGeometry(4.5, 16),
-    new THREE.MeshBasicMaterial({ color: '#fff3c9', transparent: true, opacity: 0.3, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: '#fff3c9', transparent: true, opacity: 0.32, depthWrite: false }),
   );
   pool.rotation.x = -Math.PI / 2;
   pool.position.y = -19.5;
@@ -204,7 +204,7 @@ export function makeHelicopter() {
   return { group, rotor, rotor2, angle: 0, active: false };
 }
 
-export function stepHelicopter(heli, px, pz, dt) {
+export function orbitChopper(heli, px, pz, dt) {
   if (!heli.active) return;
   heli.angle += dt * 0.25;
   const r = 30;
@@ -217,17 +217,17 @@ export function stepHelicopter(heli, px, pz, dt) {
 }
 
 /** Wanted stars, 0–5. Crimes raise them; hiding lowers them after a delay. */
-export function makeWantedState() {
+export function freshHeat() {
   return { stars: 0, hiddenTimer: 0, lastCrime: -999, elapsed: 0 };
 }
 
-export function addWanted(wanted, n) {
-  wanted.stars = clamp(wanted.stars + n, 0, 5);
+export function raiseHeat(wanted, n) {
+  wanted.stars = clampNum(wanted.stars + n, 0, 5);
   wanted.lastCrime = wanted.elapsed;
   wanted.hiddenTimer = 0;
 }
 
-export function stepWantedState(wanted, dt, policeNear) {
+export function coolHeat(wanted, dt, policeNear) {
   wanted.elapsed += dt;
   if (wanted.stars === 0) return;
   if (policeNear) {
@@ -235,25 +235,25 @@ export function stepWantedState(wanted, dt, policeNear) {
     return;
   }
   wanted.hiddenTimer += dt;
-  if (wanted.hiddenTimer > COP_TUNING.coolOffDelay) {
+  if (wanted.hiddenTimer > HEAT.coolOffDelay) {
     wanted.stars = Math.max(0, wanted.stars - 1);
     wanted.hiddenTimer = 0;
   }
 }
 
 /** A foot cop for the cordon job: stands, aims, shoots slowly at Mara. */
-export function makeFootCop(x, z) {
-  const mesh = buildPersonMesh('#1c2733', '#c98d5f', false);
+export function spawnOfficer(x, z) {
+  const mesh = assemblePerson('#1c2733', '#c98d5f', false);
   mesh.group.position.set(x, 0, z);
   return { mesh, x, z, heading: 0, cooldown: 1.5, alive: true, hp: 2 };
 }
 
-export function stepFootCop(cop, px, pz, dt) {
+export function officerFire(cop, px, pz, dt) {
   if (!cop.alive) return false;
   cop.heading = Math.atan2(px - cop.x, pz - cop.z);
   cop.mesh.group.rotation.y = cop.heading;
   cop.cooldown -= dt;
-  if (dist2d(cop.x, cop.z, px, pz) < 45 && cop.cooldown <= 0) {
+  if (flatDist(cop.x, cop.z, px, pz) < 45 && cop.cooldown <= 0) {
     cop.cooldown = 1.6;
     return true; // fires this step
   }
