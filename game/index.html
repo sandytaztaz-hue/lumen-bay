@@ -4,64 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LUMEN BAY: Sunset Getaway — 12 story missions in Puerto Lumen</title>
+<meta name="description" content="LUMEN BAY: Sunset Getaway — an original open-world crime game in Puerto Lumen. Steal cars, outrun 5-star police, escape the helicopter. 12 story missions, traffic, pedestrians, shootouts and synthwave radio.">
+<meta name="author" content="sandytaztaz-hue">
+<link rel="icon" href="data:,">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1420; font-family: 'Segoe UI', Arial, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f2e; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); z-index: 5; }
-  #hud-top-left { position: absolute; top: 14px; left: 14px; }
-  #minimap { border: 2px solid rgba(255,255,255,.75); border-radius: 50%; background: #1e6f8e; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
-  #wanted { margin-top: 6px; font-size: 26px; letter-spacing: 2px; text-align: center; }
-  #wanted .star { color: rgba(255,255,255,.25); }
-  #wanted .star.on { color: #ffd27a; }
-  #hud-top-right { position: absolute; top: 14px; right: 16px; text-align: right; }
-  #cash { font-size: 30px; font-weight: 800; color: #7dff5e; }
-  #clock { font-size: 15px; font-weight: 700; color: #ffd27a; margin-top: 2px; }
-  #radio { font-size: 13px; color: #ffe9c9; margin-top: 2px; }
-  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 640px; background: rgba(10,8,18,.72); border-left: 4px solid #ffd27a; padding: 9px 14px; font-size: 15px; font-weight: 600; border-radius: 4px; }
-  #hud-bottom-left { position: absolute; left: 16px; bottom: 16px; width: 240px; }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .bar-label { font-size: 11px; font-weight: 700; width: 52px; }
-  .bar { flex: 1; height: 12px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.6); border-radius: 6px; overflow: hidden; }
-  #health-fill { height: 100%; width: 100%; background: #39d353; }
-  #armour-fill { height: 100%; width: 0%; background: #2e9bff; }
-  #weapon { font-size: 15px; font-weight: 700; margin-top: 4px; }
-  #hud-bottom-right { position: absolute; right: 20px; bottom: 12px; text-align: right; }
-  #speed { font-size: 44px; font-weight: 800; line-height: 1; }
-  #speed-unit { font-size: 13px; font-weight: 700; color: #ffd27a; }
-  #event-log { position: absolute; left: 16px; bottom: 110px; font-size: 13px; line-height: 1.5; max-width: 420px; }
-  #event-log div { background: rgba(10,8,18,.55); padding: 2px 8px; margin-top: 3px; border-radius: 3px; display: inline-block; }
-  #banner { position: absolute; top: 34%; left: 50%; transform: translate(-50%,-50%) scale(.96); text-align: center; opacity: 0; transition: opacity .25s, transform .25s; }
-  #banner.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-  #banner .banner-title { font-size: 52px; font-weight: 900; color: #ffd27a; letter-spacing: 3px; }
-  #banner .banner-sub { font-size: 19px; font-weight: 600; }
-  .damage-number { position: absolute; font-size: 18px; font-weight: 800; pointer-events: none; animation: floatUp .9s ease-out forwards; }
-  @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-34px); } }
-  #title-screen, #pause-screen, #end-screen { position: absolute; inset: 0; background: rgba(12,8,20,.72); text-align: center; padding-top: 9vh; pointer-events: auto; }
-  #pause-screen, #end-screen { display: none; }
-  #title-screen h1 { font-size: 84px; margin: 0; letter-spacing: 6px; color: #ffd27a; }
-  #title-screen h2 { font-size: 34px; margin: 0 0 14px; color: #ff8c42; letter-spacing: 4px; }
-  #title-screen .tagline { font-size: 17px; max-width: 620px; margin: 0 auto 10px; }
-  #title-screen .crew { font-size: 14px; color: #ffe9c9; }
-  #title-screen .controls { font-size: 13px; color: #cfd8e8; max-width: 680px; margin: 18px auto 0; line-height: 1.6; }
-  .title-button { pointer-events: auto; cursor: pointer; font-size: 20px; font-weight: 800; letter-spacing: 2px; color: #1a1420; background: #ffd27a; border: none; border-radius: 6px; padding: 12px 34px; margin: 8px; }
-  .title-button:hover { background: #ffbe4d; }
-  #pause-screen h2, #end-screen h2 { font-size: 56px; color: #ffd27a; letter-spacing: 4px; }
-  #end-screen p { font-size: 17px; }
 </style>
 <script type="importmap">
-{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js"
+  }
+}
 </script>
 </head>
 <body>
-<canvas id="game" aria-label="LUMEN BAY: Sunset Getaway — open-world crime game in Puerto Lumen"></canvas>
+<canvas id="game" aria-label="LUMEN BAY: Sunset Getaway. Drive Mara Solis through Puerto Lumen, steal cars, outrun the police and finish 12 story missions."></canvas>
 <p id="status" role="status" aria-live="polite"></p>
-<div id="hud"></div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
-<!-- LUMEN BAY: Sunset Getaway — a complete open-world crime game in Puerto Lumen.
-     Play on foot and by car, steal the Comet GT, outrun 5-star police and the
-     helicopter, and run 12 story missions with Mara Solis and her crew.
-     Original city, characters, story, art and synthwave radio — nothing from
-     any commercial game. Built with three.js, vendored under game/vendor/. -->

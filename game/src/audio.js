@@ -1,182 +1,247 @@
-// LUMEN BAY — WebAudio synth only, no audio files.
-// Engine hum, sirens, gunshots, mission stingers and a three-station synthwave
-// radio. SAFETY RULE: every oscillator frequency passes through safeFreq()
-// (finite, 20–20000 Hz), and every arpeggio table is longer than any arp step
-// the sequencer can reach, so a bad note can never throw.
-import { RADIO_STATIONS } from './config.js';
+// Synthesised audio for LUMEN BAY. No audio files: every sound is built with
+// the Web Audio API — engine hum, sirens, gunshots, UI stingers, and three
+// original synthwave radio loops. Two hard rules live in this file:
+//
+// 1. Every frequency ever handed to an oscillator passes through safeFreq(),
+//    which rejects NaN/Infinity/zero/negative values and clamps into the
+//    audible band. A bad note can never throw and kill the audio graph.
+// 2. Every arpeggio table is a full scale: the arp step indexes scale[i %
+//    scale.length] and the scale is long enough that no step can run off the
+//    end, even when the pattern is transposed up an octave.
+//
+// The radio runs on a look-ahead scheduler (a short timer that schedules
+// notes a bar ahead), so the loop stays in time even when the frame rate
+// dips. Audio starts only after a user gesture (click/key), as browsers
+// require; before that the context stays suspended and silent.
 
-// Clamp any frequency to something an oscillator can actually play.
-export function safeFreq(freq, fallback) {
-  const f = Number(freq);
-  if (!Number.isFinite(f) || f < 20 || f > 20000) return fallback || 440;
-  return f;
+import { RADIO } from './config.js';
+
+// Clamp a frequency into the safe audible band. Anything non-finite, zero or
+// negative becomes a harmless 220 Hz.
+export function safeFreq(f) {
+  if (!Number.isFinite(f) || f <= 0) return 220;
+  return Math.max(30, Math.min(4000, f));
 }
 
-// Scale tables: 24 ratios each, so arp steps 0..23 always land on a real note.
-// (A short table once crashed a build when the sequencer stepped past its end.)
-export const ARP_SCALES = {
-  drive: [1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2, 2.244, 2.52, 2.67, 2.996, 3.364, 3.776, 4, 4.488, 5.04, 5.34, 5.992, 6.728, 7.552, 8, 8.976, 10.08],
-  night: [1, 1.189, 1.335, 1.587, 1.782, 2, 2.378, 2.67, 3.174, 3.564, 4, 4.756, 5.34, 6.348, 7.128, 8, 9.512, 10.68, 12.696, 14.256, 16, 19.024, 21.36, 25.392],
-  chill: [1, 1.122, 1.335, 1.498, 1.682, 2, 2.244, 2.67, 2.996, 3.364, 4, 4.488, 5.34, 5.992, 6.728, 8, 8.976, 10.68, 11.984, 13.456, 16, 17.952, 21.36, 23.968],
-};
+// Minor and major scales as semitone ratios from the root. Twelve entries
+// each — a full octave — so any arp step modulo the length is safe.
+const MINOR_SCALE = [1, 1.0595, 1.1892, 1.2599, 1.3348, 1.4983, 1.5874, 1.6818, 1.7818, 1.8877, 2, 2.119];
+const MAJOR_SCALE = [1, 1.1225, 1.2599, 1.3348, 1.4983, 1.6818, 1.8877, 2, 2.2449, 2.5198, 2.6697, 2.9966];
 
-// Arpeggio step patterns, all indices kept inside 0..23.
-export const ARP_PATTERNS = {
-  drive: [0, 2, 4, 7, 9, 7, 4, 2, 0, 4, 7, 11, 9, 7, 4, 2],
-  night: [0, 3, 5, 7, 10, 7, 5, 3, 0, 5, 7, 12, 10, 7, 5, 3],
-  chill: [0, 4, 2, 7, 4, 2, 0, 2, 4, 7, 9, 7, 4, 2, 0, 4],
-};
+// Sixteen-step arp patterns. Every step is an index into the scale, wrapped
+// with modulo at lookup time, so the pattern can never read past the table.
+const ARP_PATTERNS = [
+  [0, 2, 4, 7, 9, 7, 4, 2, 0, 3, 5, 7, 10, 7, 5, 3],
+  [0, 4, 7, 11, 7, 4, 0, 7, 2, 5, 9, 7, 5, 2, 9, 11],
+  [0, 3, 7, 10, 7, 3, 0, 5, 2, 7, 9, 10, 9, 7, 5, 2],
+];
 
 export function createAudio() {
-  const audio = {
-    ctx: null, master: null, engineOsc: null, engineGain: null,
-    sirenOsc: null, sirenGain: null, radioOn: true, station: 0,
-    radioTimer: 0, arpStep: 0, started: false,
-  };
+  let ctx = null;
+  let master = null;
+  let radioGain = null;
+  let engineOsc = null;
+  let engineGain = null;
+  let sirenOsc = null;
+  let sirenGain = null;
+  let station = 0;
+  let radioTimer = null;
+  let nextNoteTime = 0;
+  let step = 0;
+  let started = false;
 
-  audio.ensure = function ensure() {
-    if (audio.ctx) {
-      if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
-      return audio.ctx;
-    }
+  function ensure() {
+    if (ctx) return ctx;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
-    const ctx = new AC();
-    audio.ctx = ctx;
-    audio.master = ctx.createGain();
-    audio.master.gain.value = 0.5;
-    audio.master.connect(ctx.destination);
-    // Engine hum: two detuned saws through a low-pass, gain follows speed.
-    audio.engineOsc = ctx.createOscillator();
-    audio.engineOsc.type = 'sawtooth';
-    audio.engineOsc.frequency.value = safeFreq(60);
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = 0.55;
+    master.connect(ctx.destination);
+    radioGain = ctx.createGain();
+    radioGain.gain.value = 0.16;
+    radioGain.connect(master);
+    engineGain = ctx.createGain();
+    engineGain.gain.value = 0;
+    engineGain.connect(master);
+    engineOsc = ctx.createOscillator();
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 55;
     const engineFilter = ctx.createBiquadFilter();
     engineFilter.type = 'lowpass';
     engineFilter.frequency.value = 420;
-    audio.engineGain = ctx.createGain();
-    audio.engineGain.gain.value = 0;
-    audio.engineOsc.connect(engineFilter);
-    engineFilter.connect(audio.engineGain);
-    audio.engineGain.connect(audio.master);
-    audio.engineOsc.start();
-    // Siren: a triangle that wails between two guarded frequencies.
-    audio.sirenOsc = ctx.createOscillator();
-    audio.sirenOsc.type = 'triangle';
-    audio.sirenOsc.frequency.value = safeFreq(720);
-    audio.sirenGain = ctx.createGain();
-    audio.sirenGain.gain.value = 0;
-    audio.sirenOsc.connect(audio.sirenGain);
-    audio.sirenGain.connect(audio.master);
-    audio.sirenOsc.start();
-    audio.started = true;
+    engineOsc.connect(engineFilter);
+    engineFilter.connect(engineGain);
+    engineOsc.start();
+    sirenGain = ctx.createGain();
+    sirenGain.gain.value = 0;
+    sirenGain.connect(master);
+    sirenOsc = ctx.createOscillator();
+    sirenOsc.type = 'triangle';
+    sirenOsc.frequency.value = 700;
+    sirenOsc.connect(sirenGain);
+    sirenOsc.start();
     return ctx;
-  };
+  }
 
-  audio.setEngine = function setEngine(speedRatio) {
-    if (!audio.ctx || !audio.engineOsc) return;
-    const ratio = Number.isFinite(speedRatio) ? Math.max(0, Math.min(1, speedRatio)) : 0;
-    audio.engineOsc.frequency.value = safeFreq(55 + ratio * 130);
-    audio.engineGain.gain.value = 0.02 + ratio * 0.05;
-  };
-
-  audio.setSiren = function setSiren(on, time) {
-    if (!audio.ctx || !audio.sirenOsc) return;
-    const t = Number.isFinite(time) ? time : 0;
-    const target = on ? 0.045 : 0;
-    audio.sirenGain.gain.setTargetAtTime(target, audio.ctx.currentTime, 0.1);
-    audio.sirenOsc.frequency.value = safeFreq(660 + Math.sin(t * 3.2) * 180);
-  };
-
-  // One gunshot: filtered noise burst, short and punchy.
-  audio.shot = function shot() {
-    if (!audio.ctx) return;
-    const ctx = audio.ctx;
-    const dur = 0.14;
-    const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * dur)), ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = safeFreq(900);
-    const gain = ctx.createGain();
-    gain.gain.value = 0.5;
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(audio.master);
-    source.start();
-  };
-
-  // Mission stinger: a little rising major arpeggio, all notes guarded.
-  audio.stinger = function stinger(win) {
-    if (!audio.ctx) return;
-    const ctx = audio.ctx;
-    const base = win ? 523.25 : 220;
-    const notes = win ? [1, 1.26, 1.498, 2] : [1, 0.89, 0.75];
-    notes.forEach((ratio, i) => {
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.value = safeFreq(base * ratio);
-      const gain = ctx.createGain();
-      gain.gain.value = 0.001;
-      const start = ctx.currentTime + i * 0.11;
-      gain.gain.setValueAtTime(0.001, start);
-      gain.gain.exponentialRampToValueAtTime(0.22, start + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
-      osc.connect(gain);
-      gain.connect(audio.master);
-      osc.start(start);
-      osc.stop(start + 0.55);
-    });
-  };
-
-  audio.nextStation = function nextStation() {
-    audio.station = (audio.station + 1) % RADIO_STATIONS.length;
-    audio.arpStep = 0;
-    return RADIO_STATIONS[audio.station].name;
-  };
-
-  // Radio sequencer: one synthwave note per tick, always inside the scale table.
-  audio.radioTick = function radioTick(dt) {
-    if (!audio.ctx || !audio.radioOn) return;
-    audio.radioTimer -= dt;
-    if (audio.radioTimer > 0) return;
-    const station = RADIO_STATIONS[audio.station];
-    audio.radioTimer = 60 / station.bpm / 2;
-    const scale = ARP_SCALES[station.mood];
-    const pattern = ARP_PATTERNS[station.mood];
-    const stepIndex = pattern[audio.arpStep % pattern.length];
-    const ratio = scale[stepIndex % scale.length];
-    const freq = safeFreq(station.root * ratio);
-    const ctx = audio.ctx;
-    const osc = ctx.createOscillator();
-    osc.type = station.mood === 'chill' ? 'sine' : 'square';
-    osc.frequency.value = freq;
-    const gain = ctx.createGain();
-    gain.gain.value = 0.001;
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.09, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-    osc.connect(gain);
-    gain.connect(audio.master);
-    osc.start(now);
-    osc.stop(now + 0.3);
-    // A soft bass note on every fourth step, also guarded.
-    if (audio.arpStep % 4 === 0) {
-      const bass = ctx.createOscillator();
-      bass.type = 'sine';
-      bass.frequency.value = safeFreq(station.root / 2);
-      const bgain = ctx.createGain();
-      bgain.gain.value = 0.12;
-      bass.connect(bgain);
-      bgain.connect(audio.master);
-      bass.start(now);
-      bass.stop(now + 0.4);
+  // Start (or resume) the audio graph from a user gesture. Safe to call often.
+  function start() {
+    const c = ensure();
+    if (!c) return false;
+    if (c.state === 'suspended') void c.resume();
+    if (!started) {
+      started = true;
+      startRadio();
     }
-    audio.arpStep += 1;
-  };
+    return true;
+  }
 
-  return audio;
+  function note(freq, when, dur, type, gainValue, dest) {
+    if (!ctx) return;
+    const f = safeFreq(freq);
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f, when);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(gainValue, when + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    osc.connect(g);
+    g.connect(dest || master);
+    osc.start(when);
+    osc.stop(when + dur + 0.05);
+  }
+
+  // One bar of the current station, scheduled ahead. Bass on beats, arp on
+  // eighth notes, a soft pad underneath. All frequencies go through safeFreq.
+  function scheduleBar() {
+    if (!ctx) return;
+    const st = RADIO[station];
+    const scale = st.minor ? MINOR_SCALE : MAJOR_SCALE;
+    const pattern = ARP_PATTERNS[station % ARP_PATTERNS.length];
+    const beat = 60 / st.bpm;
+    const barLen = beat * 4;
+    const t0 = Math.max(nextNoteTime, ctx.currentTime + 0.05);
+    // Bass: root on beats 1 and 3, fifth on 2 and 4.
+    for (let b = 0; b < 4; b += 1) {
+      const f = safeFreq(st.root * (b % 2 === 0 ? 1 : 1.4983));
+      note(f, t0 + b * beat, beat * 0.9, 'triangle', 0.5, radioGain);
+    }
+    // Arp: 16 eighth-note steps across the bar.
+    for (let i = 0; i < 16; i += 1) {
+      const idx = pattern[i % pattern.length];
+      const ratio = scale[idx % scale.length];
+      const octave = idx >= scale.length ? 2 : 1;
+      const f = safeFreq(st.root * 2 * ratio * octave);
+      note(f, t0 + i * (barLen / 16), barLen / 16 * 0.9, 'square', 0.11, radioGain);
+    }
+    // Pad: root + third, whole bar, very soft.
+    note(safeFreq(st.root * 2), t0, barLen, 'sine', 0.07, radioGain);
+    note(safeFreq(st.root * 2 * scale[2]), t0, barLen, 'sine', 0.05, radioGain);
+    nextNoteTime = t0 + barLen;
+    step = (step + 16) % 64;
+  }
+
+  function startRadio() {
+    if (!ctx || radioTimer) return;
+    nextNoteTime = ctx.currentTime + 0.1;
+    scheduleBar();
+    radioTimer = window.setInterval(() => {
+      if (!ctx) return;
+      while (nextNoteTime < ctx.currentTime + 0.4) scheduleBar();
+    }, 120);
+  }
+
+  function setStation(i) {
+    station = ((i % RADIO.length) + RADIO.length) % RADIO.length;
+    if (ctx) nextNoteTime = ctx.currentTime + 0.05;
+    return RADIO[station].name;
+  }
+
+  // Engine hum follows the car's speed: pitch and volume rise with speed.
+  function setEngine(speedNorm, inCar) {
+    if (!ctx || !engineOsc) return;
+    const target = inCar ? 0.05 + speedNorm * 0.11 : 0;
+    engineGain.gain.setTargetAtTime(target, ctx.currentTime, 0.08);
+    engineOsc.frequency.setTargetAtTime(safeFreq(48 + speedNorm * 130), ctx.currentTime, 0.08);
+  }
+
+  // Two-tone siren that fades in with wanted level and out when heat dies.
+  function setSiren(wanted) {
+    if (!ctx || !sirenOsc) return;
+    const target = wanted > 0 ? 0.05 + wanted * 0.012 : 0;
+    sirenGain.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+    const t = ctx.currentTime;
+    const hi = safeFreq(880), lo = safeFreq(660);
+    sirenOsc.frequency.cancelScheduledValues(t);
+    sirenOsc.frequency.setValueAtTime(hi, t);
+    sirenOsc.frequency.linearRampToValueAtTime(lo, t + 0.45);
+    sirenOsc.frequency.linearRampToValueAtTime(hi, t + 0.9);
+  }
+
+  function gunshot() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const dur = 0.14;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2400;
+    const g = ctx.createGain();
+    g.gain.value = 0.5;
+    src.connect(filter); filter.connect(g); g.connect(master);
+    src.start(t);
+  }
+
+  function stinger(kind) {
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.02;
+    if (kind === 'mission') {
+      note(safeFreq(523.25), t, 0.18, 'triangle', 0.35);
+      note(safeFreq(659.25), t + 0.12, 0.18, 'triangle', 0.35);
+      note(safeFreq(783.99), t + 0.24, 0.34, 'triangle', 0.4);
+    } else if (kind === 'fail') {
+      note(safeFreq(311.13), t, 0.25, 'triangle', 0.3);
+      note(safeFreq(233.08), t + 0.2, 0.4, 'triangle', 0.3);
+    } else if (kind === 'cash') {
+      note(safeFreq(1046.5), t, 0.12, 'sine', 0.3);
+      note(safeFreq(1318.5), t + 0.09, 0.2, 'sine', 0.3);
+    } else if (kind === 'pickup') {
+      note(safeFreq(880), t, 0.1, 'sine', 0.25);
+    }
+  }
+
+  function crash() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const dur = 0.2;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length) * 0.7;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = 900;
+    src.connect(filter); filter.connect(master);
+    src.start(t);
+  }
+
+  // Short radio blip when the station changes, so the player hears the switch.
+  function stationBlip() {
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.02;
+    note(safeFreq(660), t, 0.08, 'square', 0.12, radioGain);
+    note(safeFreq(990), t + 0.08, 0.12, 'square', 0.12, radioGain);
+  }
+
+  return {
+    start, setStation, setEngine, setSiren, gunshot, stinger, crash, stationBlip,
+    stationName() { return RADIO[station].name; },
+    running() { return !!ctx && ctx.state === 'running'; },
+    state() { return ctx ? ctx.state : 'none'; },
+  };
 }

@@ -1,232 +1,262 @@
-// LUMEN BAY — the HUD: minimap, wanted stars, health/armour, cash, speed,
-// weapon, objective banner, event log, radio station, golden-hour clock,
-// plus the title screen, pause menu and job-done banner. All DOM, drawn over
-// the WebGL canvas, legible at 1280x720.
-import { GOLDEN_HOUR, LANDMARKS, STREET_LINES } from './config.js';
+// The HUD for LUMEN BAY is DOM, not canvas: text stays crisp at any window
+// size, the minimap is a small 2D canvas, and the screenshot camera captures
+// the DOM overlay together with the WebGL canvas. Everything the player needs
+// is always visible: minimap (roads, player arrow, mission marker, police
+// blips, helicopter icon), wanted stars, health and armour bars, cash, speed,
+// weapon and ammo, the objective banner, the event log, the radio station and
+// the 18:40 golden-hour clock. Title and pause screens are DOM too, so the
+// start screen reads cleanly in the very first frame.
+
+import { starsText, cashText } from './config.js';
+
+const CSS = `
+#hud{position:fixed;inset:0;pointer-events:none;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;z-index:5}
+#hud .panel{background:rgba(10,10,22,.62);border:1px solid rgba(255,255,255,.22);border-radius:10px;backdrop-filter:blur(2px)}
+#minimap-wrap{position:absolute;left:14px;bottom:14px;padding:6px}
+#minimap{display:block;border-radius:6px}
+#stats{position:absolute;right:14px;top:12px;padding:10px 14px;text-align:right;min-width:210px}
+#stars{font-size:26px;letter-spacing:2px;color:#ffd24d;text-shadow:0 0 8px rgba(255,210,77,.7);line-height:1.1}
+#cash{font-size:26px;font-weight:800;color:#7cff6b;text-shadow:0 2px 4px rgba(0,0,0,.6)}
+#health-row,#armour-row{display:flex;align-items:center;gap:6px;margin-top:5px;justify-content:flex-end}
+#health-row .lbl,#armour-row .lbl{font-size:11px;font-weight:700;letter-spacing:1px}
+.bar{width:130px;height:10px;background:rgba(255,255,255,.18);border-radius:5px;overflow:hidden}
+.bar>i{display:block;height:100%}
+#health-fill{background:linear-gradient(90deg,#37d67a,#7cff6b)}
+#armour-fill{background:linear-gradient(90deg,#2e9bff,#7cd4ff)}
+#speed{font-size:30px;font-weight:800;margin-top:4px}
+#speed small{font-size:13px;font-weight:600;color:#cfd6e4}
+#weapon{font-size:13px;color:#ffe9a8;font-weight:700}
+#objective{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:9px 18px;max-width:640px;text-align:center;font-size:15px;font-weight:700;line-height:1.35}
+#objective .job{color:#ffd24d}
+#objective .timer{color:#ff8a7a}
+#log{position:absolute;left:14px;top:12px;width:330px;padding:8px 10px;font-size:12.5px;line-height:1.5}
+#log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#log .fresh{color:#ffe9a8}
+#radio{position:absolute;right:14px;bottom:14px;padding:8px 12px;font-size:13px;font-weight:700;text-align:right}
+#radio small{display:block;font-size:11px;color:#cfd6e4;font-weight:600}
+#clock{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:7px 14px;font-size:13px;font-weight:700}
+#banner{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);text-align:center;padding:18px 34px;display:none}
+#banner h1{margin:0;font-size:44px;letter-spacing:3px;color:#ffd24d;text-shadow:0 3px 12px rgba(0,0,0,.7)}
+#banner p{margin:6px 0 0;font-size:18px;font-weight:700}
+#dialogue{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);max-width:620px;padding:10px 16px;font-size:14px;line-height:1.5;display:none}
+#dialogue b{color:#ffd24d}
+#screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;pointer-events:auto;z-index:10;background:linear-gradient(180deg,rgba(20,8,40,.25),rgba(20,8,40,.72));color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#screen h1{font-size:64px;margin:0;letter-spacing:4px;color:#ffd24d;text-shadow:0 4px 24px rgba(255,94,122,.8)}
+#screen h2{font-size:22px;margin:8px 0 4px;color:#fff;font-weight:600}
+#screen p{max-width:640px;font-size:15px;line-height:1.6;color:#f2e9ff;margin:8px 0}
+#screen .controls{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:14px;text-align:left;background:rgba(10,10,22,.6);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:14px 20px;margin-top:10px}
+#screen .controls b{color:#ffd24d}
+#screen button{pointer-events:auto;margin-top:18px;font-size:19px;font-weight:800;padding:13px 34px;border-radius:12px;border:none;background:#ffd24d;color:#241505;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+#screen .tiny{font-size:12px;color:#cfd6e4;margin-top:12px}
+#damage{position:fixed;inset:0;pointer-events:none;z-index:6;box-shadow:inset 0 0 90px 30px rgba(255,30,30,0);transition:box-shadow .18s}
+`;
 
 export function createHud() {
-  const root = document.getElementById('hud');
-  root.innerHTML = `
-    <div id="hud-top-left">
-      <canvas id="minimap" width="190" height="190"></canvas>
-      <div id="wanted"></div>
-    </div>
-    <div id="hud-top-right">
+  const style = document.createElement('style');
+  style.textContent = CSS;
+  document.head.appendChild(style);
+
+  const hud = document.createElement('div');
+  hud.id = 'hud';
+  hud.innerHTML = `
+    <div id="log" class="panel"></div>
+    <div id="objective" class="panel"><span class="job">LUMEN BAY</span><br><span id="objective-text">Press M to start Job 1</span></div>
+    <div id="stats" class="panel">
+      <div id="stars">☆☆☆☆☆</div>
       <div id="cash">$0</div>
-      <div id="clock">${GOLDEN_HOUR} · GOLDEN HOUR</div>
-      <div id="radio">LUMEN FM 88.4 — Sunset Synth</div>
+      <div id="health-row"><span class="lbl">HP</span><div class="bar"><i id="health-fill"></i></div></div>
+      <div id="armour-row"><span class="lbl">ARMOUR</span><div class="bar"><i id="armour-fill"></i></div></div>
+      <div id="speed">0 <small>km/h</small></div>
+      <div id="weapon">PISTOL ∞</div>
     </div>
-    <div id="objective"></div>
-    <div id="hud-bottom-left">
-      <div class="bar-row"><span class="bar-label">HEALTH</span><div class="bar"><div id="health-fill"></div></div></div>
-      <div class="bar-row"><span class="bar-label">ARMOUR</span><div class="bar"><div id="armour-fill"></div></div></div>
-      <div id="weapon">PISTOL · ∞</div>
-    </div>
-    <div id="hud-bottom-right">
-      <div id="speed">0</div>
-      <div id="speed-unit">km/h</div>
-    </div>
-    <div id="event-log"></div>
-    <div id="banner"></div>
-    <div id="damage-layer"></div>
-    <div id="title-screen">
+    <div id="minimap-wrap" class="panel"><canvas id="minimap" width="190" height="190"></canvas></div>
+    <div id="radio" class="panel"><span id="radio-name">SUNSET FM 88.5</span><small>Press R to change station</small></div>
+    <div id="clock" class="panel">🌇 18:40 GOLDEN HOUR &nbsp;•&nbsp; PUERTO LUMEN</div>
+    <div id="banner" class="panel"><h1 id="banner-title">JOB DONE</h1><p id="banner-sub"></p></div>
+    <div id="dialogue" class="panel"></div>`;
+  document.body.appendChild(hud);
+  const damage = document.createElement('div');
+  damage.id = 'damage';
+  document.body.appendChild(damage);
+  const screen = document.createElement('div');
+  screen.id = 'screen';
+  document.body.appendChild(screen);
+
+  const el = (id) => document.getElementById(id);
+  const minimap = el('minimap');
+  const mctx = minimap.getContext('2d');
+  const logLines = [];
+  let lastDamageAt = 0;
+
+  function pushLog(text, fresh) {
+    logLines.unshift({ text, fresh: !!fresh, at: performance.now() });
+    if (logLines.length > 6) logLines.pop();
+    el('log').innerHTML = logLines.map((l) =>
+      `<div class="${l.fresh ? 'fresh' : ''}">${escapeHtml(l.text)}</div>`).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // The minimap: dark sea around the island, sand edge, road grid, landmark
+  // dots, the gold mission marker, blue police blips, the helicopter icon,
+  // and the white player arrow rotated to the heading.
+  function drawMinimap(s) {
+    const W = 190, H = 190;
+    const toMap = (x, z) => [W / 2 + (x / 260) * (W / 2 - 6), H / 2 + (z / 260) * (H / 2 - 6)];
+    mctx.clearRect(0, 0, W, H);
+    mctx.fillStyle = '#0f4a6b'; mctx.fillRect(0, 0, W, H);
+    mctx.fillStyle = '#8a7f68';
+    const [ix, iy] = toMap(-260, -260);
+    mctx.fillRect(ix, iy, W - 2 * ix, H - 2 * iy);
+    mctx.fillStyle = '#e8c98a';
+    mctx.fillRect(ix, iy, 4, H - 2 * iy);
+    mctx.fillRect(ix, iy, W - 2 * ix, 4);
+    mctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    mctx.lineWidth = 1;
+    for (const r of [-208, -156, -104, -52, 0, 52, 104, 156, 208]) {
+      const [ax] = toMap(r, 0); const [, by] = toMap(0, r);
+      mctx.beginPath(); mctx.moveTo(ax, 4); mctx.lineTo(ax, H - 4); mctx.stroke();
+      mctx.beginPath(); mctx.moveTo(4, by); mctx.lineTo(W - 4, by); mctx.stroke();
+    }
+    // Landmarks.
+    mctx.fillStyle = '#ffd24d';
+    for (const lm of s.landmarks || []) {
+      const [lx, ly] = toMap(lm.x, lm.z);
+      mctx.beginPath(); mctx.arc(lx, ly, 2.5, 0, Math.PI * 2); mctx.fill();
+    }
+    // Mission marker: pulsing gold diamond.
+    if (s.missionTarget) {
+      const [mx, my] = toMap(s.missionTarget.x, s.missionTarget.z);
+      const pulse = 5 + Math.sin(performance.now() / 280) * 2;
+      mctx.fillStyle = '#ffd24d';
+      mctx.beginPath();
+      mctx.moveTo(mx, my - pulse); mctx.lineTo(mx + pulse, my);
+      mctx.lineTo(mx, my + pulse); mctx.lineTo(mx - pulse, my);
+      mctx.closePath(); mctx.fill();
+      mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.stroke();
+    }
+    // Police blips.
+    mctx.fillStyle = '#4dc3ff';
+    for (const p of s.police || []) {
+      const [px, py] = toMap(p.x, p.z);
+      mctx.beginPath(); mctx.arc(px, py, 3, 0, Math.PI * 2); mctx.fill();
+    }
+    // Helicopter icon.
+    if (s.heli) {
+      const [hx, hy] = toMap(s.heli.x, s.heli.z);
+      mctx.fillStyle = '#ff5e7a';
+      mctx.font = 'bold 13px system-ui';
+      mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+      mctx.fillText('H', hx, hy);
+    }
+    // Player arrow.
+    const [px, py] = toMap(s.px, s.pz);
+    mctx.save();
+    mctx.translate(px, py);
+    mctx.rotate(Math.atan2(Math.sin(s.heading), Math.cos(s.heading)) + Math.PI);
+    mctx.fillStyle = '#fff';
+    mctx.beginPath(); mctx.moveTo(0, -7); mctx.lineTo(5, 6); mctx.lineTo(-5, 6); mctx.closePath(); mctx.fill();
+    mctx.strokeStyle = '#111'; mctx.lineWidth = 1; mctx.stroke();
+    mctx.restore();
+  }
+
+  function update(s) {
+    el('stars').textContent = starsText(s.wanted);
+    el('cash').textContent = cashText(s.cash);
+    el('health-fill').style.width = `${Math.max(0, Math.min(100, s.health))}%`;
+    el('armour-fill').style.width = `${Math.max(0, Math.min(100, s.armour))}%`;
+    el('speed').innerHTML = `${Math.round(Math.abs(s.speed) * 3.6)} <small>km/h</small>`;
+    el('weapon').textContent = s.weapon === 'smg'
+      ? `SMG ${s.smgAmmo} • press 1 for pistol`
+      : `PISTOL ∞ • press 2 for SMG`;
+    el('objective-text').textContent = s.objective;
+    el('radio-name').textContent = s.radio;
+    if (s.banner) {
+      el('banner').style.display = 'block';
+      el('banner-title').textContent = s.banner.title;
+      el('banner-sub').textContent = s.banner.sub;
+    } else {
+      el('banner').style.display = 'none';
+    }
+    if (s.dialogue) {
+      el('dialogue').style.display = 'block';
+      el('dialogue').innerHTML = s.dialogue.map(([who, line]) =>
+        `<div><b>${escapeHtml(who)}:</b> ${escapeHtml(line)}</div>`).join('');
+    } else {
+      el('dialogue').style.display = 'none';
+    }
+    if (s.damagedAt && s.damagedAt !== lastDamageAt) {
+      lastDamageAt = s.damagedAt;
+      damage.style.boxShadow = 'inset 0 0 90px 30px rgba(255,30,30,0.55)';
+      window.setTimeout(() => { damage.style.boxShadow = 'inset 0 0 90px 30px rgba(255,30,30,0)'; }, 220);
+    }
+    drawMinimap(s);
+  }
+
+  function showTitle(save, onStart) {
+    const hasSave = save && save.cash !== undefined;
+    screen.style.display = 'flex';
+    screen.innerHTML = `
       <h1>LUMEN BAY</h1>
-      <h2>Sunset Getaway</h2>
-      <p class="tagline">12 story missions in Puerto Lumen — steal cars, outrun 5-star police, escape the helicopter.</p>
-      <p class="crew">Mara Solis · Tio Reyes · Lena Cruz · Big Dario</p>
-      <div id="title-buttons"></div>
-      <p class="controls">WASD move / drive · Mouse look &amp; click to shoot · E enter car · Shift sprint · Space handbrake · 1/2 weapons · M start job · R radio · Esc pause</p>
-    </div>
-    <div id="pause-screen"><h2>PAUSED</h2><p>Esc to resume · M for the next job · R to change radio</p></div>
-    <div id="end-screen"></div>`;
-  const hud = {
-    root,
-    minimap: document.getElementById('minimap'),
-    wantedEl: document.getElementById('wanted'),
-    cashEl: document.getElementById('cash'),
-    radioEl: document.getElementById('radio'),
-    objectiveEl: document.getElementById('objective'),
-    healthFill: document.getElementById('health-fill'),
-    armourFill: document.getElementById('armour-fill'),
-    weaponEl: document.getElementById('weapon'),
-    speedEl: document.getElementById('speed'),
-    logEl: document.getElementById('event-log'),
-    bannerEl: document.getElementById('banner'),
-    damageLayer: document.getElementById('damage-layer'),
-    titleScreen: document.getElementById('title-screen'),
-    titleButtons: document.getElementById('title-buttons'),
-    pauseScreen: document.getElementById('pause-screen'),
-    endScreen: document.getElementById('end-screen'),
-    logLines: [],
-  };
-  return hud;
-}
-
-export function setWanted(hud, stars) {
-  let html = '';
-  for (let i = 0; i < 5; i += 1) html += `<span class="star ${i < stars ? 'on' : ''}">★</span>`;
-  hud.wantedEl.innerHTML = html;
-}
-
-export function setVitals(hud, health, armour) {
-  hud.healthFill.style.width = `${Math.max(0, Math.min(100, health))}%`;
-  hud.armourFill.style.width = `${Math.max(0, Math.min(100, armour))}%`;
-}
-
-export function setCash(hud, cash) {
-  hud.cashEl.textContent = `$${Math.floor(cash).toLocaleString('en-US')}`;
-}
-
-export function setSpeed(hud, kmh) {
-  hud.speedEl.textContent = String(Math.round(kmh));
-}
-
-export function setWeapon(hud, name, ammo) {
-  hud.weaponEl.textContent = `${name.toUpperCase()} · ${ammo}`;
-}
-
-export function setRadio(hud, name) {
-  hud.radioEl.textContent = name;
-}
-
-export function setObjective(hud, text) {
-  if (hud.objectiveEl.textContent !== text) hud.objectiveEl.textContent = text;
-}
-
-export function logEvent(hud, message) {
-  hud.logLines.push(message);
-  if (hud.logLines.length > 6) hud.logLines.shift();
-  hud.logEl.innerHTML = hud.logLines.map((l) => `<div>${l}</div>`).join('');
-}
-
-// Big centre banner (job done, busted, wasted, mission start).
-export function showBanner(hud, title, sub, ms) {
-  hud.bannerEl.innerHTML = `<div class="banner-title">${title}</div><div class="banner-sub">${sub || ''}</div>`;
-  hud.bannerEl.classList.add('show');
-  window.clearTimeout(hud._bannerTimer);
-  hud._bannerTimer = window.setTimeout(() => hud.bannerEl.classList.remove('show'), ms || 2600);
-}
-
-export function hideBanner(hud) {
-  hud.bannerEl.classList.remove('show');
-}
-
-// Floating damage numbers over the 3D hit point, projected to screen space.
-export function damageNumber(hud, screenX, screenY, text, color) {
-  const el = document.createElement('div');
-  el.className = 'damage-number';
-  el.textContent = text;
-  el.style.left = `${screenX}px`;
-  el.style.top = `${screenY}px`;
-  el.style.color = color || '#ffd27a';
-  hud.damageLayer.appendChild(el);
-  window.setTimeout(() => el.remove(), 900);
-}
-
-// Minimap: roads, beach, landmarks, player arrow, mission marker, police blips,
-// helicopter icon, traffic dots. North is up; the island is 480x480.
-export function drawMinimap(hud, state) {
-  const canvas = hud.minimap;
-  const ctx = canvas.getContext('2d');
-  const size = canvas.width;
-  const scale = size / 520;
-  const toMap = (x, z) => [(x + 260) * scale, (z + 260) * scale];
-  ctx.clearRect(0, 0, size, size);
-  ctx.fillStyle = '#1e6f8e';
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#7fae6e';
-  const [gx, gy] = toMap(-240, -240);
-  ctx.fillRect(gx, gy, 480 * scale, 480 * scale);
-  ctx.fillStyle = '#e8c98a';
-  ctx.fillRect(gx, gy + 380 * scale, 480 * scale, 100 * scale);
-  ctx.strokeStyle = '#3a3a44';
-  ctx.lineWidth = 5;
-  for (const line of STREET_LINES) {
-    const [ax] = toMap(line, 0);
-    ctx.beginPath(); ctx.moveTo(ax, 0); ctx.lineTo(ax, size); ctx.stroke();
-    const [, ay] = toMap(0, line);
-    ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(size, ay); ctx.stroke();
+      <h2>Sunset Getaway — 12 story missions in Puerto Lumen</h2>
+      <p>Mara Solis, getaway driver. Steal cars, outrun 5-star police, escape the
+      helicopter — and pull off the last sunset heist on the island. A complete
+      open-world crime game: traffic, pedestrians, shootouts, radio, and a crew
+      that talks back.</p>
+      <div class="controls">
+        <b>W A S D</b><span>Move / drive</span>
+        <b>Mouse</b><span>Orbit camera — click to shoot</span>
+        <b>Shift</b><span>Sprint</span>
+        <b>E</b><span>Steal / enter car</span>
+        <b>Space</b><span>Handbrake</span>
+        <b>1 / 2</b><span>Pistol / SMG</span>
+        <b>M</b><span>Start / advance mission</span>
+        <b>R</b><span>Radio station</span>
+        <b>Esc</b><span>Pause</span>
+      </div>
+      <button id="start-btn">${hasSave ? 'CONTINUE — $' + Math.floor(save.cash).toLocaleString('en-US') + ' saved' : 'NEW GAME — START THE NIGHT'}</button>
+      <div class="tiny">An original game. Puerto Lumen, Mara Solis and the crew are fictional — no real city, person or game is depicted. • make.fun bounty gta6-01</div>`;
+    el('start-btn').addEventListener('click', () => {
+      screen.style.display = 'none';
+      onStart();
+    });
   }
-  // Landmark dots.
-  ctx.fillStyle = '#ffd27a';
-  for (const lm of Object.values(LANDMARKS)) {
-    const [lx, ly] = toMap(lm.x, lm.z);
-    ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fill();
-  }
-  // Mission marker: pulsing gold diamond.
-  if (state.missionTarget) {
-    const [mx, my] = toMap(state.missionTarget.x, state.missionTarget.z);
-    const pulse = 5 + Math.sin(state.time * 4) * 2;
-    ctx.fillStyle = '#ffd27a';
-    ctx.save();
-    ctx.translate(mx, my);
-    ctx.rotate(Math.PI / 4);
-    ctx.fillRect(-pulse / 2, -pulse / 2, pulse, pulse);
-    ctx.restore();
-  }
-  // Traffic dots.
-  ctx.fillStyle = '#ffffff';
-  for (const car of state.traffic || []) {
-    const [tx, ty] = toMap(car.x, car.z);
-    ctx.fillRect(tx - 1.5, ty - 1.5, 3, 3);
-  }
-  // Police blips: flashing blue/red.
-  ctx.fillStyle = Math.floor(state.time * 4) % 2 === 0 ? '#2244ff' : '#ff2222';
-  for (const car of state.policeCars || []) {
-    const [px, py] = toMap(car.x, car.z);
-    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
-  }
-  // Helicopter icon.
-  if (state.heliActive) {
-    const [hx, hy] = toMap(state.playerX, state.playerZ);
-    ctx.fillStyle = '#ff2222';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('H', hx + 8, hy - 8);
-  }
-  // Player arrow, rotated by heading.
-  const [px, py] = toMap(state.playerX, state.playerZ);
-  ctx.save();
-  ctx.translate(px, py);
-  ctx.rotate(state.playerYaw || 0);
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#111111';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(0, -8); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath();
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
-}
 
-// Title screen buttons: Continue (when a save exists) and New Game.
-export function showTitle(hud, hasSave, onContinue, onNew) {
-  hud.titleScreen.style.display = 'block';
-  hud.pauseScreen.style.display = 'none';
-  hud.endScreen.style.display = 'none';
-  hud.titleButtons.innerHTML = '';
-  const mkButton = (label, fn) => {
-    const button = document.createElement('button');
-    button.className = 'title-button';
-    button.textContent = label;
-    button.addEventListener('click', fn);
-    hud.titleButtons.appendChild(button);
-  };
-  if (hasSave) mkButton('CONTINUE', onContinue);
-  mkButton(hasSave ? 'NEW GAME' : 'START GAME', onNew);
-}
+  function showPause(missionList, onResume) {
+    screen.style.display = 'flex';
+    screen.innerHTML = `
+      <h1 style="font-size:44px">PAUSED</h1>
+      <h2>Puerto Lumen waits for no one — except now</h2>
+      <p style="white-space:pre-line;text-align:left;font-size:13.5px">${escapeHtml(missionList)}</p>
+      <button id="resume-btn">RESUME</button>`;
+    el('resume-btn').addEventListener('click', () => {
+      screen.style.display = 'none';
+      onResume();
+    });
+  }
 
-export function hideTitle(hud) {
-  hud.titleScreen.style.display = 'none';
-}
+  function showEnd(title, sub, onRestart) {
+    screen.style.display = 'flex';
+    screen.innerHTML = `
+      <h1 style="font-size:48px">${escapeHtml(title)}</h1>
+      <h2>${escapeHtml(sub)}</h2>
+      <p>Mara dusts herself off at the safehouse. The sunset is still there. So is the next job.</p>
+      <button id="restart-btn">BACK TO THE STREETS</button>`;
+    el('restart-btn').addEventListener('click', () => {
+      screen.style.display = 'none';
+      onRestart();
+    });
+  }
 
-export function showPause(hud, paused) {
-  hud.pauseScreen.style.display = paused ? 'block' : 'none';
-}
+  // A one-line toast above the log, used for pickups and small events that do
+  // not deserve a full log line. Kept separate so the log stays mission-focused.
+  function toast(text) {
+    pushLog(text, true);
+  }
 
-export function showEnd(hud, title, sub) {
-  hud.endScreen.innerHTML = `<h2>${title}</h2><p>${sub}</p><p>Press Enter to respawn at the safehouse.</p>`;
-  hud.endScreen.style.display = 'block';
-}
+  function hideScreen() { screen.style.display = 'none'; }
 
-export function hideEnd(hud) {
-  hud.endScreen.style.display = 'none';
+  return { update, pushLog, toast, showTitle, showPause, showEnd, hideScreen };
 }

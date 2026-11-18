@@ -1,93 +1,132 @@
-// LUMEN BAY — screenshot scenes behind ?shot=1..4.
-// Each shot plays the real game forward from a fresh world with a fixed
-// autopilot, so the frame is what genuine play looks like and the same seed
-// always gives the same frame. The main loop paints twice, then sets
-// window.__shotReady so the screenshot tool knows the scene is ready.
+// The four staged screenshot scenes behind ?shot=1..4. Each one puts the real
+// game into a real state — a live mission, live wanted level, live traffic and
+// police — then lets the normal loop run a few steps so the frame is what a
+// short session really looks like. The same seed always gives the same frame.
 //
-//   shot 1 — high-speed chase: Mara in the Comet GT, 3 stars, police cruisers
-//            behind and the helicopter overhead, full HUD.
-//   shot 2 — on-foot shootout at Torre Lumen: cordon police, muzzle flash.
-//   shot 3 — mission pickup at the marina: Mara by the Comet GT, crates, docks.
-//   shot 4 — job done at the beach: banner, cash reward, sunset over Playa Dorada.
-import { COMET_GT, LANDMARKS } from './config.js';
+//   shot 1 — high-speed chase: Mara in the Comet GT on the coast road, 3 stars,
+//            two cruisers on her tail, the helicopter overhead (the COVER).
+//   shot 2 — on-foot shootout at Torre Lumen: cordon officers, tracer fire.
+//   shot 3 — mission pickup at the marina: Mara beside the Comet GT, beacon on.
+//   shot 4 — job done at Playa Dorada: JOB DONE banner, beach sunset, car.
+//
+// The staging never invents pixels: every car, officer and the helicopter are
+// the game's own actors, placed by the same functions the live game uses.
 
-const SAMPLE = 1 / 60;
+import { LANDMARKS } from './config.js';
+import { spawnPoliceCar } from './vehicles.js';
 
-function placeInCar(game, x, z, yaw, speed) {
-  game.enterCar(game.cometCar);
-  game.playerCar.x = x;
-  game.playerCar.z = z;
-  game.playerCar.yaw = yaw;
-  game.playerCar.speed = speed;
-  game.player.x = x;
-  game.player.z = z;
+function placePlayerOnFoot(G, x, z, heading) {
+  const p = G.player;
+  if (p.inCar) { p.inCar = null; p.mesh.visible = true; }
+  p.x = x; p.z = z; p.heading = heading; p.speed = 0;
+  p.mesh.position.set(x, 0, z);
+  p.mesh.rotation.y = heading;
 }
 
-function driveForward(game, seconds, steer) {
-  const steps = Math.floor(seconds / SAMPLE);
-  for (let i = 0; i < steps; i += 1) {
-    game.simulateInput({ forward: true, back: false, left: steer < 0, right: steer > 0, sprint: false, handbrake: false });
-    game.stepFixed(SAMPLE);
-  }
+function placePlayerInCar(G, car, x, z, heading, speed) {
+  const p = G.player;
+  car.x = x; car.z = z; car.heading = heading; car.speed = speed;
+  car.mesh.position.set(x, 0, z);
+  car.mesh.rotation.y = heading;
+  p.inCar = car;
+  p.x = x; p.z = z; p.heading = heading; p.speed = speed;
+  p.mesh.visible = false;
 }
 
-function walkForward(game, seconds) {
-  const steps = Math.floor(seconds / SAMPLE);
-  for (let i = 0; i < steps; i += 1) {
-    game.simulateInput({ forward: true, back: false, left: false, right: false, sprint: true, handbrake: false });
-    game.stepFixed(SAMPLE);
-  }
-}
+export function stageShot(G, name, helpers) {
+  const { emit, scene } = helpers;
+  const p = G.player;
+  G.wanted = 0;
+  G.lastCrimeAt = G.time;
 
-// Stage the named shot (1..4) on a live game object and return the screen
-// the main loop should paint over it.
-export function stageShot(number, game) {
-  game.startPlay({ silent: true });
-  if (number === 1) {
-    // Chase down the coast road: 3 stars, heli up, cruisers in pursuit.
-    game.setWanted(3);
-    placeInCar(game, -180, -40, 0, 34);
-    game.startMissionByIndex(8);
-    driveForward(game, 2.2, 0);
-    game.fireWeaponAt(game.nearestPoliceCar());
-    return 'play';
+  if (name === '1' || name === 'chase') {
+    // Coast-road chase, heading north up the beach road, sun low ahead.
+    placePlayerInCar(G, G.heroCar, -208, 60, Math.PI, 34);
+    G.heroStolen = true;
+    // Mission 1 is live at its drive stage: the objective banner reads as a
+    // real job, not a staged caption.
+    G.missions.active = true;
+    G.missions.stage = 2;
+    G.missions.index = 0;
+    G.missions.dialogue = null;
+    G.wanted = 3;
+    G.lastCrimeAt = G.time;
+    // Helicopter ahead of Mara, in frame, spotlight sweeping the road.
+    G.heli.angle = -Math.PI / 2;
+    // Two cruisers ahead on the road, closing head-on — the chase reads in
+    // one frame because the pursuit is in front of the camera, not behind it.
+    const c1 = spawnPoliceCar(scene, -204, 8);
+    c1.heading = 0; c1.speed = 30;
+    const c2 = spawnPoliceCar(scene, -212, 28);
+    c2.heading = 0; c2.speed = 29;
+    G.police.cars.push(c1, c2);
+    G.police.spawnTimer = 5;
+    helpers.rigYaw(Math.PI);
+    return;
   }
-  if (number === 2) {
-    // Shootout at the tower: Mara on foot south of it, camera behind her looking north.
-    game.player.x = LANDMARKS.tower.x;
-    game.player.z = LANDMARKS.tower.z + 30;
-    game.player.yaw = Math.PI;
-    game.camYaw = Math.PI;
-    game.spawnCordon(LANDMARKS.tower.x, LANDMARKS.tower.z, 4);
-    game.setWanted(2);
-    game.startMissionByIndex(5);
-    game.missions.step = 1;
-    game.setShotTarget(LANDMARKS.tower.x, LANDMARKS.tower.z, 'Break the cordon — take down the police');
-    game.fireWeaponAt(game.enemies[0] ? { x: game.enemies[0].x, y: 1.2, z: game.enemies[0].z } : null);
-    walkForward(game, 0.6);
-    return 'play';
+
+  if (name === '2' || name === 'shootout') {
+    // Mercado Viejo — the real Informant location: Mara on foot south-east
+    // of the market square, cordon officers among the stalls, camera looking
+    // north-west across the plaza so the officers and the stalls are in frame.
+    placePlayerOnFoot(G, LANDMARKS.mercado.x + 16, LANDMARKS.mercado.z + 20, 0);
+    G.missions.index = 5; // The Informant
+    G.missions.active = true;
+    G.missions.stage = 1; // shoot stage
+    G.missions.killsLeft = 3;
+    G.missions.dialogue = [
+      ['BIG DARIO', 'Mara! Get these cops off me and I owe you a lifetime of tacos.'],
+    ];
+    G.dialogue = G.missions.dialogue;
+    G.dialogueUntil = G.time + 30;
+    G.wanted = 2;
+    G.lastCrimeAt = G.time;
+    emit('cordon', { x: LANDMARKS.mercado.x, z: LANDMARKS.mercado.z, count: 3 });
+    // Face the nearest officer and fire once, so the frame has a tracer and
+    // a muzzle flash in it.
+    const o = G.cordon.find((c) => c.alive);
+    if (o) {
+      p.heading = Math.atan2(o.x - p.x, o.z - p.z);
+      p.mesh.rotation.y = p.heading;
+      G.shotFire = true;
+    }
+    helpers.rigYaw(Math.PI * 1.25);
+    return;
   }
-  if (number === 3) {
-    // Marina pickup: Mara beside the Comet GT at the docks, crate in view.
-    game.player.x = COMET_GT.x + 6;
-    game.player.z = COMET_GT.z + 8;
-    game.player.yaw = Math.atan2(COMET_GT.x - game.player.x, COMET_GT.z - game.player.z);
-    game.camYaw = game.player.yaw;
-    game.startMissionByIndex(3);
-    game.missions.active = true;
-    game.missions.step = 0;
-    game.missions.timer = 0;
-    walkForward(game, 0.25);
-    return 'play';
+
+  if (name === '3' || name === 'job') {
+    // Marina pickup: Mara on foot south of the crate stack, Comet GT just
+    // north-east of her, camera south-west looking north-east so Mara, the
+    // car, the beacon and the docks all read in one frame.
+    placePlayerOnFoot(G, LANDMARKS.marina.x + 10, LANDMARKS.marina.z + 16, Math.PI + 0.32);
+    // Stage the hero car clear of the crate stack so it reads in the frame.
+    G.heroCar.x = -164; G.heroCar.z = -168; G.heroCar.heading = Math.PI / 2;
+    G.heroCar.mesh.position.set(-164, 0, -168);
+    G.heroCar.mesh.rotation.y = Math.PI / 2;
+    G.missions.index = 0;
+    G.missions.active = true;
+    G.missions.stage = 0;
+    G.missions.dialogue = [
+      ['TIO REYES', 'Mara. The Comet GT is sitting at Marina Lumen, keys in it. Take it.'],
+    ];
+    G.dialogue = G.missions.dialogue;
+    G.dialogueUntil = G.time + 30;
+    G.wanted = 0;
+    helpers.rigYaw(Math.PI * 1.05);
+    return;
   }
-  // Shot 4 — job done at the beach: the banner and the reward over the sunset.
-  game.player.x = LANDMARKS.beach.x + 15;
-  game.player.z = LANDMARKS.beach.z + 5;
-  game.player.yaw = -2.4;
-  game.camYaw = -2.4;
-  game.setWanted(0);
-  game.cash += 1300;
-  game.showJobDone(9, 'Beach Run', 1300);
-  walkForward(game, 0.3);
-  return 'play';
+
+  // Shot 4 (default): job done at the beach.
+  placePlayerInCar(G, G.heroCar, -232, 30, Math.PI, 0);
+  G.heroStolen = true;
+  G.missions.done = [1];
+  G.missions.index = 1;
+  G.missions.active = false;
+  G.missions.stage = 0;
+  G.missions.banner = { title: 'JOB DONE', sub: 'First Keys — +$500', cash: 500 };
+  G.missions.bannerAt = 0;
+  G.cash = 750;
+  G.wanted = 0;
+  G.dialogue = null;
+  helpers.rigYaw(Math.PI * 1.5);
 }

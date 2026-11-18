@@ -1,109 +1,99 @@
-// LUMEN BAY — keyboard and mouse input.
-// WASD move/drive, mouse orbit + click to shoot, E enter/steal, Shift sprint,
-// Space handbrake, 1/2 weapons, M start job, R radio, Esc pause, Enter confirm.
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
-export const ACTION_MISSION = 4;
-export const ACTION_RADIO = 8;
-export const ACTION_ENTER = 16;
+// Input for LUMEN BAY: keyboard state, one-shot action flags, mouse orbit
+// and click-to-shoot. Held keys are read every frame; presses that must fire
+// exactly once (mission start, enter car, pause, weapon switch, radio) are
+// queued as bit flags and taken once by the loop, so a press between two
+// frames is never lost and never counted twice. A key released while the tab
+// is hidden never sends keyup, so blur clears everything held.
+
+export const ACTION_MISSION = 1;
+export const ACTION_ENTER = 2;
+export const ACTION_PAUSE = 4;
+export const ACTION_WEAPON1 = 8;
+export const ACTION_WEAPON2 = 16;
+export const ACTION_RADIO = 32;
+export const ACTION_CONFIRM = 64;
+
+const KEYMAP = {
+  KeyW: 'forward', ArrowUp: 'forward',
+  KeyS: 'back', ArrowDown: 'back',
+  KeyA: 'left', ArrowLeft: 'left',
+  KeyD: 'right', ArrowRight: 'right',
+  ShiftLeft: 'sprint', ShiftRight: 'sprint',
+  Space: 'handbrake',
+};
 
 export function createInput(canvas) {
-  const input = {
-    keys: new Set(),
-    mouseDX: 0,
-    mouseDY: 0,
-    mouseDown: false,
-    clicked: false,
-    actions: 0,
-    pointerLocked: false,
-  };
+  const held = new Set();
+  let actions = 0;
+  let mouseDown = false;
+  let mouseMoved = { x: 0, y: 0 };
+  let clicked = false;
 
   window.addEventListener('keydown', (event) => {
     if (event.repeat) return;
-    input.keys.add(event.code);
-    if (event.code === 'Enter' || event.code === 'Space') input.actions |= ACTION_CONFIRM;
-    if (event.code === 'Escape') input.actions |= ACTION_PAUSE;
-    if (event.code === 'KeyM') input.actions |= ACTION_MISSION;
-    if (event.code === 'KeyR') input.actions |= ACTION_RADIO;
-    if (event.code === 'KeyE') input.actions |= ACTION_ENTER;
-    if (event.code === 'Space') event.preventDefault();
+    const name = KEYMAP[event.code];
+    if (name) { held.add(name); event.preventDefault(); return; }
+    if (event.code === 'KeyM') actions |= ACTION_MISSION;
+    else if (event.code === 'KeyE') actions |= ACTION_ENTER;
+    else if (event.code === 'Escape' || event.code === 'KeyP') actions |= ACTION_PAUSE;
+    else if (event.code === 'Digit1') actions |= ACTION_WEAPON1;
+    else if (event.code === 'Digit2') actions |= ACTION_WEAPON2;
+    else if (event.code === 'KeyR') actions |= ACTION_RADIO;
+    else if (event.code === 'Enter' || event.code === 'Space') actions |= ACTION_CONFIRM;
+    else return;
+    event.preventDefault();
   });
   window.addEventListener('keyup', (event) => {
-    input.keys.delete(event.code);
+    const name = KEYMAP[event.code];
+    if (name) held.delete(name);
   });
-  window.addEventListener('blur', () => {
-    input.keys.clear();
-    input.mouseDown = false;
-  });
-  canvas.addEventListener('mousedown', (event) => {
-    if (event.button === 0) {
-      input.mouseDown = true;
-      input.clicked = true;
-      if (!input.pointerLocked && document.pointerLockElement !== canvas) {
-        canvas.requestPointerLock?.();
-      }
+  window.addEventListener('blur', () => { held.clear(); mouseDown = false; });
+
+  canvas.addEventListener('pointerdown', (event) => {
+    mouseDown = true;
+    clicked = true;
+    if (canvas.requestPointerLock) {
+      try { canvas.requestPointerLock(); } catch { /* pointer lock is optional */ }
     }
+    event.preventDefault();
   });
-  window.addEventListener('mouseup', (event) => {
-    if (event.button === 0) input.mouseDown = false;
+  window.addEventListener('pointerup', () => { mouseDown = false; });
+  window.addEventListener('pointermove', (event) => {
+    if (!mouseDown) return;
+    mouseMoved.x += event.movementX || 0;
+    mouseMoved.y += event.movementY || 0;
   });
   document.addEventListener('pointerlockchange', () => {
-    input.pointerLocked = document.pointerLockElement === canvas;
+    if (document.pointerLockElement !== canvas) mouseDown = false;
   });
-  document.addEventListener('mousemove', (event) => {
-    if (input.pointerLocked) {
-      input.mouseDX += event.movementX || 0;
-      input.mouseDY += event.movementY || 0;
-    }
-  });
-  return input;
-}
 
-// Read the current movement state, normalised for the frame.
-export function readMove(input) {
-  const keys = input.keys;
   return {
-    forward: keys.has('KeyW') || keys.has('ArrowUp'),
-    back: keys.has('KeyS') || keys.has('ArrowDown'),
-    left: keys.has('KeyA') || keys.has('ArrowLeft'),
-    right: keys.has('KeyD') || keys.has('ArrowRight'),
-    sprint: keys.has('ShiftLeft') || keys.has('ShiftRight'),
-    handbrake: keys.has('Space'),
+    held(name) { return held.has(name); },
+    // WASD as a -1..1 pair, already combined (both keys = 0).
+    move() {
+      return {
+        x: (held.has('right') ? 1 : 0) - (held.has('left') ? 1 : 0),
+        y: (held.has('forward') ? 1 : 0) - (held.has('back') ? 1 : 0),
+      };
+    },
+    sprint() { return held.has('sprint'); },
+    handbrake() { return held.has('handbrake'); },
+    firing() { return mouseDown; },
+    // One-shot click since the last take (used for the title-screen start and
+    // for firing a single shot on a click in menus).
+    takeClick() { const c = clicked; clicked = false; return c; },
+    takeOrbit() { const m = mouseMoved; mouseMoved = { x: 0, y: 0 }; return m; },
+    takeActions() { const a = actions; actions = 0; return a; },
+    // For probes: pretend a key was pressed (dispatches the same flags).
+    press(code) {
+      if (code === 'KeyM') actions |= ACTION_MISSION;
+      else if (code === 'KeyE') actions |= ACTION_ENTER;
+      else if (code === 'Escape') actions |= ACTION_PAUSE;
+      else if (code === 'Digit1') actions |= ACTION_WEAPON1;
+      else if (code === 'Digit2') actions |= ACTION_WEAPON2;
+      else if (code === 'KeyR') actions |= ACTION_RADIO;
+      else if (code === 'Enter' || code === 'Space') actions |= ACTION_CONFIRM;
+    },
+    hold(name, on) { if (on) held.add(name); else held.delete(name); },
   };
-}
-
-// Consume the mouse deltas accumulated since the last frame.
-export function takeMouse(input) {
-  const dx = input.mouseDX;
-  const dy = input.mouseDY;
-  input.mouseDX = 0;
-  input.mouseDY = 0;
-  return { dx, dy };
-}
-
-// Consume one-shot actions (M, R, E, Esc, Enter) raised since the last frame.
-export function takeActions(input) {
-  const actions = input.actions;
-  input.actions = 0;
-  return actions;
-}
-
-export function takeClick(input) {
-  const clicked = input.clicked;
-  input.clicked = false;
-  return clicked;
-}
-
-// Weapon switching and fire-rate helpers, kept beside input so the main loop
-// stays readable: which keys switch weapons, and whether the trigger is live
-// this frame (pistol fires on click, SMG on hold).
-export function weaponKey(input) {
-  if (input.keys.has('Digit1')) return 'pistol';
-  if (input.keys.has('Digit2')) return 'smg';
-  return null;
-}
-
-export function triggerLive(input, weapon) {
-  if (weapon.auto) return input.mouseDown;
-  return takeClick(input);
 }

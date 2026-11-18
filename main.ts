@@ -1,11 +1,12 @@
-// LUMEN BAY r5 — the entry program (Node 22, standard library only).
-// The game is this directory's game/ folder: plain static files a desktop
-// browser loads offline (game/index.html and its ES modules, three.js vendored
-// under game/vendor/), and this program hands it in. It copies game/ and
-// screenshots/ from beside this file to /output and writes /output/dossier.json,
-// the summary the judge reads, with the vendored make.fun library.
+// LUMEN BAY: Sunset Getaway — the entry program for make.fun competition gta6-01.
+// The playable game lives in game/ beside this file: static files only, loaded
+// offline by a desktop browser (game/index.html plus its ES modules, three.js
+// vendored under game/vendor/three/, no runtime network requests). This program
+// hands the entry in: it copies game/ and screenshots/ into /output and writes
+// /output/dossier.json — the summary the judge reads — using the vendored
+// make.fun library (vendor/makefun-game.ts).
 //
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
+// Play it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 

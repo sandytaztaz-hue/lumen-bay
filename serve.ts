@@ -1,7 +1,10 @@
-// A tiny static server for game/ (Node 22, standard library only), so the entry can be played
-// locally without a build step: `node serve.ts` serves game/ on http://localhost:8080.
-// It sends the MIME types a browser game needs, refuses any path outside game/, and otherwise
-// does nothing clever: this is a development convenience, not a web server for the internet.
+// A tiny static server for the LUMEN BAY game/ folder (Node 22, standard
+// library only), so the entry can be played locally without a build step:
+// `node serve.ts` serves game/ on http://localhost:8080 (or --port N).
+// It sends the MIME types a browser game needs, refuses any path outside
+// game/, and otherwise does nothing clever: this is a development convenience,
+// not a web server for the internet. LUMEN BAY itself makes no network
+// requests at runtime — everything it loads is a file under game/.
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
@@ -68,5 +71,5 @@ createServer((request, response) => {
   });
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
-  console.log(`game/ is on http://localhost:${port}`);
+  console.log(`LUMEN BAY game/ is on http://localhost:${port}`);
 });

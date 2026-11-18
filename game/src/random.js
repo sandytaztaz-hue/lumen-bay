@@ -1,74 +1,64 @@
-// LUMEN BAY — seeded random number generation.
-// One deterministic stream per world seed, so the same seed always builds the
-// same Puerto Lumen: same buildings, same palms, same traffic colours.
+// Seeded randomness for LUMEN BAY. The whole city — building colours, palm
+// placement, traffic colours, pedestrian clothes — comes from one mulberry32
+// stream, so the same seed always builds the same Puerto Lumen. That is what
+// makes the screenshot scenes repeatable and the save file meaningful: a
+// player who reloads sees the same streets they left behind.
+
 export function createRandom(seed) {
-  let state = (seed >>> 0) || 0x9e3779b9;
-  function next() {
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+  let a = (seed >>> 0) || 0x9e3779b9;
+  return function random() {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  }
-  return {
-    next,
-    range(min, max) {
-      return min + (max - min) * next();
-    },
-    int(min, max) {
-      return Math.floor(min + (max - min + 1) * next());
-    },
-    pick(list) {
-      return list[Math.floor(next() * list.length)];
-    },
-    chance(p) {
-      return next() < p;
-    },
-    // Fisher-Yates shuffle that returns a new array, leaving the input alone.
-    shuffle(list) {
-      const out = list.slice();
-      for (let i = out.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(next() * (i + 1));
-        const tmp = out[i];
-        out[i] = out[j];
-        out[j] = tmp;
-      }
-      return out;
-    },
   };
 }
 
-// A tiny hash of a string, used to seed per-building variation from coordinates.
-export function hashCoords(x, z) {
-  let h = (Math.floor(x * 13.7) * 374761393 + Math.floor(z * 7.3) * 668265263) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+// Integer in [min, max] inclusive, from the same stream.
+export function randInt(rng, min, max) {
+  return min + Math.floor(rng() * (max - min + 1));
 }
 
-// Extra helpers on the seeded stream: gaussian-ish jitter and weighted picks,
-// so building heights and palm clusters feel organic instead of uniform.
-export function jittered(random, base, spread) {
-  return base + (random.next() + random.next() + random.next() - 1.5) * spread;
+// Pick one element of an array.
+export function pick(rng, arr) {
+  return arr[Math.floor(rng() * arr.length)];
 }
 
-export function weightedPick(random, entries) {
-  let total = 0;
-  for (const entry of entries) total += entry.weight;
-  let roll = random.next() * total;
-  for (const entry of entries) {
-    roll -= entry.weight;
-    if (roll <= 0) return entry.value;
+// A value in [min, max).
+export function randRange(rng, min, max) {
+  return min + rng() * (max - min);
+}
+
+// Fisher-Yates shuffle that returns a new array, leaving the input alone.
+export function shuffled(rng, arr) {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = out[i]; out[i] = out[j]; out[j] = tmp;
   }
-  return entries[entries.length - 1].value;
+  return out;
 }
 
-// Deterministic colour variation: the same seed always paints the same street.
-export function shadeColor(hex, random, amount) {
-  const r = (hex >> 16) & 255;
-  const g = (hex >> 8) & 255;
-  const b = hex & 255;
-  const f = 1 + (random.next() - 0.5) * amount;
-  const cr = Math.max(0, Math.min(255, Math.round(r * f)));
-  const cg = Math.max(0, Math.min(255, Math.round(g * f)));
-  const cb = Math.max(0, Math.min(255, Math.round(b * f)));
-  return (cr << 16) | (cg << 8) | cb;
+// A deterministic 2D hash for ground variation: same (x, z) always gives the
+// same value, without keeping any state around.
+export function hash2(x, z) {
+  let h = (Math.imul(x | 0, 374761393) + Math.imul(z | 0, 668265263)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (((h ^ (h >>> 16)) >>> 0) / 4294967296);
 }
+
+// Smoothstep helper used by the texture painters for soft-edged blobs.
+export function smoothstep(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+// Clamp a number into [min, max]; used everywhere a game value must stay sane
+// (health, heat, speed, camera pitch) no matter what input arrives.
+export function clamp(v, min, max) {
+  return v < min ? min : v > max ? max : v;
+}
+
+// Linear interpolation, the workhorse of camera smoothing and fades.
+export function lerp(a, b, t) { return a + (b - a) * t; }
+
