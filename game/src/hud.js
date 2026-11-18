@@ -1,7 +1,7 @@
-// The HUD: wanted stars, health, cash, clock, radio, objective, minimap,
-// speedometer, weapon, event log, dialogue and banners — all DOM + one
-// 2D minimap canvas, updated every frame from the game state.
-import { WORLD, LANDMARKS, streets } from './config.js';
+// The HUD: wanted stars, health + armour, cash, clock, radio, objective,
+// minimap, speedometer, weapon, event log, dialogue and banners — all DOM
+// plus one 2D minimap canvas, updated every frame from the game state.
+import { WORLD, LANDMARKS, allStreets, CLOCK_LABEL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,17 +23,21 @@ export function updateHud(hud, g, dt) {
   $('stars').innerHTML = starRow(g.wanted.stars);
   const hp = Math.max(0, Math.round(g.player.health));
   $('healthfill').style.width = `${hp}%`;
-  $('healthtext').textContent = `HEALTH ${hp}${g.player.inCar ? '  ·  ' + g.player.inCar.model.name : ''}`;
+  const armour = Math.max(0, Math.round(g.player.armour || 0));
+  $('healthtext').textContent = `HEALTH ${hp}${armour > 0 ? `  ·  ARMOUR ${armour}` : ''}${g.player.inCar ? `  ·  ${g.player.inCar.model.name}` : ''}`;
   $('cash').textContent = `$${g.cash.toLocaleString('en-US')}`;
+  $('clock').textContent = CLOCK_LABEL;
   $('radio').textContent = `♪ ${g.radioName}`;
-  const speed = g.player.inCar ? Math.round(Math.abs(g.player.inCar.speed) * 3.6) : Math.round(g.player.speed * 3.6);
+  const speed = g.player.inCar
+    ? Math.round(Math.abs(g.player.inCar.speed) * 3.6)
+    : Math.round(g.player.speed * 3.6);
   $('speed').textContent = String(speed);
-  $('weapon').textContent = g.player.inCar ? 'DRIVING — ' + g.player.inCar.model.name : g.weaponName + (g.ammoText ? ' · ' + g.ammoText : '');
+  $('weapon').textContent = g.player.inCar
+    ? `DRIVING — ${g.player.inCar.model.name}`
+    : g.weaponName + (g.ammoText ? ` · ${g.ammoText}` : '');
   $('crosshair').style.display = (!g.player.inCar && g.aiming) ? 'block' : 'none';
-  // objective
   $('objtitle').textContent = g.objective.title;
   $('objtext').textContent = g.objective.text;
-  // dialogue fade
   if (hud.dialogTimer > 0) {
     hud.dialogTimer -= dt;
     if (hud.dialogTimer <= 0) $('dialog').style.display = 'none';
@@ -68,13 +72,15 @@ export function showBanner(hud, text, sub = '', seconds = 2.6) {
 export function drawMinimap(g) {
   const cv = $('minimap');
   const ctx = cv.getContext('2d');
-  const S = 180, half = WORLD.half;
+  const S = 180;
+  const half = WORLD.half;
   const toMap = (x, z) => [(x + half) / (half * 2) * S, (z + half) / (half * 2) * S];
-  ctx.fillStyle = '#241a3e'; ctx.fillRect(0, 0, S, S);
-  // ocean west + beach south
-  ctx.fillStyle = '#0e6f8f'; ctx.fillRect(0, 0, 6, S);
-  ctx.fillStyle = '#f2d49b'; ctx.fillRect(0, S - 10, S, 10);
-  // blocks (56 m of buildable block = 18 px at this scale)
+  ctx.fillStyle = '#241a3e';
+  ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = '#0e6f8f';
+  ctx.fillRect(0, 0, 6, S); // ocean, west edge
+  ctx.fillStyle = '#f2d49b';
+  ctx.fillRect(0, S - 10, S, 10); // beach, south edge
   ctx.fillStyle = '#4a4360';
   for (let i = 0; i < 7; i++) {
     for (let j = 0; j < 7; j++) {
@@ -82,29 +88,31 @@ export function drawMinimap(g) {
       ctx.fillRect(x0, z0, 18, 18);
     }
   }
-  // streets
-  ctx.strokeStyle = '#8d8578'; ctx.lineWidth = 2;
-  for (const s of streets()) {
-    const [x] = toMap(s, 0); const [, z] = toMap(0, s);
+  ctx.strokeStyle = '#8d8578';
+  ctx.lineWidth = 2;
+  for (const s of allStreets()) {
+    const [x] = toMap(s, 0);
+    const [, z] = toMap(0, s);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, z); ctx.lineTo(S, z); ctx.stroke();
   }
-  // landmarks
   ctx.fillStyle = '#ffd23e';
   ctx.font = 'bold 9px system-ui, sans-serif';
   const [tx, tz] = toMap(LANDMARKS.torre.x, LANDMARKS.torre.z);
   ctx.beginPath(); ctx.arc(tx, tz, 3, 0, 7); ctx.fill();
   ctx.fillText('TORRE', tx + 5, tz + 3);
-  // mission marker (pulsing yellow diamond)
   if (g.marker) {
     const [mx, mz] = toMap(g.marker.x, g.marker.z);
     const pulse = 5 + Math.sin(performance.now() / 200) * 1.5;
     ctx.fillStyle = '#ffd23e';
     ctx.beginPath();
-    ctx.moveTo(mx, mz - pulse); ctx.lineTo(mx + pulse, mz); ctx.lineTo(mx, mz + pulse); ctx.lineTo(mx - pulse, mz);
-    ctx.closePath(); ctx.fill();
+    ctx.moveTo(mx, mz - pulse);
+    ctx.lineTo(mx + pulse, mz);
+    ctx.lineTo(mx, mz + pulse);
+    ctx.lineTo(mx - pulse, mz);
+    ctx.closePath();
+    ctx.fill();
   }
-  // police blips
   ctx.fillStyle = '#2e7dff';
   for (const p of g.policeBlips) {
     const [px, pz] = toMap(p.x, p.z);
@@ -115,12 +123,18 @@ export function drawMinimap(g) {
     ctx.fillStyle = '#ff2e3e';
     ctx.beginPath(); ctx.arc(hx, hz, 3, 0, 7); ctx.fill();
   }
-  // player arrow
   const [px, pz] = toMap(g.player.x, g.player.z);
   ctx.save();
-  ctx.translate(px, pz); ctx.rotate(g.player.heading);
+  ctx.translate(px, pz);
+  ctx.rotate(g.player.heading);
   ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4.5, 5); ctx.lineTo(0, 2.5); ctx.lineTo(-4.5, 5); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(0, -6);
+  ctx.lineTo(4.5, 5);
+  ctx.lineTo(0, 2.5);
+  ctx.lineTo(-4.5, 5);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
@@ -130,7 +144,9 @@ export function showScreen(html) {
   el.style.display = 'flex';
 }
 
-export function hideScreen() { $('screen').style.display = 'none'; }
+export function hideScreen() {
+  $('screen').style.display = 'none';
+}
 
 /** Title screen HTML: name, story hook, controls, save state. */
 export function titleHtml(hasSave, cash, jobsDone) {
@@ -143,7 +159,7 @@ export function titleHtml(hasSave, cash, jobsDone) {
     <p class="keys"><b>WASD</b> move / drive &nbsp; <b>Mouse drag</b> look &nbsp;
     <b>E</b> enter / steal car &nbsp; <b>Click</b> shoot &nbsp; <b>1 / 2 / 3</b> weapons<br>
     <b>M</b> start next job &nbsp; <b>R</b> radio &nbsp; <b>Shift</b> sprint &nbsp;
-    <b>P</b> pause &nbsp; <b>Esc</b> menu</p>
+    <b>C</b> reset camera &nbsp; <b>P</b> pause &nbsp; <b>Esc</b> menu</p>
     ${hasSave ? `<p>Save found — $${cash.toLocaleString('en-US')} banked, ${jobsDone} job${jobsDone === 1 ? '' : 's'} done.</p>` : ''}
     <button id="playbtn">${hasSave ? 'CONTINUE' : 'START ENGINE'}</button>
     <p class="keys">An original game. Puerto Lumen, Mara Solis and every car, song and

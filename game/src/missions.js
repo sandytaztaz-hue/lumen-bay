@@ -1,7 +1,8 @@
-// The story: 8 jobs for Mara Solis, from first keys to the last sunset.
-// A small data-driven stage machine: each stage is a goal (reach a place,
-// steal a car, lose the heat, beat a cordon, hold a spot) with a timer and
-// a line of dialogue. Completing a job pays cash and unlocks the next.
+// The story: eight jobs for Mara Solis, from first keys to the last sunset.
+// A small data-driven stage machine — each stage is one goal (reach a
+// place, steal a car, lose the heat, beat a cordon, hold a spot) with an
+// optional timer and a line of dialogue. Finishing a job pays cash and
+// unlocks the next one.
 import { LANDMARKS, CREW } from './config.js';
 import { dist2d } from './random.js';
 
@@ -10,8 +11,8 @@ export const MISSIONS = [
     id: 1, name: 'FIRST KEYS', giver: CREW.tio, pay: 400,
     brief: 'Steal the Comet GT waiting at Marina Lumen. No noise, no heat.',
     lines: [
-      [CREW.tio, 'Mara. The Comet GT is sitting at the marina, keys in the sun visor. Take it.'],
-      [CREW.mara, 'On my way, Tio. Nobody has to get hurt.'],
+      [CREW.tio, 'Mara. Comet GT, marina, keys in the sun visor. Take it before someone else does.'],
+      [CREW.mara, 'On my way, Tio. Quiet as the tide.'],
     ],
     stages: [
       { type: 'enterCar', model: 0, x: -196, z: 175, r: 6, text: 'Steal the Comet GT at Marina Lumen' },
@@ -21,7 +22,7 @@ export const MISSIONS = [
     id: 2, name: 'THE DROP', giver: CREW.lena, pay: 600,
     brief: 'A package for Mercado Viejo. Ninety seconds. The streets are watching.',
     lines: [
-      [CREW.lena, 'Package is in the trunk. Mercado Viejo, ninety seconds — the buyer walks at 18:41.'],
+      [CREW.lena, 'Package in the trunk. Mercado Viejo, ninety seconds — the buyer walks at 18:41 sharp.'],
       [CREW.mara, 'Ninety seconds. I drive faster than gossip, Lena.'],
     ],
     stages: [
@@ -32,8 +33,8 @@ export const MISSIONS = [
     id: 3, name: 'HOT WHEELS', giver: CREW.tio, pay: 800,
     brief: 'Two stars and a tail. Lose them before the net closes.',
     lines: [
-      [CREW.tio, 'You picked up a tail at the drop. Two stars. Shake them, Mara.'],
-      [CREW.police, 'All units: orange Comet GT, last seen Mercado Viejo. Box it in.'],
+      [CREW.tio, 'You picked up a tail at the drop. Two stars. Shake them off, Mara.'],
+      [CREW.dispatch, 'All units: orange Comet GT, last seen Mercado Viejo. Box it in.'],
     ],
     stages: [
       { type: 'escape', stars: 2, timer: 150, text: 'Lose the heat — get your wanted level to zero' },
@@ -41,13 +42,13 @@ export const MISSIONS = [
   },
   {
     id: 4, name: 'THE MARINA JOB', giver: CREW.lena, pay: 1000,
-    brief: 'Lena’s cargo is on the dock. Collect it, run it to the safehouse.',
+    brief: "Lena's cargo is on the dock. Collect it, run it to the safehouse.",
     lines: [
       [CREW.lena, 'My cargo is on the far dock, blue crates. Bring it to Calle Sol — quietly.'],
       [CREW.mara, 'Blue crates, Calle Sol. Loud is for other drivers.'],
     ],
     stages: [
-      { type: 'goto', x: -210, z: 205, r: 7, text: 'Collect Lena’s cargo at the marina dock' },
+      { type: 'goto', x: -210, z: 205, r: 7, text: "Collect Lena's cargo at the marina dock" },
       { type: 'goto', x: LANDMARKS.safehouse.x, z: LANDMARKS.safehouse.z, r: 8, text: 'Deliver the cargo to the safehouse' },
     ],
   },
@@ -80,7 +81,7 @@ export const MISSIONS = [
     brief: 'Four stars and a helicopter. Run for the lighthouse and vanish.',
     lines: [
       [CREW.lena, 'Four stars, bird in the air. The lighthouse road is the only gap in the net.'],
-      [CREW.police, 'Air One has the suspect. All ground units converge on Farol Rojo.'],
+      [CREW.dispatch, 'Air One has the suspect. All ground units converge on Farol Rojo.'],
     ],
     stages: [
       { type: 'escape', stars: 4, timer: 150, gotoX: LANDMARKS.lighthouse.x, gotoZ: LANDMARKS.lighthouse.z, gotoR: 10, text: 'Reach Farol Rojo and lose 4 stars of heat' },
@@ -102,17 +103,22 @@ export const MISSIONS = [
 
 export function makeMissionState() {
   return {
-    index: 0, // next mission to start (0-based); 8 = story complete
+    index: 0, // next mission to start (0-based); 8 means the story is done
     active: null, // { mission, stage, timer, holdLeft, hits, defeated }
     done: [],
   };
+}
+
+/** Look a mission up by its 1-based id. */
+export function missionById(id) {
+  return MISSIONS.find((m) => m.id === id) || null;
 }
 
 /** Begin mission i (0-based). Returns the mission or null. */
 export function startMission(state, i) {
   if (i < 0 || i >= MISSIONS.length) return null;
   const mission = MISSIONS[i];
-  state.active = { mission, stage: 0, timer: 0, holdLeft: 0, hits: 0, defeated: 0, startedAt: 0 };
+  state.active = { mission, stage: 0, timer: 0, holdLeft: 0, hits: 0, defeated: 0 };
   state.index = i;
   return mission;
 }
@@ -129,9 +135,10 @@ export function markerPos(state) {
 }
 
 /**
- * Advance the active mission. ctx: { x, z, inCar, carModel, wanted, dt,
- *   onEvent(kind, data) } — events: dialogue, objective, stage, complete,
- *   failed, hit, defeated. Returns 'active' | 'complete' | 'failed' | 'idle'.
+ * Advance the active mission. ctx carries the player's position, car and
+ * wanted state plus an onEvent(kind, data) callback — events are
+ * dialogue, objective, stage, complete, failed, hit, defeated.
+ * Returns 'active' | 'complete' | 'failed' | 'idle'.
  */
 export function updateMission(state, ctx) {
   if (!state.active) return 'idle';
@@ -150,30 +157,35 @@ export function updateMission(state, ctx) {
   switch (stage.type) {
     case 'goto': {
       if (stage.needCar && !ctx.inCar) break;
-      if (d < stage.r) return advance(state, ctx);
+      if (d < stage.r) return advanceStage(state, ctx);
       break;
     }
     case 'enterCar': {
-      if (ctx.inCar && ctx.carModel === stage.model) return advance(state, ctx);
-      if (ctx.inCar) break; // wrong car — keep looking
+      if (ctx.inCar && ctx.carModel === stage.model) return advanceStage(state, ctx);
       break;
     }
     case 'escape': {
       if (stage.gotoX !== undefined) {
         const gd = dist2d(ctx.x, ctx.z, stage.gotoX, stage.gotoZ);
-        if (gd < stage.gotoR && ctx.wanted === 0) return advance(state, ctx);
-      } else if (ctx.wanted === 0) return advance(state, ctx);
+        if (gd < stage.gotoR && ctx.wanted === 0) return advanceStage(state, ctx);
+      } else if (ctx.wanted === 0) {
+        return advanceStage(state, ctx);
+      }
       break;
     }
     case 'hit': {
-      if (ctx.hitVan) { a.hits++; ctx.onEvent('hit', { hits: a.hits, need: stage.hits }); if (a.hits >= stage.hits) return advance(state, ctx); }
+      if (ctx.hitVan) {
+        a.hits++;
+        ctx.onEvent('hit', { hits: a.hits, need: stage.hits });
+        if (a.hits >= stage.hits) return advanceStage(state, ctx);
+      }
       break;
     }
     case 'defeat': {
       if (ctx.defeated > a.defeated) {
         a.defeated = ctx.defeated;
         ctx.onEvent('defeated', { n: a.defeated, need: stage.count });
-        if (a.defeated >= stage.count) return advance(state, ctx);
+        if (a.defeated >= stage.count) return advanceStage(state, ctx);
       }
       break;
     }
@@ -182,26 +194,28 @@ export function updateMission(state, ctx) {
         a.holdLeft = a.holdLeft || stage.hold;
         a.holdLeft -= ctx.dt;
         ctx.onEvent('hold', { left: Math.max(0, a.holdLeft) });
-        if (a.holdLeft <= 0) return advance(state, ctx);
+        if (a.holdLeft <= 0) return advanceStage(state, ctx);
       } else {
         a.holdLeft = stage.hold;
       }
       break;
     }
-    default: break;
+    default:
+      break;
   }
   return 'active';
 }
 
-function advance(state, ctx) {
+function advanceStage(state, ctx) {
   const a = state.active;
   a.stage++;
-  a.timer = 0; a.holdLeft = 0;
+  a.timer = 0;
+  a.holdLeft = 0;
   if (a.stage >= a.mission.stages.length) {
     const m = a.mission;
     state.done.push(m.id);
     state.active = null;
-    state.index = m.id; // next mission to start is the one after this (id is 1-based)
+    state.index = m.id; // the next mission to start (id is 1-based)
     ctx.onEvent('complete', { mission: m });
     return 'complete';
   }
@@ -209,10 +223,12 @@ function advance(state, ctx) {
   return 'active';
 }
 
-/** Objective line for the HUD: title + current stage text + timer. */
+/** Objective line for the HUD: title + current stage text + countdown. */
 export function objectiveText(state) {
   if (!state.active) {
-    if (state.index >= MISSIONS.length) return { title: 'STORY COMPLETE', text: 'Puerto Lumen is yours, Mara. Free roam — or start again.' };
+    if (state.index >= MISSIONS.length) {
+      return { title: 'STORY COMPLETE', text: 'Puerto Lumen is yours, Mara. Free roam — or start again.' };
+    }
     const next = MISSIONS[state.index];
     return { title: 'FREE ROAM', text: `Press M to start Job ${next.id}: ${next.name} — $${next.pay}` };
   }
@@ -221,5 +237,7 @@ export function objectiveText(state) {
   let text = s.text;
   if (s.timer) text += ` — ${Math.max(0, Math.ceil(s.timer - a.timer))} s`;
   if (s.type === 'hold') text += ` — ${Math.max(0, Math.ceil(a.holdLeft || s.hold))} s`;
+  if (s.type === 'hit') text += ` — ${a.hits}/${s.hits} hits`;
+  if (s.type === 'defeat') text += ` — ${a.defeated}/${s.count} down`;
   return { title: `JOB ${a.mission.id}: ${a.mission.name}`, text };
 }

@@ -1,21 +1,30 @@
 // The four screenshot scenes (?shot=chase|shootout|job|done). Each one sets
 // up a real game state — a live chase, a live shootout, a live job, a job
 // completed — then steps the simulation forward a fixed number of fixed
-// steps with scripted inputs, so the frame is what a short game really
-// looks like and the same seed always gives the same frame.
+// steps with scripted inputs, so the frame is what short real play looks
+// like, and the same seed always gives the same frame.
 // Shot 0 (chase) is the cover: mid-action, full HUD, never a menu.
 import { LANDMARKS } from './config.js';
 
 const STEP = 1 / 60;
 
-/** Drive forward for `seconds`, then render once and flag ready. */
+/** Drive forward for `seconds` with an optional steer, then stop. */
 function driveFor(game, seconds, steer = 0) {
-  const input = { forward: true, back: false, left: steer < 0, right: steer > 0, run: false, fire: false, aiming: false, camHeading: 0, camYaw: 0, camPitch: 0.32, pressed: new Set() };
+  const input = {
+    forward: true, back: false, left: steer < 0, right: steer > 0, run: false,
+    fire: false, aiming: false, camHeading: 0, camYaw: 0, camPitch: 0.32,
+    pressed: new Set(),
+  };
   for (let i = 0; i < seconds / STEP; i++) game.step(STEP, input);
 }
 
+/** Walk forward for `seconds`, optionally firing once at the end. */
 function walkFor(game, seconds, fireAtEnd = false) {
-  const input = { forward: true, back: false, left: false, right: false, run: false, fire: false, aiming: true, camHeading: 0, camYaw: 0, camPitch: 0.32, pressed: new Set() };
+  const input = {
+    forward: true, back: false, left: false, right: false, run: false,
+    fire: false, aiming: true, camHeading: 0, camYaw: 0, camPitch: 0.32,
+    pressed: new Set(),
+  };
   for (let i = 0; i < seconds / STEP; i++) game.step(STEP, input);
   if (fireAtEnd) {
     input.fire = true;
@@ -27,7 +36,7 @@ function walkFor(game, seconds, fireAtEnd = false) {
 
 /**
  * Stage the named scene on a fresh game and return the screen state.
- * game is the object main.js builds (see main.js for its API).
+ * `game` is the object main.js builds (see main.js for its API).
  * Any other name stages the chase (the cover).
  */
 export function stageShot(game, name) {
@@ -35,30 +44,33 @@ export function stageShot(game, name) {
   game.hideScreens();
   if (name === 'shootout') {
     // On foot by the Torre, pistol out, police closing in, peds fleeing.
-    // Mara walks north straight at the tower's south face (sign in frame),
-    // cruisers flanking left and right of the tower.
-    game.teleportPlayer(35, -8, Math.PI);
+    // Mara starts well south of the tower plaza and walks north, so the
+    // clock tower and its TORRE LUMEN sign stay in frame with sky above;
+    // cruisers approach from the flanks instead of piling onto her.
+    game.teleportPlayer(35, 18, Math.PI);
     game.setWeapon('pistol');
     game.setWanted(3);
-    game.spawnPolice(2, 12, -30);
-    game.spawnPolice(1, 58, -30);
+    game.spawnPolice(2, 0, -70);
+    game.spawnPolice(1, 70, -70);
     game.fleePeds(35, -35);
     game.startMission(5); // The Informant — cordon banner on screen
     game.say('TIO REYES', 'Dario is cornered near the park — three cops, no exit. Get him out, Mara.', 8);
-    walkFor(game, 2.2, true);
+    walkFor(game, 1.0, true);
     game.log('LCPD DISPATCH: Shots fired at Torre Lumen — all units respond.');
     game.log('MARA SOLIS: You picked the wrong driver to corner.');
     return 'play';
   }
   if (name === 'job') {
     // The Marina Job: cargo on the dock, Comet parked, Lena on the radio.
-    // Mara walks south onto the dock, toward the moored boats and the ocean.
-    game.teleportPlayer(-216, 210, 0.25);
+    // Mara starts north of the dock and walks a short way south, so the
+    // blue crates, the moored boats and the ocean sunset all stay in frame
+    // instead of the crates filling the lens.
+    game.teleportPlayer(-218, 200, 0.1);
     game.setWanted(0);
     game.startMission(3); // The Marina Job
-    game.say('LENA CRUZ', 'My cargo is on the far dock, blue crates. Bring it to Calle Sol — quietly.', 8);
+    game.say('LENA CRUZ', "My cargo is on the far dock, blue crates. Bring it to Calle Sol — quietly.", 8);
     game.log('LENA CRUZ: Blue crates, far dock. The patrol passes every two minutes.');
-    walkFor(game, 0.8, false);
+    walkFor(game, 0.4, false);
     return 'play';
   }
   if (name === 'done') {
@@ -82,9 +94,9 @@ export function stageShot(game, name) {
   game.putPlayerInCar(0);
   game.cash = 2400;
   game.setWanted(3);
-  game.spawnPolice(2, -236, 175); // tail: two cruisers behind
+  game.spawnPolice(2, -258, 175); // tail: two cruisers well behind, not on the bumper
   game.spawnPolice(2, -40, 168); // roadblock: two cruisers ahead, in frame
-  // street traffic ahead so the road reads as a living city
+  // Street traffic ahead so the road reads as a living city.
   game.stageTraffic(0, -70, 172, Math.PI / 2, [[-70, 172], [220, 172], [220, 178], [-70, 178]]);
   game.stageTraffic(1, -20, 179, Math.PI / 2, [[-20, 179], [220, 179], [220, 172], [-20, 172]]);
   game.heliOn();

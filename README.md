@@ -7,10 +7,11 @@
 An original open-world crime game in the spirit of GTA 6: **Mara Solis**,
 getaway driver of Puerto Lumen, a sun-soaked island city. Eight story jobs,
 a 5-star wanted level with police chases and a helicopter, traffic and
-pedestrians, cars to steal, combat, a HUD with a minimap, a save, and an
-original synth radio. Everything — the city, the characters, the cars, the
-story, the art, the sound and the music — is invented here. Nothing from
-Rockstar Games, nothing from any other game.
+pedestrians, cars to steal, combat with health/armour/SMG pickups, car
+repair at Taller Lumen, a HUD with a minimap, a save, and an original synth
+radio. Everything — the city, the characters, the cars, the story, the art,
+the sound and the music — is invented here. Nothing from Rockstar Games,
+nothing from any other game.
 
 ## Run it
 
@@ -31,8 +32,9 @@ needed: three.js is vendored under `game/vendor/three/`.
 Jobs: First Keys, The Drop, Hot Wheels, The Marina Job, Payday, The
 Informant, High Tide, The Last Sunset. Wanted stars rise on crime and fall
 when you stay hidden; at 3 stars the LCPD helicopter joins the chase, and
-getting caught on foot means BUSTED. Progress saves to the browser
-(localStorage) — continue from the title screen.
+getting caught on foot means BUSTED. Damaged cars can be repaired at Taller
+Lumen ($150). Progress saves to the browser (localStorage) — continue from
+the title screen.
 
 ## Screenshots
 
@@ -46,7 +48,11 @@ a shootout at Torre Lumen, the marina job, and a job done at Playa Dorada.
 writes `dossier.json` with the vendored make.fun library. Three.js 0.170.0
 is vendored byte-for-byte from the official release under
 `game/vendor/three/` (MIT, see its LICENSE); all other code in this repo was
-written for this entry.
+written for this entry. Verified: `node --check` clean on every file,
+`main.ts` byte-identical across two runs, all four `?shot=` scenes render
+in headless Chrome with zero console errors, and the live gameplay probe
+(title → Job 1 → steal the Comet GT → +$400 → wanted 3 with police +
+helicopter) passes.
 
 ---
 
