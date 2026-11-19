@@ -1,6 +1,7 @@
-// LUMEN BAY r7 — sound: WebAudio synth only, no audio files. Engine hum,
-// sirens, gunshots, radio music (3 original midday stations), mission
-// stingers and the cash-register robbery sting.
+// LUMEN BAY r8 — sound: WebAudio synth only, no audio files. Engine hum,
+// sirens, gunshots, radio music (3 original golden-hour stations), mission
+// stingers and the cash-register robbery sting. NEW in r8: alertSting(), a
+// short two-note chirp for notification toasts (WANTED LEVEL UP, NOS READY).
 //
 // SAFETY RULE (a real bug class in synth audio): every arpeggio/melody table
 // must have enough scale ratios for every arp step it can reach, and every
@@ -91,6 +92,18 @@ export class AudioEngine {
     if (!this.ctx) return;
     const notes = win ? [523, 659, 784, 1046] : [392, 330, 262];
     notes.forEach((f, i) => setTimeout(() => this.blip(f, 0.18, 'triangle', 0.22), i * 110));
+  }
+  /** Set the master volume (0..1), guarded. */
+  setMasterVolume(v) {
+    if (!this.master) return;
+    const vol = typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
+    this.master.gain.value = vol;
+  }
+  /** Short two-note chirp for HUD notification toasts. */
+  alertSting(kind) {
+    if (!this.ctx) return;
+    const notes = kind === 'danger' ? [880, 660] : [660, 880];
+    notes.forEach((f, i) => setTimeout(() => this.blip(f, 0.1, 'square', 0.12), i * 90));
   }
   nosWhoosh() {
     if (!this.ctx) return;

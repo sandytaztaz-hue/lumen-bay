@@ -1,10 +1,11 @@
-// LUMEN BAY r7 — the entry program (Node 22, standard library only).
+// LUMEN BAY r8 — the entry program (Node 22, standard library only).
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's
 // starter does. No build step, no network, no install.
 //
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// Run it twice: the two dossier.json outputs must be byte-identical.
 
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -1,9 +1,13 @@
-// LUMEN BAY r7 — the renderer: three.js scene, BRIGHT MIDDAY lighting, close
-// low chase camera, muzzle flashes, tracers, damage numbers, mission beacon.
-// The old golden-hour dusk is deleted: blue sky, white sun high overhead,
-// pale-blue fog far away, exposure up, hero car big in frame.
+// LUMEN BAY r8 — the renderer: three.js scene, GOLDEN HOUR 18:48 lighting,
+// close low chase camera, muzzle flashes, tracers, damage numbers, mission
+// beacon. The sky is a real gradient dome (orange horizon → pink → purple
+// zenith) with a low sun disc + glow sprite ahead-east, so the chase camera
+// looks straight into the glare. A PMREM environment map baked from that sky
+// makes the hero car's clearcoat paint pick up real reflections, and a warm
+// rim light gives the sunset edge glow. Long shadows, warm mauve fog.
 import * as THREE from 'three';
-import { WORLD, PALETTE } from './config.js';
+import { WORLD, PALETTE, SUNSET } from './config.js';
+import { sunsetSkyTexture, sunGlowTexture } from './textures.js';
 
 export function createRenderer3D(canvas, opts) {
   const o = opts || {};
@@ -12,43 +16,95 @@ export function createRenderer3D(canvas, opts) {
   renderer.shadowMap.enabled = o.shadows !== false;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = 1.18;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(PALETTE.skyTop);
-  scene.fog = new THREE.Fog(0xbfe3ff, 400, 900);
-  // High white midday sun, nearly overhead: short shadows, everything bright.
-  const sun = new THREE.DirectionalLight(0xfff2b0, 3.0);
-  sun.position.set(60, 220, 80);
+  scene.background = new THREE.Color(0x2a1540);
+  scene.fog = new THREE.Fog(SUNSET.fog, 350, 850);
+  // --- golden-hour sky dome: gradient texture on the inside of a big sphere.
+  const skyTex = sunsetSkyTexture();
+  const skyDome = new THREE.Mesh(
+    new THREE.SphereGeometry(950, 24, 16),
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }),
+  );
+  skyDome.renderOrder = -10;
+  scene.add(skyDome);
+  // --- PMREM environment map baked from the same sunset sky, so metallic
+  // paint (hero car, chrome, glass) reflects orange/pink like real dusk.
+  try {
+    const envScene = new THREE.Scene();
+    const envSky = new THREE.Mesh(
+      new THREE.SphereGeometry(100, 24, 16),
+      new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide }),
+    );
+    envScene.add(envSky);
+    const sunBall = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xfff2c0 }));
+    sunBall.position.set(60, 14, 26);
+    envScene.add(sunBall);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envRT = pmrem.fromScene(envScene, 0.04);
+    scene.environment = envRT.texture;
+    if ('environmentIntensity' in scene) scene.environmentIntensity = 0.9;
+    pmrem.dispose();
+  } catch { /* env map is a bonus: the game still renders without it */ }
+  // Low warm sun ahead-east, on the road axis: long shadows back toward the
+  // camera, everything rimmed orange. Position is relative to the world
+  // origin (target 0,0,0); keep it on the same line as the sun disc.
+  const sun = new THREE.DirectionalLight(SUNSET.sunColour, SUNSET.sunIntensity);
+  sun.position.set(320, 75, 170);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.camera.left = -260; sun.shadow.camera.right = 260;
   sun.shadow.camera.top = 260; sun.shadow.camera.bottom = -260;
-  sun.shadow.camera.far = 700;
+  sun.shadow.camera.far = 800;
   scene.add(sun);
-  const hemi = new THREE.HemisphereLight(0x9fd4ff, 0x58a83c, 1.0);
+  // Warm rim light from the opposite side, so car edges glow pink-orange —
+  // strong, because the chase camera looks at the car's shadow side.
+  const rim = new THREE.DirectionalLight(SUNSET.rimColour, 1.4);
+  rim.position.set(-160, 40, -120);
+  scene.add(rim);
+  // Rear fill from behind the camera: the hero car's tail must read RED,
+  // not black, in the chase view.
+  const rearFill = new THREE.DirectionalLight(0xffc8a0, 0.8);
+  rearFill.position.set(-220, 70, 200);
+  scene.add(rearFill);
+  const hemi = new THREE.HemisphereLight(0xff9a6b, 0x4a2a3a, 1.1);
   scene.add(hemi);
-  const fill = new THREE.DirectionalLight(0xcfe8ff, 0.55);
-  fill.position.set(-120, 60, -140);
+  const fill = new THREE.DirectionalLight(0xffb8c8, 0.4);
+  fill.position.set(-120, 80, 140);
   scene.add(fill);
-  // Sun disc HIGH in the sky, small and bright white.
-  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(14, 32),
-    new THREE.MeshBasicMaterial({ color: 0xfffbe0, fog: false }));
-  sunDisc.position.set(90, 260, 60);
+  // Sun disc LOW on the horizon ahead-east + a big additive glow sprite, so
+  // the chase cam (looking east down Playa Drive) catches the glare. Big on
+  // purpose: the disc must read as a poster sun, not a speck.
+  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(34, 32),
+    new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
+  sunDisc.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
   sunDisc.lookAt(0, 0, 0);
   scene.add(sunDisc);
-  const camera = new THREE.PerspectiveCamera(70, 1280 / 720, 0.1, 1200);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: sunGlowTexture(), transparent: true, opacity: 0.85, fog: false, depthWrite: false,
+  }));
+  glow.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
+  glow.scale.set(300, 300, 1);
+  scene.add(glow);
+  const camera = new THREE.PerspectiveCamera(72, 1280 / 720, 0.1, 1400);
   scene.add(camera);
-  return { renderer, scene, camera, sun };
+  // Debug probe (like window.__game): sun disc + glow + camera for CDP checks.
+  window.__r8sun = { disc: sunDisc, glow, camera };
+  return { renderer, scene, camera, sun, skyDome };
 }
 export function resizeRenderer(r, w, h) {
   r.renderer.setSize(w, h, false);
   r.camera.aspect = w / h;
   r.camera.updateProjectionMatrix();
 }
-/** Chase camera: LOW and CLOSE so the hero car dominates the lower frame. */
+/** Chase camera: CLOSE and LOW so the hero car is poster-big — but far
+ enough back (dist ~9.5) that the police cruisers chasing right behind it
+ stay IN FRAME ahead of the camera (r8 lesson: at dist 6.5 the whole chase
+ was behind the lens and invisible). FOV 72, NOS kick to 82. */
 export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, speed, nosBurning, dt) {
-  const dist = inCar ? 8 : 7;
-  const height = inCar ? 3.0 : 3.0;
+  const dist = inCar ? 10.5 : 8;
+  const height = inCar ? 3.4 : 3.0;
   const yaw = camYaw;
   const tx = px - Math.sin(yaw) * dist;
   const tz = pz - Math.cos(yaw) * dist;
@@ -57,7 +113,7 @@ export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, s
   camera.position.y += (ty - camera.position.y) * Math.min(1, dt * 8);
   camera.position.z += (tz - camera.position.z) * Math.min(1, dt * 8);
   camera.lookAt(px + Math.sin(heading) * 4, 1.6, pz + Math.cos(heading) * 4);
-  const targetFov = nosBurning ? 80 : 70;
+  const targetFov = nosBurning ? 82 : 72;
   if (Math.abs(camera.fov - targetFov) > 0.2) {
     camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
     camera.updateProjectionMatrix();

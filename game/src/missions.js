@@ -1,9 +1,9 @@
-// LUMEN BAY r7 — the story engine: 15 missions in order, each a list of staged
+// LUMEN BAY r8 — the story engine: 15 missions in order, each a list of staged
 // objectives. A stage completes from the world state the main loop feeds in
 // (position, car, kills, robbery, race, purchase); the engine never touches the
 // renderer directly — it reports events and the main loop acts on them.
-// NEW in r7: missionPanel() hands the HUD the crystal-clear job card (title,
-// objectives with checkmarks, stage x/y, next step) the top-3 entries show.
+// NEW in r8: missionPanel() also hands the HUD the STORY progress (x/15) and
+// the REP number, so the mission card reads like the top-3 entries.
 import { MISSIONS, dist2 } from './config.js';
 
 export class MissionEngine {
@@ -19,6 +19,7 @@ export class MissionEngine {
     this.banner = null;       // { title, sub, until } shown by the HUD
     this.objective = 'Press M to start the story';
     this.hudTimerText = '';   // shot staging may pin a big timer here
+    this.rep = 290;           // street rep, shown in the mission card + RESPECT bar
   }
   current() {
     return this.missionIdx < MISSIONS.length ? MISSIONS[this.missionIdx] : null;
@@ -27,10 +28,12 @@ export class MissionEngine {
     const m = this.current();
     return m ? m.stages[this.stageIdx] : null;
   }
-  /** The mission-panel card for the HUD: title, objectives, stage, next step. */
+  /** The mission-panel card for the HUD: title, objectives, stage, next step,
+   story progress + rep. */
   missionPanel() {
     const m = this.current();
-    if (!m) return { title: 'STORY COMPLETE', objectives: [{ label: 'El puerto es nuestro — Puerto Lumen is yours', done: true }], stage: '15/15', next: 'Free roam — rob, race, take turf', timer: '', reward: 8000 };
+    const story = `STORY ${Math.min(this.missionIdx + 1, 15)}/15`;
+    if (!m) return { title: 'STORY COMPLETE', objectives: [{ label: 'El puerto es nuestro — Puerto Lumen is yours', done: true }], stage: '15/15', next: 'Free roam — rob, race, take turf', timer: '', reward: 8000, story: 'STORY 15/15', rep: this.rep };
     const objectives = m.stages.map((s, i) => ({ label: s.label, done: this.active ? i < this.stageIdx : false }));
     const next = this.active
       ? (this.stageIdx < m.stages.length ? m.stages[this.stageIdx].label : 'Job done — press M for the next job')
@@ -40,7 +43,7 @@ export class MissionEngine {
       objectives,
       stage: `${this.active ? Math.min(this.stageIdx + 1, m.stages.length) : 1}/${m.stages.length}`,
       next, timer: this.hudTimerText || '',
-      reward: m.reward,
+      reward: m.reward, story, rep: this.rep,
     };
   }
   startMission(i) {
@@ -94,6 +97,7 @@ export class MissionEngine {
     const m = this.current();
     this.active = false;
     this.ctx.addCash(m.reward);
+    this.rep = Math.min(550, this.rep + 25 + m.stages.length * 5);
     if (m.flip) this.ctx.flipDistrict(m.flip);
     this.ctx.log(`JOB DONE: ${m.title} — +$${m.reward}`);
     this.ctx.onMissionComplete(m);

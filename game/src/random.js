@@ -1,6 +1,8 @@
-// LUMEN BAY r7 — deterministic seeded RNG. One stream drives the whole world
+// LUMEN BAY r8 — deterministic seeded RNG. One stream drives the whole world
 // (building heights, palm rows, traffic colours, pedestrian routes, umbrella
-// placement), so the same seed always builds the same bright Puerto Lumen.
+// placement), so the same seed always builds the same golden-hour Puerto
+// Lumen. NEW in r8: randRange(), a float in [min, max) for sunset jitter
+// (cloud drift, dust spread, glow variation).
 /** Mulberry32: small, fast, deterministic for a fixed seed. */
 export function createRandom(seed) {
   let a = seed >>> 0;
@@ -13,6 +15,10 @@ export function createRandom(seed) {
 }
 /** Integer in [min, max] from a random stream. */
 export function randInt(rng, min, max) { return min + Math.floor(rng() * (max - min + 1)); }
+/** Float in [min, max) from a random stream. */
+export function randRange(rng, min, max) { return min + rng() * (max - min); }
+/** True with probability p (0..1) from a random stream. */
+export function randBool(rng, p) { return rng() < p; }
 /** Pick one element of an array from a random stream. */
 export function randPick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
 /** Shuffle a copy of an array (Fisher-Yates) from a random stream. */
@@ -40,7 +46,7 @@ export function wrapAngle(a) {
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
-/** Bright pastel pick: saturated hue from a small sunny palette. */
+/** Sunset pick: saturated hue from a small golden-hour palette. */
 export function pastelPick(rng) {
   const hues = [8, 32, 48, 150, 175, 195, 285, 330];
   return hues[Math.floor(rng() * hues.length)];

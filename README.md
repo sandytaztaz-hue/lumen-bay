@@ -1,4 +1,4 @@
-# LUMEN BAY: Midday Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in bright midday Puerto Lumen
+# LUMEN BAY: Sunset Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in golden-hour Puerto Lumen
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
@@ -12,26 +12,33 @@ this entry in a single recorded session.
 
 ## The game
 
-Puerto Lumen is a sun-soaked island city at BRIGHT MIDDAY (12:30): blue sky
-with white clouds, turquoise sea and sandy beaches, a ferris wheel over Playa
-Dorada, palm-lined Ocean Boulevard, beach umbrellas and food carts, pastel
-buildings with big bright signs. You are **Mara Solis**, getaway driver for a
-small crew — fixer **Tio Reyes**, hacker **Lena Cruz**, wheelman **Big Dario**.
-The rival crew **Los Tiburones**, led by El Tiburon, holds all 12 districts of
-the city. Take it back, one district at a time — in a big red **Veloz Comet RS**
-convertible, down streets packed with traffic, crowds and police.
+Puerto Lumen is a sun-soaked island city at GOLDEN HOUR (18:48): a low orange
+sun on the horizon, pink clouds, purple dusk sky, turquoise sea catching the
+sunset, lit windows and glowing neon signs, a ferris wheel over Playa Dorada,
+palm-lined Ocean Boulevard, beach umbrellas and food carts. You are
+**Mara Solis**, getaway driver for a small crew — fixer **Tio Reyes**, hacker
+**Lena Cruz**, wheelman **Big Dario**. The rival crew **Los Tiburones**, led by
+El Tiburon, holds all 12 districts of the city. Take it back, one district at
+a time — in a big red **Veloz Comet RS** convertible with real metallic
+clearcoat paint, down streets packed with traffic, crowds and police.
 
-## The look — rebuilt for the daylight
+## The look — rebuilt for golden hour
 
-The cover shot is a mid-action beach-avenue chase: the red convertible big in
-frame, NOS burning, police cruisers close behind, the helicopter overhead, a
-roadblock ahead, the ferris wheel and umbrellas on the beach. The HUD is dense
-and readable at a glance: a mission panel with the job title, named objectives
-with checkmarks, stage x/y, a big timer and the NEXT step; WANTED stars up
-top; a live LCPD response list with unit names, distances and statuses; big
-green cash; a detailed round minimap with street names, district labels,
-police blips, roadblocks and the heli; a dialogue box with the crew talking;
-and a big speedo with gear, vehicle name and radio.
+The cover shot is a golden-hour beach-avenue chase into the low sun: the red
+convertible big in frame, NOS burning, dust behind the wheels, three police
+cruisers close behind with flashing red/blue light bars, the helicopter
+overhead with a visible searchlight cone, a roadblock ahead, the ferris wheel
+and umbrellas on the beach. The HUD is dense and readable at a glance: a
+mission panel with the job title, named objectives with checkmarks, stage x/y,
+a big timer, the NEXT step, alert banners (ROADBLOCK AHEAD / VEHICLE STOLEN),
+STORY progress and REP; WANTED stars up top with an IN SIGHT banner; a live
+LCPD response list with unit names, distances and statuses (RAMMING /
+SPOTLIGHT / ROADBLOCK); notification toasts (WANTED LEVEL UP / ROADBLOCK AHEAD
+/ NOS READY); weapon slots; big green cash; health / armour / NOS bars; a
+RESPECT bar; a detailed round minimap with street names, district labels, a
+search-zone ring, police blips, roadblocks and the heli; a dialogue box with
+the crew talking; and a big speedo with gear, vehicle name, condition and
+radio.
 
 ## The hook — turf war
 
@@ -45,10 +52,10 @@ Lumen, and the city flies crew colours at 12/12.
   driving with a low close chase camera, handbrake, steal any car with E.
 - **15 story missions** — steal, deliver, timed, evade, shootout, race, rob,
   multi-stage finale. Each pays cash and unlocks the next.
-- **Wanted 0–5 stars** — police cruisers chase and ram; at 3+ stars a
-  helicopter circles with a spotlight and police set **roadblocks** across the
-  road ahead. **Line-of-sight chases**: break sight behind buildings and the
-  heat decays faster.
+- **Wanted 0–5 stars** — police cruisers chase and ram with flashing light
+  bars; at 3+ stars a helicopter circles with a spotlight cone and police set
+  **roadblocks** across the road ahead. **Line-of-sight chases**: break sight
+  behind buildings and the heat decays faster.
 - **Combat** — fists, pistol (infinite ammo), SMG pickup; hitscan shooting,
   muzzle flash, tracers, floating damage numbers, kill feed. Health and armour
   pickups around the city.
@@ -63,8 +70,8 @@ Lumen, and the city flies crew colours at 12/12.
   shown on the minimap.
 - **Street races** — checkpoint races against a Tiburones rival who burns NOS
   on the straights. Win cash + flip a district.
-- **Traffic** (20 AI cars), **pedestrians** (40+, flee gunfire), **radio**
-  (3 original midday stations, WebAudio synth only), **save** (localStorage,
+- **Traffic** (28 AI cars), **pedestrians** (60+, flee gunfire), **radio**
+  (3 original golden-hour stations, WebAudio synth only), **save** (localStorage,
   Continue on the title screen), pause menu, BUSTED / WASTED respawn.
 
 ## Controls
@@ -97,11 +104,13 @@ no external assets, no network requests at runtime.
 
 ## License
 
-LUMEN BAY: Midday Getaway is released under the MIT License (see LICENSE).
+LUMEN BAY: Sunset Getaway is released under the MIT License (see LICENSE).
 three.js is vendored under `game/vendor/three/` under its own MIT License.
 
 ## Screenshots
 
-Four real headless-Chrome renders live in `screenshots/`: the beach-avenue
-NOS chase cover, the Torre Lumen shootout, the Festival Square robbery and
-the JOB DONE beach finale — all bright midday, full HUD.
+Four real headless-Chrome renders live in `screenshots/`: the golden-hour
+beach-avenue police chase cover, the Torre Lumen shootout, the Festival
+Square robbery and the MISSION PASSED beach finale — all golden hour, full HUD.
+Shot 4 doubles as the feed's story-progress thumbnail (MISSION PASSED +$8,000
+· +500 REP · UNLOCKED: PIER SAFEHOUSE · STORY 15/15 · SAVE SLOT 1).

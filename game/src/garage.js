@@ -1,6 +1,8 @@
-// LUMEN BAY r7 — the garage: upgrades at Taller Lumen and the NOS boost.
+// LUMEN BAY r8 — the garage: upgrades at Taller Lumen and the NOS boost.
 // Upgrades persist in the save and change the car: higher top speed, visible
-// armour plates, a bigger NOS tank. NOS burns on Shift while driving.
+// armour plates, a bigger NOS tank. NOS burns on Shift while driving. NEW in
+// r8: nosFull() so the main loop can fire the "NOS READY" toast exactly when
+// the tank refills, and a sunset-flavoured summary line.
 import { UPGRADES, clamp } from './config.js';
 
 export class Garage {
@@ -12,6 +14,10 @@ export class Garage {
   topSpeed() { return UPGRADES.engine.topSpeed[this.levels.engine] || 30; }
   resist() { return UPGRADES.armour.resist[this.levels.armour] || 0; }
   nosCapacity() { return UPGRADES.nos.capacity[this.levels.nos] || 60; }
+  /** NOS tank as a rounded percent (for HUD meters and toasts). */
+  nosPercent() { return Math.round((this.nos / this.nosCapacity()) * 100); }
+  /** True when the NOS tank is full (drives the NOS READY notification). */
+  nosFull() { return this.nos >= this.nosCapacity(); }
   price(kind) {
     const lvl = this.levels[kind];
     const def = UPGRADES[kind];

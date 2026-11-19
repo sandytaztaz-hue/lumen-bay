@@ -1,7 +1,8 @@
-// LUMEN BAY r7 — people: pedestrians who stroll the sidewalks and flee gunfire,
+// LUMEN BAY r8 — people: pedestrians who stroll the sidewalks and flee gunfire,
 // and armed enemies (police cordon officers, Tiburones crew) who shoot back.
-// Crowds are denser now: 40+ pedestrians in bright beach colours, plus dense
-// festival crowds at Festival Square. Collision/avoidance unchanged.
+// Crowds are denser at golden hour: 60+ pedestrians in bright beach colours,
+// half strolling the Playa Dorada front, plus dense festival crowds at
+// Festival Square. Collision/avoidance unchanged.
 import * as THREE from 'three';
 import { clamp, dist2, PED_COUNT } from './config.js';
 import { resolveCollisions } from './city.js';
@@ -29,15 +30,16 @@ function makePersonMesh(shirt, pants, skin) {
   group.add(gun);
   return { group, gun };
 }
-/** Spawn 40+ pedestrians wandering the sidewalks and the beach front. */
+/** Spawn 60+ pedestrians wandering the sidewalks and the beach front. */
 export function spawnPedestrians(scene, rng) {
   const peds = [];
   for (let i = 0; i < PED_COUNT; i += 1) {
     // Half the crowd strolls the beach front (Playa Drive), half the city.
+    // Beach strollers wear the brightest colours (sunset beach crowd).
     const beach = i % 2 === 0;
     const x = beach ? -220 + rng() * 440 : -220 + rng() * 440;
     const z = beach ? 150 + rng() * 70 : -220 + rng() * 440;
-    const shirt = SHIRT_COLOURS[i % SHIRT_COLOURS.length];
+    const shirt = beach ? SHIRT_COLOURS[i % 6] : SHIRT_COLOURS[i % SHIRT_COLOURS.length];
     const m = makePersonMesh(shirt, PANTS_COLOURS[i % PANTS_COLOURS.length], SKIN_COLOURS[i % SKIN_COLOURS.length]);
     m.group.position.set(x, 0, z);
     scene.add(m.group);

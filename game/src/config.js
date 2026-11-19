@@ -1,16 +1,30 @@
-// LUMEN BAY r7 — daylight rebuild. Every tuning number, district, mission and
-// price in one place. Puerto Lumen is a 480 x 480 island city: roads every 60,
-// turquoise sea west + south, BRIGHT MIDDAY sun at 12:30 (the old 18:40 dusk is
-// gone). Positions are [x, z] on the ground plane; y is up. Nothing here comes
+// LUMEN BAY r8 — sunset golden-hour rebuild. Every tuning number, district,
+// mission and price in one place. Puerto Lumen is a 480 x 480 island city:
+// roads every 60, turquoise sea west + south, GOLDEN HOUR at 18:48 — low sun
+// on the horizon, orange → pink → purple sky, long warm shadows, lit windows.
+// Positions are [x, z] on the ground plane; y is up. Nothing here comes
 // from any commercial game.
 export const WORLD = { size: 480, half: 240, roadGap: 60, seaLevel: -0.4 };
 export const STEP = 1 / 60;
 export const SAVE_KEY = 'lumenbay.r6.save.v1';
-export const CLOCK = '12:30';
-export const TRAFFIC_COUNT = 20;
-export const PED_COUNT = 40;
+export const CLOCK = '18:48';
+export const TRAFFIC_COUNT = 28;
+export const PED_COUNT = 60;
 // Ferris wheel on the Playa Dorada horizon, visible from the beach avenue.
 export const FERRIS = { pos: [0, 222], radius: 26, height: 34, gondolas: 12 };
+// Search-zone radius (world units) the police sweep while the player is
+// wanted — drawn as the dashed red ring on the minimap.
+export const SEARCH_ZONE_RADIUS = 68;
+// The low golden-hour sun sits ahead-east over the sea horizon, so the chase
+// camera (looking east down Playa Drive) catches the glare straight on.
+// The low golden-hour sun sits almost ON the road axis (z≈175, the Playa
+// Drive line), high enough to clear the rooftops — dead ahead in the chase
+// camera, above the vanishing point, so the disc is never hidden behind the
+// left-side buildings (r8 lesson: at z=120 it sat behind the north row).
+export const SUNSET = {
+  sunPos: [420, 70, 175], sunColour: 0xffb347, sunIntensity: 3.4,
+  rimColour: 0xff8c42, skyTop: 0x5a2a7a, skyHorizon: 0xff8c42, fog: 0x9a5a7a,
+};
 export const DISTRICTS = [
   { id: 'marina', name: 'Marina', rect: [-240, -240, -120, -80], owner: 'shark', colour: '#e5484d' },
   { id: 'mercado', name: 'Mercado Viejo', rect: [-120, -240, 0, -80], owner: 'shark', colour: '#e5484d' },
@@ -74,23 +88,28 @@ export const UPGRADES = {
   nos: { name: 'NOS Tank', max: 3, prices: [700, 1300, 2400], capacity: [60, 90, 120, 160] },
 };
 export const CARS = {
-  comet: { name: 'Veloz Comet RS', colour: 0xff2a1e, top: 34, accel: 16 },
+  comet: { name: 'Veloz Comet RS', colour: 0xd90429, top: 34, accel: 16 },
   sedan: { name: 'Solmar Sedan', colour: 0x3fa7ff, top: 26, accel: 12 },
   pickup: { name: 'Dune Pickup', colour: 0x8a6f4d, top: 28, accel: 13 },
   taxi: { name: 'Lumen Taxi', colour: 0xffd23f, top: 26, accel: 12 },
   shark: { name: 'Tiburon Coupe', colour: 0x222226, top: 32, accel: 15 },
   police: { name: 'LCPD Cruiser', colour: 0x1c4ed8, top: 33, accel: 16 },
 };
+// Police call-sign roster for the LCPD response list (top-3 style: unit names,
+// distances, statuses like RAMMING / SPOTLIGHT / ROADBLOCK / FIRING).
+export const POLICE_ROSTER = ['PELICAN-11', 'GECKO-25', 'BARRACUDA-18', 'TAC-45', 'COBRA-07'];
 export const WEAPONS = {
   fists: { name: 'Fists', damage: 12, rate: 0.45, range: 3, auto: false },
   pistol: { name: 'Pistol', damage: 34, rate: 0.28, range: 70, auto: false },
   smg: { name: 'SMG', damage: 18, rate: 0.09, range: 60, auto: true },
 };
-// Bright midday palette: blue sky, turquoise sea, warm sand, saturated pastels.
+// Golden-hour palette: purple sky, orange horizon, warm dusk sea and sand,
+// dark warm asphalt, sunset-lit grass. The sky dome gradient (textures.js)
+// carries the orange → pink → purple blend; these are the flat fallbacks.
 export const PALETTE = {
-  skyTop: 0x2f7fe0, skyHorizon: 0xbfe3ff, sun: 0xfff2b0,
-  sea: 0x19b8c4, sand: 0xf2ddab, road: 0x4a4d55, sidewalk: 0xcfc8b8,
-  grass: 0x58a83c, building: 0xf2e3c8, neon: 0xff4d8d,
+  skyTop: 0x5a2a7a, skyHorizon: 0xff8c42, sun: 0xffb347,
+  sea: 0x1a7f8e, sand: 0xe8c48a, road: 0x4a4550, sidewalk: 0xb8a88e,
+  grass: 0x4a7a3a, building: 0xf2e3c8, neon: 0xff4d8d,
   crew: '#37c978', shark: '#e5484d', police: '#4d8dff',
 };
 export const MISSIONS = [
@@ -201,7 +220,7 @@ export const RACE_POINTS = [
   [-120, -120], [-60, -60], [0, -120], [60, -60], [120, -120], [120, 0], [60, 60], [-60, -180],
 ];
 export const STATIONS = [
-  { name: 'RADIO LUMEN 88.1 — Midday FM', root: 220, steps: [0, 3, 5, 7, 10, 12, 15, 17] },
+  { name: 'RADIO LUMEN 88.1 — Golden Hour FM', root: 220, steps: [0, 3, 5, 7, 10, 12, 15, 17] },
   { name: 'RADIO TIBURON 94.5 — Shark Rock', root: 164.8, steps: [0, 2, 3, 5, 7, 8, 10, 12] },
   { name: 'RADIO SOL 101.9 — Sol Hits', root: 196, steps: [0, 2, 4, 7, 9, 12, 14, 16] },
 ];
@@ -216,6 +235,10 @@ export function clamp(v, lo, hi) {
 export function dist2(a, b) {
   const dx = a[0] - b[0]; const dz = a[1] - b[1];
   return Math.sqrt(dx * dx + dz * dz);
+}
+/** Respect: the street-rep number the HUD shows under the minimap. */
+export function respectFor(missionIdx, turfHeld, ownedCount) {
+  return Math.min(550, 290 + missionIdx * 20 + turfHeld * 10 + ownedCount * 15);
 }
 export function freshSave() {
   return {

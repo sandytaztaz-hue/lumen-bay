@@ -1,6 +1,8 @@
-// LUMEN BAY r7 — street races: checkpoint races against a Tiburones rival.
+// LUMEN BAY r8 — street races: checkpoint races against a Tiburones rival.
 // The rival drives the checkpoint line with NOS bursts on the straights; the
 // player wins by passing every checkpoint first. A win flips a district.
+// NEW in r8: progress() for the HUD (checkpoint x/y in the mission panel),
+// and the checkpoint rings are sunset gold, glowing against the dusk.
 import * as THREE from 'three';
 import { dist2, clamp } from './config.js';
 import { makeCar, driveCar } from './vehicles.js';
@@ -18,6 +20,16 @@ export class Race {
     this.won = false;
     this.lost = false;
     this.raceT = 0;
+  }
+  /** Race progress for the HUD: { done, total }. */
+  progress() {
+    return { done: Math.min(this.index, this.checkpoints.length), total: this.checkpoints.length };
+  }
+  /** Who is ahead: 'player', 'rival', or 'tied'. */
+  leader() {
+    if (this.index > this.rivalIndex) return 'player';
+    if (this.rivalIndex > this.index) return 'rival';
+    return 'tied';
   }
   start(points) {
     this.stop();

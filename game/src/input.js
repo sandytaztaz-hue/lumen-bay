@@ -1,6 +1,7 @@
-// LUMEN BAY r7 — input: keyboard state, one-shot action flags, mouse orbit
+// LUMEN BAY r8 — input: keyboard state, one-shot action flags, mouse orbit
 // and click-to-fire. Held keys steer; presses are queued once and taken by the
-// loop, so a press between frames is never lost or double-counted.
+// loop, so a press between frames is never lost or double-counted. NEW in r8:
+// clearHeld(), so a pause / busted screen can never leave a stuck key behind.
 export const ACTION_CONFIRM = 1;
 export const ACTION_PAUSE = 2;
 export const ACTION_MISSION = 4;
@@ -68,6 +69,13 @@ export function createInput(canvas) {
       const taken = actions;
       actions = 0;
       return taken;
+    },
+    /** True when a movement key is currently held. */
+    isDown(name) { return !!held[name]; },
+    /** Release every held key (pause / busted screens). */
+    clearHeld() {
+      for (const k of Object.keys(held)) held[k] = false;
+      firing = false; dragging = false;
     },
     /** Test hook: pretend a key was pressed (used by the scripted probes). */
     press(action) { actions |= action; },

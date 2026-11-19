@@ -1,11 +1,14 @@
-// LUMEN BAY r7 — the HUD, rebuilt on the top-3 formula: dense, bold, readable
-// at a glance. Top-left mission panel (job title, objectives with checkmarks,
-// stage x/y, big timer, NEXT step). Top-center WANTED stars. Top-right big
-// green cash + weapon + NOS + health/armour. Left-middle police response list
-// + ROADBLOCK AHEAD banner. Bottom-left detailed ROUND minimap (streets with
-// names, district labels, markers, police, roadblocks, heli). Bottom-center
-// dialogue box. Bottom-right big speed + gear + vehicle name + radio.
-import { DISTRICTS, CLOCK, STREETS, FERRIS } from './config.js';
+// LUMEN BAY r8 — the HUD, rebuilt on the top-3 formula and denser than r7:
+// mission panel (job title, objectives with checkmarks, stage x/y, big
+// timer, NEXT step, alert banners, controls hint, STORY + REP), WANTED stars
+// top-center, big green cash + weapon slots + NOS + health/armour top-right,
+// NOTIFICATION TOASTS (WANTED LEVEL UP / ROADBLOCK AHEAD / NOS READY / ...),
+// police response list with unit names/distances/statuses, IN SIGHT banner
+// ("IN SIGHT — search zone follows you"), RESPECT bar, detailed ROUND minimap
+// with a SEARCH-ZONE ring while wanted, dialogue box, big speed + gear +
+// vehicle + condition + radio. All of it readable at a glance, like the
+// top-3 entries: lots of text, lots of notifications.
+import { DISTRICTS, CLOCK, STREETS, FERRIS, SEARCH_ZONE_RADIUS } from './config.js';
 import { turfLabel as turfLabelFn } from './turf.js';
 
 export function createHud() {
@@ -21,12 +24,16 @@ export function createHud() {
     title: $('screen-title'), pause: $('screen-pause'), busted: $('screen-busted'),
     missionTitle: $('hud-mission-title'), missionObjectives: $('hud-mission-objectives'),
     missionStage: $('hud-mission-stage'), missionTimer: $('hud-mission-timer'),
-    missionNext: $('hud-mission-next'), policeList: $('hud-police-list'),
+    missionNext: $('hud-mission-next'), missionAlerts: $('hud-mission-alerts'),
+    missionStory: $('hud-mission-story'), policeList: $('hud-police-list'),
     roadblockBanner: $('hud-roadblock-banner'), dialogue: $('hud-dialogue'),
     dialogueAvatar: $('hud-dialogue-avatar'), dialogueName: $('hud-dialogue-name'),
     dialogueText: $('hud-dialogue-text'), streetLabel: $('hud-street-label'),
     speedBig: $('hud-speed-big'), gear: $('hud-gear'), vehicleName: $('hud-vehicle-name'),
     conditionFill: $('hud-condition-fill'), wantedLabel: $('hud-wanted-label'),
+    notifications: $('hud-notifications'), weapons: $('hud-weapons'),
+    insight: $('hud-insight'), respectFill: $('hud-respect-fill'),
+    respectLabel: $('hud-respect-label'),
   };
   el.clock.textContent = CLOCK;
   const lines = [];
@@ -34,11 +41,14 @@ export function createHud() {
     el,
     _panelCache: '',
     _policeCache: '',
+    _weaponsCache: '',
+    _alertsCache: '',
+    _respectCache: '',
     log(msg) {
       const div = document.createElement('div');
       div.textContent = msg;
       el.log.prepend(div);
-      while (el.log.children.length > 4) el.log.removeChild(el.log.lastChild);
+      while (el.log.children.length > 3) el.log.removeChild(el.log.lastChild);
       lines.unshift(msg);
       if (lines.length > 30) lines.pop();
     },
@@ -46,7 +56,28 @@ export function createHud() {
       const div = document.createElement('div');
       div.textContent = msg;
       el.feed.prepend(div);
-      while (el.feed.children.length > 4) el.feed.removeChild(el.feed.lastChild);
+      while (el.feed.children.length > 2) el.feed.removeChild(el.feed.lastChild);
+    },
+    /** Notification toast, top-right under the cash panel: title + sub-line,
+     auto-expires after ~5 s unless `sticky` (shot staging keeps them for
+     the screenshot, since SwiftShader boots slower than the timeout). */
+    notify(title, sub, kind, sticky) {
+      if (!el.notifications) return;
+      const div = document.createElement('div');
+      div.className = `toast ${kind || ''}`;
+      const t = document.createElement('div');
+      t.className = 'toast-title';
+      t.textContent = title;
+      div.appendChild(t);
+      if (sub) {
+        const s = document.createElement('div');
+        s.className = 'toast-sub';
+        s.textContent = sub;
+        div.appendChild(s);
+      }
+      el.notifications.prepend(div);
+      while (el.notifications.children.length > 3) el.notifications.removeChild(el.notifications.lastChild);
+      if (!sticky) setTimeout(() => { if (div.parentNode) div.remove(); }, 5000);
     },
     showBanner(title, sub, ms) {
       el.bannerTitle.textContent = title;
@@ -88,6 +119,8 @@ export function updateHud(hud, s) {
   el.timer.textContent = s.timerText || '';
   el.timer.style.display = s.timerText ? 'block' : 'none';
   el.streetLabel.textContent = s.streetLabel || '';
+  // IN SIGHT banner: visible while the police can see the player.
+  if (el.insight) el.insight.style.display = s.inSight ? 'block' : 'none';
   // Mission panel (rebuilt only when its content changes).
   if (s.missionPanel) {
     const p = s.missionPanel;
@@ -97,10 +130,41 @@ export function updateHud(hud, s) {
       el.missionTitle.textContent = p.title;
       el.missionObjectives.innerHTML = p.objectives.map((o) =>
         `<div class="obj ${o.done ? 'done' : ''}">${o.done ? '✓' : '○'} ${o.label}</div>`).join('');
-      el.missionStage.textContent = `STAGE ${p.stage}  ·  +$${p.reward}`;
+      // STORY + REP ride on the stage line (one line, not a second row) so
+      // the mission panel stays short enough for the police panel below it.
+      el.missionStage.textContent = `STAGE ${p.stage}  ·  +$${p.reward}${p.story ? `  ·  ${p.story}` : ''}${p.rep ? `  ·  REP ${p.rep}` : ''}`;
       el.missionTimer.textContent = p.timer || (s.timerText ? s.timerText.replace('⏱ ', '') : '');
       el.missionTimer.style.display = (p.timer || s.timerText) ? 'block' : 'none';
       el.missionNext.innerHTML = `NEXT: ${p.next}`;
+      if (el.missionStory) el.missionStory.textContent = '';
+    }
+  }
+  // Mission alert lines (ROADBLOCK AHEAD / VEHICLE STOLEN), top-3 style.
+  if (s.alerts && el.missionAlerts) {
+    const key = s.alerts.join('|');
+    if (key !== hud._alertsCache) {
+      hud._alertsCache = key;
+      el.missionAlerts.innerHTML = s.alerts.map((a) =>
+        `<div class="alert ${a.kind === 'warn' ? 'warn' : 'info'}">${a.text}</div>`).join('');
+    }
+  }
+  // Weapon slots row (FISTS / PISTOL / SMG with ammo), top-right.
+  if (s.weapons && el.weapons) {
+    const key = JSON.stringify(s.weapons);
+    if (key !== hud._weaponsCache) {
+      hud._weaponsCache = key;
+      el.weapons.innerHTML = s.weapons.map((w) =>
+        `<div class="wslot ${w.active ? 'active' : ''}"><span class="wkey">${w.key}</span> ${w.name}<span class="wammo">${w.ammo}</span></div>`).join('');
+    }
+  }
+  // RESPECT bar under the minimap.
+  if (s.respect !== undefined && el.respectFill) {
+    const pct = Math.round((s.respect / 550) * 100);
+    const key = `${s.respect}|${s.respectRank || ''}`;
+    if (key !== hud._respectCache) {
+      hud._respectCache = key;
+      el.respectFill.style.width = `${pct}%`;
+      if (el.respectLabel) el.respectLabel.textContent = `RESPECT · ${s.respectRank || 'SHOT CALLER'} ${s.respect}/550`;
     }
   }
   // Police response list (rebuilt only when it changes).
@@ -128,7 +192,8 @@ export function updateHud(hud, s) {
 /** The detailed minimap: turquoise sea + sand, district turf colours + labels,
  streets with names, ferris wheel + lighthouse icons, mission marker, police
  blips, roadblocks, heli, properties, robbery targets, race checkpoints and
- the player arrow. Drawn on a round canvas (CSS border-radius: 50%). */
+ the player arrow — plus a dashed red SEARCH-ZONE ring while wanted. Drawn on
+ a round canvas (CSS border-radius: 50%). */
 function drawMinimap(canvas, s) {
   const g = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -239,6 +304,19 @@ function drawMinimap(canvas, s) {
     g.fillStyle = '#fff';
     g.font = 'bold 12px system-ui, sans-serif';
     g.fillText('H', x, y);
+  }
+  // Search-zone ring: dashed red circle around the player while wanted —
+  // the police search area follows the player (top-3 "IN SIGHT" look).
+  if (s.searchZone) {
+    const [px, py] = toMap(s.px, s.pz);
+    const rPx = (SEARCH_ZONE_RADIUS / 480) * W;
+    g.strokeStyle = 'rgba(255,42,42,0.9)';
+    g.lineWidth = 2;
+    g.setLineDash([6, 4]);
+    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = 'rgba(255,42,42,0.10)';
+    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.fill();
   }
   // Player arrow (rotates with heading).
   const [px, py] = toMap(s.px, s.pz);

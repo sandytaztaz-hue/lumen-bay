@@ -1,7 +1,8 @@
-// LUMEN BAY r7 — turf war: the 12 districts, robberies and ownable properties.
+// LUMEN BAY r8 — turf war: the 12 districts, robberies and ownable properties.
 // Los Tiburones hold the city at the start; Mara's crew takes it back one
 // district at a time. Robberies and races flip districts; owned properties hold
-// them and pay passive income per in-game hour.
+// them and pay passive income per in-game hour. NEW in r8: rep() — the street
+// rep the RESPECT bar reads, so turf wins visibly move the bar.
 import { DISTRICTS, ROB_TARGETS, PROPERTIES, dist2 } from './config.js';
 
 export class Turf {
@@ -13,6 +14,17 @@ export class Turf {
     this.incomeAcc = 0;
   }
   held() { return this.owners.filter((o) => o === 'crew').length; }
+  /** Passive income per in-game hour from owned properties. */
+  incomePerHour() {
+    let total = 0;
+    for (const id of this.owned) {
+      const p = PROPERTIES.find((x) => x.id === id);
+      if (p) total += p.income;
+    }
+    return total;
+  }
+  /** Street rep from turf: held districts + owned properties move the bar. */
+  rep() { return this.held() * 10 + this.owned.length * 15; }
   districtIndexAt(x, z) {
     for (let i = 0; i < DISTRICTS.length; i += 1) {
       const r = DISTRICTS[i].rect;
