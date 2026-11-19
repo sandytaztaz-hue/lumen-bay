@@ -1,8 +1,8 @@
-// LUMEN BAY r8 — the screenshot scenes behind ?shot=1..4. Each one stages a
+// LUMEN BAY r8c — the screenshot scenes behind ?shot=1..4. Each one stages a
 // real gameplay state (not a mock): the world runs its normal loop from there,
 // the autopilot just holds the pose, and main.js sets window.__shotReady once
-// the scene has rendered. Shot 1 is the cover: GOLDEN HOUR beach-avenue chase
-// into the low sun — big red Comet RS with clearcoat paint, NOS burning, THREE
+// the scene has rendered. Shot 1 is the cover: BRIGHT MIDDAY beach-avenue chase
+// under a high white sun — big red Comet RS with clearcoat paint, NOS burning, THREE
 // cruisers close behind with flashing light bars, heli overhead with a visible
 // searchlight cone, roadblock ahead, dust puffs, full dense HUD: mission panel
 // + alerts, WANTED 4 stars, big green cash, police response list, notification
@@ -11,7 +11,7 @@
 // festival robbery, MISSION PASSED + story progress.
 import { ROB_TARGETS } from './config.js';
 
-// Cover: golden-hour beach avenue chase. Red Comet RS LARGE in frame, NOS
+// Cover: bright midday beach avenue chase. Red Comet RS LARGE in frame, NOS
 // burning, 3 cruisers close behind, heli overhead, roadblock ahead, Street
 // King race live, toasts up, 4 stars.
 export function stageShot1(G) {
@@ -49,8 +49,8 @@ export function stageShot1(G) {
   // framing drifts. The anchor snaps it back every frame (staging hold).
   G.anchor = [-150, 180];
 }
-// On-foot shootout at Torre Lumen: GOLDEN HOUR, guards, muzzle flash, kill
-// feed, dialogue, wanted 2, lit windows behind.
+// On-foot shootout at Torre Lumen: BRIGHT MIDDAY, guards, muzzle flash, kill
+// feed, dialogue, wanted 2, sunlit facades behind.
 export function stageShot2(G) {
   G.startPlay();
   G.warpTo(60, -120);
@@ -113,7 +113,7 @@ export function stageShot3(G) {
   // reads ~2x bigger, poster-size.
   G.camYaw = 2.6 - 0.38;
 }
-// MISSION PASSED at Playa Dorada: golden-hour beach, turf 12/12, umbrellas +
+// MISSION PASSED at Playa Dorada: bright midday beach, turf 12/12, umbrellas +
 // ferris wheel, MISSION PASSED banner (+$8,000 · +500 REP · UNLOCKED: PIER
 // SAFEHOUSE) and the story-progress line (STORY 15/15, SAVE SLOT 1).
 export function stageShot4(G) {

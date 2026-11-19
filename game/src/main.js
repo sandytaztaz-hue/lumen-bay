@@ -1,10 +1,10 @@
-// LUMEN BAY r8 — boot and the one loop. Third-person on foot and by car in
-// golden-hour Puerto Lumen (18:48): 15 story missions, turf war, garage
+// LUMEN BAY r8c — boot and the one loop. Third-person on foot and by car in
+// bright daytime Puerto Lumen (12:30): 15 story missions, turf war, garage
 // upgrades, NOS, robberies, properties, street races, wanted police with
 // roadblocks and line-of-sight chases, a helicopter with a visible searchlight,
 // combat, radio, saves. ?shot=1..4 stages a fixed scene and sets
-// window.__shotReady for screenshots. Gameplay is the r6 game; r8 rebuilds
-// only the LOOK (sunset, metallic hero car, police chase, busy streets, dense
+// window.__shotReady for screenshots. Gameplay is the r6 game; r8c rebuilds
+// only the LOOK (daylight, metallic hero car, police chase, busy streets, dense
 // HUD with notification toasts, weapon slots, IN SIGHT banner, RESPECT bar,
 // search-zone minimap) — the top-3 layout, with our city/story/missions.
 import * as THREE from 'three';
@@ -976,5 +976,5 @@ if (shotMode) {
   missions.missionIdx = save.mission;
   missions.refreshObjective();
 }
-hud.log('LUMEN BAY — Puerto Lumen, 18:48. Press M to start the story.');
+hud.log('LUMEN BAY — Puerto Lumen, 12:30. Press M to start the story.');
 requestAnimationFrame(frame);

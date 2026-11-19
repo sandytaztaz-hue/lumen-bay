@@ -1,13 +1,14 @@
-// LUMEN BAY r8 — the renderer: three.js scene, GOLDEN HOUR 18:48 lighting,
-// close low chase camera, muzzle flashes, tracers, damage numbers, mission
-// beacon. The sky is a real gradient dome (orange horizon → pink → purple
-// zenith) with a low sun disc + glow sprite ahead-east, so the chase camera
-// looks straight into the glare. A PMREM environment map baked from that sky
-// makes the hero car's clearcoat paint pick up real reflections, and a warm
-// rim light gives the sunset edge glow. Long shadows, warm mauve fog.
+// LUMEN BAY r8c — the renderer: three.js scene, BRIGHT DAYTIME 12:30
+// lighting, close low chase camera, muzzle flashes, tracers, damage numbers,
+// mission beacon. The sky is a real gradient dome (deep blue zenith → pale
+// horizon) with a HIGH white sun disc + light glare ahead-east, so the chase
+// camera looks up into a bright airy sky. A PMREM environment map baked from
+// that sky makes the hero car's clearcoat paint pick up real daylight
+// reflections, and a cool sky-blue rim light gives the bright edge glow.
+// Short crisp shadows, pale blue haze fog.
 import * as THREE from 'three';
-import { WORLD, PALETTE, SUNSET } from './config.js';
-import { sunsetSkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
+import { WORLD, PALETTE, DAYLIGHT } from './config.js';
+import { daySkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
 
 export function createRenderer3D(canvas, opts) {
   const o = opts || {};
@@ -16,20 +17,21 @@ export function createRenderer3D(canvas, opts) {
   renderer.shadowMap.enabled = o.shadows !== false;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.18;
+  renderer.toneMappingExposure = 1.1;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2a1540);
-  scene.fog = new THREE.Fog(SUNSET.fog, 350, 850);
-  // --- golden-hour sky dome: gradient texture on the inside of a big sphere.
-  const skyTex = sunsetSkyTexture();
+  scene.background = new THREE.Color(0x87bfe8);
+  scene.fog = new THREE.Fog(DAYLIGHT.fog, 400, 1100);
+  // --- bright daytime sky dome: gradient texture on the inside of a big sphere.
+  const skyTex = daySkyTexture();
   const skyDome = new THREE.Mesh(
     new THREE.SphereGeometry(950, 24, 16),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }),
   );
   skyDome.renderOrder = -10;
   scene.add(skyDome);
-  // --- PMREM environment map baked from the same sunset sky, so metallic
-  // paint (hero car, chrome, glass) reflects orange/pink like real dusk.
+  // --- PMREM environment map baked from the same daytime sky, so metallic
+  // paint (hero car, chrome, glass) reflects bright blue daylight like a
+  // clear midday. The env sun ball sits HIGH, matching the disc.
   try {
     const envScene = new THREE.Scene();
     const envSky = new THREE.Mesh(
@@ -38,66 +40,71 @@ export function createRenderer3D(canvas, opts) {
     );
     envScene.add(envSky);
     const sunBall = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xfff2c0 }));
-    sunBall.position.set(60, 14, 26);
+      new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    sunBall.position.set(55, 28, 20);
     envScene.add(sunBall);
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envRT = pmrem.fromScene(envScene, 0.04);
     scene.environment = envRT.texture;
-    if ('environmentIntensity' in scene) scene.environmentIntensity = 0.9;
+    if ('environmentIntensity' in scene) scene.environmentIntensity = 1.0;
     pmrem.dispose();
   } catch { /* env map is a bonus: the game still renders without it */ }
-  // Low warm sun ahead-east, on the road axis: long shadows back toward the
-  // camera, everything rimmed orange. Position is relative to the world
-  // origin (target 0,0,0); keep it on the same line as the sun disc.
-  const sun = new THREE.DirectionalLight(SUNSET.sunColour, SUNSET.sunIntensity);
-  sun.position.set(320, 75, 170);
+  // High white midday sun ahead-east: short shadows, everything lit bright
+  // and even. The light sits higher than the visible disc (elevation ~36°)
+  // so shadows stay short even though the disc itself rides at ~20° in the
+  // frame's upper sky. Position is relative to the world origin (target
+  // 0,0,0); keep it on the same line as the sun disc.
+  const sun = new THREE.DirectionalLight(DAYLIGHT.sunColour, DAYLIGHT.sunIntensity);
+  sun.position.set(320, 260, 170);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.camera.left = -260; sun.shadow.camera.right = 260;
   sun.shadow.camera.top = 260; sun.shadow.camera.bottom = -260;
   sun.shadow.camera.far = 800;
   scene.add(sun);
-  // Warm rim light from the opposite side, so car edges glow pink-orange —
-  // strong, because the chase camera looks at the car's shadow side.
-  const rim = new THREE.DirectionalLight(SUNSET.rimColour, 1.4);
-  rim.position.set(-160, 40, -120);
+  // Cool sky-blue rim light from the opposite side, so car edges pick up a
+  // bright daylight edge — strong, because the chase camera looks at the
+  // car's shadow side.
+  const rim = new THREE.DirectionalLight(DAYLIGHT.rimColour, 0.9);
+  rim.position.set(-160, 200, -120);
   scene.add(rim);
   // Rear fill from behind the camera: the hero car's tail must read RED,
-  // not black, in the chase view.
-  const rearFill = new THREE.DirectionalLight(0xffc8a0, 0.8);
+  // not black, in the chase view. White daylight fill, not warm dusk.
+  const rearFill = new THREE.DirectionalLight(0xffffff, 0.9);
   rearFill.position.set(-220, 70, 200);
   scene.add(rearFill);
-  const hemi = new THREE.HemisphereLight(0xff9a6b, 0x4a2a3a, 1.1);
+  const hemi = new THREE.HemisphereLight(0x9fd4ff, 0x5da244, 1.25);
   scene.add(hemi);
-  const fill = new THREE.DirectionalLight(0xffb8c8, 0.4);
+  const fill = new THREE.DirectionalLight(0xeaf4ff, 0.5);
   fill.position.set(-120, 80, 140);
   scene.add(fill);
-  // Sun disc LOW on the horizon ahead-east + a big additive glow sprite, so
-  // the chase cam (looking east down Playa Drive) catches the glare. Big on
-  // purpose: the disc must read as a poster sun, not a speck.
-  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(34, 32),
-    new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
-  sunDisc.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
+  // Sun disc HIGH in the sky ahead-east + a light additive glow sprite, so
+  // the chase cam (looking east down Playa Drive) catches a bright white
+  // midday sun high above the rooftops. Big on purpose: the disc must read
+  // as a poster sun, not a speck — but high and white, never a low orange disc.
+  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(30, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
+  sunDisc.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
   sunDisc.lookAt(0, 0, 0);
   scene.add(sunDisc);
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: sunGlowTexture(), transparent: true, opacity: 0.85, fog: false, depthWrite: false,
+    map: sunGlowTexture(), transparent: true, opacity: 0.5, fog: false, depthWrite: false,
   }));
-  glow.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
-  glow.scale.set(300, 300, 1);
+  glow.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
+  glow.scale.set(220, 220, 1);
   scene.add(glow);
-  // r8b anamorphic glare: two thin horizontal streak planes across the disc
-  // (the top-3 poster sun), so the disc is a glare, not a flat circle.
+  // r8c daylight glare: two thin horizontal streak planes across the disc
+  // (the top-3 poster sun), kept LIGHT in daylight — a soft white glare,
+  // not the heavy orange dusk streak.
   const streakTex = sunStreakTexture();
   const streaks = [];
-  for (const [w, h, op] of [[340, 12, 0.65], [220, 6, 0.5]]) {
+  for (const [w, h, op] of [[300, 10, 0.35], [200, 5, 0.28]]) {
     const streak = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
       new THREE.MeshBasicMaterial({
         map: streakTex, transparent: true, opacity: op, fog: false,
         blending: THREE.AdditiveBlending, depthWrite: false,
       }));
-    streak.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
+    streak.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
     streak.lookAt(0, 0, 0);
     scene.add(streak);
     streaks.push(streak);

@@ -1,9 +1,10 @@
-// LUMEN BAY r8 — procedural canvas textures, rebuilt for GOLDEN HOUR 18:48.
-// Every surface is painted on a <canvas> at boot from the seeded RNG: no image
-// files, no network. Warm sunset facades with LIT windows (orange/yellow glow
-// against the dusk), dark warm asphalt, a sunset sea (orange-pink reflections),
-// pink clouds, neon signs on dark boards that glow at dusk, and the big
-// orange → pink → purple sky gradient + sun-glow sprites the renderer uses.
+// LUMEN BAY r8c — procedural canvas textures, rebuilt for BRIGHT DAYTIME
+// 12:30. Every surface is painted on a <canvas> at boot from the seeded RNG:
+// no image files, no network. Bright sunlit facades with mostly reflective
+// blue-glass windows (only a few lit), lighter daylight asphalt, a bright
+// turquoise day sea, white clouds, neon signs on dark boards that glow softer
+// in daylight, and the big blue → pale-horizon sky gradient + white sun-glow
+// sprites the renderer uses.
 import * as THREE from 'three';
 import { randInt } from './random.js';
 
@@ -19,28 +20,36 @@ function toTexture(canvas, rx, ry) {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-/** Sunset facade: warm dusk plaster, LIT windows (amber glow, some dark),
- white frames, sign band + striped awning at street level. */
+/** Daylight facade: bright sunlit plaster, mostly reflective blue-glass
+ windows (daylight sky reflected), only a few lit amber — lights are OFF at
+ midday — white frames, sign band + striped awning at street level. */
 export function buildingTexture(rng, hue) {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
-  g.fillStyle = `hsl(${hue}, ${58 + randInt(rng, 0, 16)}%, ${52 + randInt(rng, 0, 10)}%)`;
+  g.fillStyle = `hsl(${hue}, ${52 + randInt(rng, 0, 14)}%, ${66 + randInt(rng, 0, 10)}%)`;
   g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 420; i += 1) {
-    g.fillStyle = `rgba(255,180,120,${0.02 + rng() * 0.05})`;
+    g.fillStyle = `rgba(255,255,255,${0.02 + rng() * 0.05})`;
     g.fillRect(rng() * 256, rng() * 256, 2, 2);
   }
-  // Windows: most lit warm amber/orange (dusk lights on), a few dark blue.
-  const litCols = ['#ffd27a', '#ffb347', '#ff9a3c', '#ffe9b0'];
+  // Windows: mostly sky-blue reflective glass, a few warm-lit, a few dark.
+  const litCols = ['#ffd27a', '#ffb347'];
+  const glassCols = ['#7fb8d8', '#9fd0e8', '#6aa8cc', '#a8d8f0'];
   for (let row = 0; row < 5; row += 1) {
     for (let col = 0; col < 4; col += 1) {
       const x = 20 + col * 56, y = 18 + row * 44;
-      const lit = rng() < 0.72;
-      g.fillStyle = lit ? litCols[Math.floor(rng() * litCols.length)] : '#2a2a55';
+      const r = rng();
+      const lit = r < 0.12;
+      g.fillStyle = lit ? litCols[Math.floor(rng() * litCols.length)]
+        : r < 0.2 ? '#2a3a4a' : glassCols[Math.floor(rng() * glassCols.length)];
       g.fillRect(x, y, 38, 30);
       if (lit) {
         g.fillStyle = 'rgba(255,255,255,0.35)';
         g.fillRect(x, y, 38, 5);
+      } else {
+        // Sky glare band across the glass — daylight reflection.
+        g.fillStyle = 'rgba(255,255,255,0.45)';
+        g.fillRect(x, y, 38, 6);
       }
       g.fillStyle = 'rgba(255,255,255,0.85)';
       g.fillRect(x, y, 38, 6);
@@ -59,13 +68,13 @@ export function buildingTexture(rng, hue) {
   for (let x = 0; x < 256; x += 32) g.fillRect(x, 226, 16, 30);
   return toTexture(c, 1, 1);
 }
-/** Warm dark asphalt: amber centre line, pale edges, crosswalk stripes. */
+/** Lighter daylight asphalt: pale centre line, pale edges, crosswalk stripes. */
 export function roadTexture(rng) {
   const c = makeCanvas(128, 128);
   const g = c.getContext('2d');
-  g.fillStyle = '#4a4550'; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = '#55565e'; g.fillRect(0, 0, 128, 128);
   for (let i = 0; i < 260; i += 1) {
-    g.fillStyle = `rgba(255,180,120,${rng() * 0.06})`;
+    g.fillStyle = `rgba(255,255,255,${rng() * 0.06})`;
     g.fillRect(rng() * 128, rng() * 128, 2, 2);
   }
   g.fillStyle = '#ffd23f';
@@ -94,15 +103,16 @@ export function sandTexture(rng) {
   }
   return toTexture(c, 8, 8);
 }
-/** Sunset sea: deep teal shading into orange-pink sun glitter on the water. */
+/** Daylight sea: bright turquoise shading into pale aqua, white sun sparkle
+ on the water under the high midday sun. */
 export function waterTexture(rng) {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 256, 256);
-  grad.addColorStop(0, '#1a7f8e'); grad.addColorStop(0.55, '#c96a5a'); grad.addColorStop(1, '#ff9a5a');
+  grad.addColorStop(0, '#1e9bb5'); grad.addColorStop(0.55, '#3fb8cc'); grad.addColorStop(1, '#8fd8e8');
   g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 180; i += 1) {
-    g.fillStyle = `rgba(255,220,170,${0.12 + rng() * 0.25})`;
+    g.fillStyle = `rgba(255,255,255,${0.12 + rng() * 0.25})`;
     g.fillRect(rng() * 256, rng() * 256, 10 + rng() * 26, 2);
   }
   return toTexture(c, 6, 6);
@@ -150,7 +160,8 @@ export function umbrellaTexture(rng) {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-/** Pink-orange sunset clouds on transparency. */
+/** White daytime clouds on transparency — bright cumulus puffs, shaded
+ pale blue-grey underneath, lit white on top by the high sun. */
 export function cloudTexture(rng) {
   const c = makeCanvas(256, 128);
   const g = c.getContext('2d');
@@ -158,9 +169,9 @@ export function cloudTexture(rng) {
   for (let i = 0; i < 9; i += 1) {
     const x = 30 + rng() * 196, y = 45 + rng() * 40, r = 18 + rng() * 26;
     const grad = g.createRadialGradient(x, y, 2, x, y, r);
-    grad.addColorStop(0, 'rgba(255,190,160,0.95)');
-    grad.addColorStop(0.6, 'rgba(255,140,160,0.55)');
-    grad.addColorStop(1, 'rgba(255,120,160,0)');
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.6, 'rgba(230,242,250,0.55)');
+    grad.addColorStop(1, 'rgba(200,220,235,0)');
     g.fillStyle = grad;
     g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
   }
@@ -168,45 +179,48 @@ export function cloudTexture(rng) {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-/** The golden-hour sky: vertical gradient orange (horizon) → pink → purple
- (zenith), painted for the inside of the sky dome. Top of the canvas is the
- zenith, bottom is the horizon. */
-export function sunsetSkyTexture() {
+/** The bright daytime sky: vertical gradient deep blue (zenith) → light
+ blue → pale near-white horizon, painted for the inside of the sky dome.
+ Top of the canvas is the zenith, bottom is the horizon. */
+export function daySkyTexture() {
   const c = makeCanvas(64, 512);
   const g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0.0, '#2a1540');
-  grad.addColorStop(0.28, '#5a2a7a');
-  grad.addColorStop(0.52, '#c64a7a');
-  grad.addColorStop(0.72, '#ff7a4a');
-  grad.addColorStop(0.88, '#ffb347');
-  grad.addColorStop(1.0, '#ffd27a');
+  grad.addColorStop(0.0, '#1e6fc0');
+  grad.addColorStop(0.3, '#2f7fd0');
+  grad.addColorStop(0.55, '#5aa8e0');
+  grad.addColorStop(0.78, '#9fd0ec');
+  grad.addColorStop(0.92, '#cfe8f5');
+  grad.addColorStop(1.0, '#e8f4fa');
   g.fillStyle = grad; g.fillRect(0, 0, 64, 512);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-/** Soft radial glow reused for dust puffs (same warm falloff as the sun). */
+/** Soft radial glow reused for dust puffs (same cool-white falloff as the
+ midday sun). */
 export function dustTexture() {
   return sunGlowTexture();
 }
 /** Soft radial sun glow — a HALO, not a blob: the centre stays dim enough
- that the sun disc reads as the hot core inside it. (Also reused for dust.) */
+ that the sun disc reads as the hot core inside it. White daylight halo,
+ not the warm orange of dusk. (Also reused for dust.) */
 export function sunGlowTexture() {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
   const grad = g.createRadialGradient(128, 128, 4, 128, 128, 128);
-  grad.addColorStop(0, 'rgba(255,246,200,0.55)');
-  grad.addColorStop(0.3, 'rgba(255,200,110,0.42)');
-  grad.addColorStop(0.6, 'rgba(255,140,80,0.18)');
-  grad.addColorStop(1, 'rgba(255,120,70,0)');
+  grad.addColorStop(0, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(0.3, 'rgba(220,238,255,0.42)');
+  grad.addColorStop(0.6, 'rgba(180,215,245,0.18)');
+  grad.addColorStop(1, 'rgba(160,200,235,0)');
   g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-/** A glowing shop sign: bold coloured text on a DARK board (reads at dusk),
- with a bright glow halo. */
+/** A glowing shop sign: bold coloured text on a DARK board — the board stays
+ dark so the neon still reads in daylight, but the halo is softer at midday
+ (the renderer/city set a lower halo opacity than at dusk). */
 export function neonSignTexture(text, colour) {
   const c = makeCanvas(256, 64);
   const g = c.getContext('2d');
@@ -313,19 +327,19 @@ export function policeTextTexture(text) {
   return tex;
 }
 /** Horizontal anamorphic sun streak: a thin bright bar with a soft falloff,
- painted for the golden-hour glare across the sun disc (top-3 style). */
+ painted for the white daylight glare across the sun disc (top-3 style). */
 export function sunStreakTexture() {
   const c = makeCanvas(256, 32);
   const g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 256, 0);
-  grad.addColorStop(0, 'rgba(255,220,150,0)');
-  grad.addColorStop(0.5, 'rgba(255,240,200,0.95)');
-  grad.addColorStop(1, 'rgba(255,220,150,0)');
+  grad.addColorStop(0, 'rgba(255,255,255,0)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grad; g.fillRect(0, 0, 256, 32);
   const grad2 = g.createLinearGradient(0, 0, 0, 32);
-  grad2.addColorStop(0, 'rgba(255,220,150,0)');
-  grad2.addColorStop(0.5, 'rgba(255,240,200,0.9)');
-  grad2.addColorStop(1, 'rgba(255,220,150,0)');
+  grad2.addColorStop(0, 'rgba(255,255,255,0)');
+  grad2.addColorStop(0.5, 'rgba(255,255,255,0.9)');
+  grad2.addColorStop(1, 'rgba(255,255,255,0)');
   g.globalCompositeOperation = 'destination-in';
   g.fillStyle = grad2; g.fillRect(0, 0, 256, 32);
   const tex = new THREE.CanvasTexture(c);

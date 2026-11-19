@@ -1,4 +1,4 @@
-# LUMEN BAY: Sunset Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in golden-hour Puerto Lumen
+# LUMEN BAY: Daylight Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in bright midday Puerto Lumen
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
@@ -12,29 +12,30 @@ this entry in a single recorded session.
 
 ## The game
 
-Puerto Lumen is a sun-soaked island city at GOLDEN HOUR (18:48): a low orange
-sun on the horizon, pink clouds, purple dusk sky, turquoise sea catching the
-sunset, lit windows and glowing neon signs, a ferris wheel over Playa Dorada,
-palm-lined Ocean Boulevard, beach umbrellas and food carts. You are
+Puerto Lumen is a sun-soaked island city in BRIGHT DAYLIGHT (12:30): a high
+white sun in a clear blue sky, white clouds, bright turquoise sea, sunlit
+facades with reflective glass windows and neon signs glowing softer in the
+midday sun, a ferris wheel over Playa Dorada, palm-lined Ocean Boulevard,
+beach umbrellas and food carts. You are
 **Mara Solis**, getaway driver for a small crew — fixer **Tio Reyes**, hacker
 **Lena Cruz**, wheelman **Big Dario**. The rival crew **Los Tiburones**, led by
 El Tiburon, holds all 12 districts of the city. Take it back, one district at
 a time — in a big hot pink-red **Veloz Comet RS** convertible with real metallic
 clearcoat paint, down streets packed with traffic, crowds and police.
 
-## The look — rebuilt for golden hour
+## The look — rebuilt for bright daylight
 
-The cover shot is a golden-hour beach-avenue chase into the low sun: the hot
-pink-red Comet RS — a real low-slung GT with a long hood, grille, mirrors,
-door lines, wheel arches and a visible driver — BIG in frame (~30% of frame
-width) on a close low chase camera, NOS burning, dust behind the wheels, three
-black-and-white police cruisers with "POLICE" door markings and flashing
-red/blue light bars spread close behind it, the helicopter overhead with a
-visible searchlight cone, a roadblock ahead, the ferris wheel
+The cover shot is a bright midday beach-avenue chase under a high white sun:
+the hot pink-red Comet RS — a real low-slung GT with a long hood, grille,
+mirrors, door lines, wheel arches and a visible driver — BIG in frame (~30%
+of frame width) on a close low chase camera, NOS burning, dust behind the
+wheels, three black-and-white police cruisers with "POLICE" door markings and
+flashing red/blue light bars spread close behind it, the helicopter overhead
+with a visible searchlight cone, a roadblock ahead, the ferris wheel
 and umbrellas on the beach. The streets are alive: crowds where every person
 looks different — striped, checked and printed shirts, hats, backpacks, tall,
-short, stocky and thin — and glowing neon signs (CASH IN HAND, TACOS, BAR
-LUNA) over lit shopfronts. The HUD is dense and readable at a glance: a
+short, stocky and thin — and neon signs (CASH IN HAND, TACOS, BAR
+LUNA) over sunlit shopfronts. The HUD is dense and readable at a glance: a
 mission panel with the job title, named objectives with checkmarks, stage x/y,
 a big timer, the NEXT step, alert banners (ROADBLOCK AHEAD / VEHICLE STOLEN),
 STORY progress and REP; WANTED stars up top with an IN SIGHT banner; a live
@@ -77,7 +78,7 @@ Lumen, and the city flies crew colours at 12/12.
 - **Street races** — checkpoint races against a Tiburones rival who burns NOS
   on the straights. Win cash + flip a district.
 - **Traffic** (28 AI cars), **pedestrians** (60+, flee gunfire), **radio**
-  (3 original golden-hour stations, WebAudio synth only), **save** (localStorage,
+  (3 original midday stations, WebAudio synth only), **save** (localStorage,
   Continue on the title screen), pause menu, BUSTED / WASTED respawn.
 
 ## Controls
@@ -110,13 +111,13 @@ no external assets, no network requests at runtime.
 
 ## License
 
-LUMEN BAY: Sunset Getaway is released under the MIT License (see LICENSE).
+LUMEN BAY: Daylight Getaway is released under the MIT License (see LICENSE).
 three.js is vendored under `game/vendor/three/` under its own MIT License.
 
 ## Screenshots
 
-Four real headless-Chrome renders live in `screenshots/`: the golden-hour
+Four real headless-Chrome renders live in `screenshots/`: the bright midday
 beach-avenue police chase cover, the Torre Lumen shootout, the Festival
-Square robbery and the MISSION PASSED beach finale — all golden hour, full HUD.
+Square robbery and the MISSION PASSED beach finale — all bright daylight, full HUD.
 Shot 4 doubles as the feed's story-progress thumbnail (MISSION PASSED +$8,000
 · +500 REP · UNLOCKED: PIER SAFEHOUSE · STORY 15/15 · SAVE SLOT 1).

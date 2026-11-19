@@ -1,7 +1,8 @@
-// LUMEN BAY r8 — sound: WebAudio synth only, no audio files. Engine hum,
-// sirens, gunshots, radio music (3 original golden-hour stations), mission
+// LUMEN BAY r8c — sound: WebAudio synth only, no audio files. Engine hum,
+// sirens, gunshots, radio music (3 original midday stations), mission
 // stingers and the cash-register robbery sting. NEW in r8: alertSting(), a
 // short two-note chirp for notification toasts (WANTED LEVEL UP, NOS READY).
+// r8c: header wording only — synth tables and safety rules untouched.
 //
 // SAFETY RULE (a real bug class in synth audio): every arpeggio/melody table
 // must have enough scale ratios for every arp step it can reach, and every

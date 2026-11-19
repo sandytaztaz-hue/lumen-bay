@@ -1,8 +1,9 @@
-// LUMEN BAY r8 — street races: checkpoint races against a Tiburones rival.
+// LUMEN BAY r8c — street races: checkpoint races against a Tiburones rival.
 // The rival drives the checkpoint line with NOS bursts on the straights; the
 // player wins by passing every checkpoint first. A win flips a district.
 // NEW in r8: progress() for the HUD (checkpoint x/y in the mission panel),
-// and the checkpoint rings are sunset gold, glowing against the dusk.
+// and the checkpoint rings are bright gold, glowing against the daylight.
+// r8c: lighting only — race logic untouched.
 import * as THREE from 'three';
 import { dist2, clamp } from './config.js';
 import { makeCar, driveCar } from './vehicles.js';

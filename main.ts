@@ -1,6 +1,8 @@
-// LUMEN BAY r8b — the entry program (Node 22, standard library only).
-// r8b rebuilds the hero/police cars, the chase framing, crowd variety and
-// neon on top of the r8 sunset build; gameplay/missions unchanged.
+// LUMEN BAY r8c — the entry program (Node 22, standard library only).
+// r8c rebuilds the lighting for bright daytime (clear blue sky, high white
+// sun) on top of the r8b hero/police/crowd/neon build; gameplay/missions
+// unchanged. Dossier: run it twice, the two dossier.json outputs must be
+// byte-identical.
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's

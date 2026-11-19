@@ -1,22 +1,22 @@
-// LUMEN BAY r8 — vehicles: the car factory, traffic AI, police cruisers,
+// LUMEN BAY r8c — vehicles: the car factory, traffic AI, police cruisers,
 // the helicopter and police roadblocks. The hero is a RED CONVERTIBLE built
 // to look REAL, not flat cartoon: MeshPhysicalMaterial paint (metalness 0.85,
-// roughness 0.28, clearcoat 1.0) over the sunset PMREM environment map, so
-// the body picks up orange/pink reflections; glossy black glass cabin,
-// detailed 5-spoke dark-alloy wheels with chrome rings and red calipers,
-// glowing headlights + full-width red taillight strip, rear spoiler and
-// splitter. Police light bars FLASH red/blue (emissive + glow sprites);
+// roughness 0.28, clearcoat 1.0) over the bright daytime PMREM environment
+// map, so the body picks up blue-sky daylight reflections; glossy black glass
+// cabin, detailed 5-spoke dark-alloy wheels with chrome rings and red
+// calipers, glowing headlights + full-width red taillight strip, rear spoiler
+// and splitter. Police light bars FLASH red/blue (emissive + glow sprites);
 // the helicopter carries a visible additive searchlight cone; dust puffs
 // trail the wheels at speed. Traffic is 28 cars in varied real colours.
 import * as THREE from 'three';
-import { CARS, TRAFFIC_COUNT, SUNSET } from './config.js';
+import { CARS, TRAFFIC_COUNT, DAYLIGHT } from './config.js';
 import { clamp, dist2 } from './config.js';
 import { resolveCollisions } from './city.js';
-import { sunsetSkyTexture, sunGlowTexture, dustTexture, policeTextTexture } from './textures.js';
+import { daySkyTexture, sunGlowTexture, dustTexture, policeTextTexture } from './textures.js';
 
 const ROAD_LANES = [-234, -174, -114, -54, 6, 66, 126, 186];
 const TRAFFIC_PAINT = [0xffd23f, 0x19b8c4, 0xffffff, 0x1a1a1e, 0x37c978, 0xff7a1a, 0xc78bff, 0x3fa7ff, 0xff2a5e, 0xd8d8d8, 0xffd23f, 0x2a6b3a];
-/** Real-car paint: metallic clearcoat over the sunset env map. */
+/** Real-car paint: metallic clearcoat over the bright daylight env map. */
 function paintMaterial(colour, opts) {
   const o = opts || {};
   return new THREE.MeshPhysicalMaterial({
@@ -247,7 +247,7 @@ export function buildCarMesh(type, opts) {
       new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.35, metalness: 0.7 }));
     scoop.position.set(0, 1.06, 1.35);
     group.add(scoop);
-    // Sunset glare stripe on the hood: a soft additive highlight that reads
+    // Daylight glare stripe on the hood: a soft additive highlight that reads
     // as sun glare on the clearcoat (subtle, never a white blob).
     const glare = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.9),
       new THREE.MeshBasicMaterial({
@@ -408,7 +408,7 @@ export function driveCar(car, dt, throttle, steer, topSpeed, colliders) {
 }
 // ---- traffic, police, helicopter, roadblocks --------------------------------
 /** Spawn 28 traffic cars looping the road grid, varied real colours, so the
- streets read busy like real life at golden hour. */
+ streets read busy like real life at midday. */
 export function spawnTraffic(scene, rng) {
   const cars = [];
   const types = ['sedan', 'taxi', 'pickup', 'sedan', 'taxi', 'sedan', 'pickup', 'taxi', 'sedan', 'taxi'];
@@ -582,13 +582,13 @@ export function updateRoadblock(rb, dt) {
 }
 // ---- dust puffs -------------------------------------------------------------
 /** Dust/smoke puffs behind the wheels at speed: 8 soft sprites that cycle
- (rise, grow, fade) while the car is moving fast. Sunset-warm dust. */
+ (rise, grow, fade) while the car is moving fast. Pale daylight dust. */
 export function makeDustTrail(scene) {
   const tex = dustTexture();
   const puffs = [];
   for (let i = 0; i < 8; i += 1) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: tex, color: 0xd8a070, transparent: true, opacity: 0, depthWrite: false,
+      map: tex, color: 0xcfc8b8, transparent: true, opacity: 0, depthWrite: false,
     }));
     s.scale.set(2, 2, 1);
     scene.add(s);

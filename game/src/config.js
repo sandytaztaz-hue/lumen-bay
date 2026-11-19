@@ -1,13 +1,13 @@
-// LUMEN BAY r8 — sunset golden-hour rebuild. Every tuning number, district,
+// LUMEN BAY r8c — bright daytime rebuild. Every tuning number, district,
 // mission and price in one place. Puerto Lumen is a 480 x 480 island city:
-// roads every 60, turquoise sea west + south, GOLDEN HOUR at 18:48 — low sun
-// on the horizon, orange → pink → purple sky, long warm shadows, lit windows.
+// roads every 60, turquoise sea west + south, BRIGHT MIDDAY at 12:30 — high
+// white sun overhead, clear blue sky, short crisp shadows, bright facades.
 // Positions are [x, z] on the ground plane; y is up. Nothing here comes
 // from any commercial game.
 export const WORLD = { size: 480, half: 240, roadGap: 60, seaLevel: -0.4 };
 export const STEP = 1 / 60;
 export const SAVE_KEY = 'lumenbay.r6.save.v1';
-export const CLOCK = '18:48';
+export const CLOCK = '12:30';
 export const TRAFFIC_COUNT = 28;
 export const PED_COUNT = 60;
 // Ferris wheel on the Playa Dorada horizon, visible from the beach avenue.
@@ -15,15 +15,17 @@ export const FERRIS = { pos: [0, 222], radius: 26, height: 34, gondolas: 12 };
 // Search-zone radius (world units) the police sweep while the player is
 // wanted — drawn as the dashed red ring on the minimap.
 export const SEARCH_ZONE_RADIUS = 68;
-// The low golden-hour sun sits ahead-east over the sea horizon, so the chase
-// camera (looking east down Playa Drive) catches the glare straight on.
-// The low golden-hour sun sits almost ON the road axis (z≈175, the Playa
-// Drive line), high enough to clear the rooftops — dead ahead in the chase
-// camera, above the vanishing point, so the disc is never hidden behind the
-// left-side buildings (r8 lesson: at z=120 it sat behind the north row).
-export const SUNSET = {
-  sunPos: [420, 70, 175], sunColour: 0xffb347, sunIntensity: 3.4,
-  rimColour: 0xff8c42, skyTop: 0x5a2a7a, skyHorizon: 0xff8c42, fog: 0x9a5a7a,
+// The high midday sun sits ahead-east over the sea, so the chase camera
+// (looking east down Playa Drive) catches a bright white disc HIGH in the
+// blue sky — above the rooftops and the road's vanishing point, never hidden
+// behind the left-side buildings (r8 lesson: at z=120 a low sun sat behind
+// the north row). Elevation ~20° from the hero: high in the frame's upper
+// sky, but still inside the chase camera's view (a disc at 49° elevation
+// sat above the frame entirely — the r8c first pass proved it). High sun =
+// short shadows straight down, bright and airy, no long dusk shadows.
+export const DAYLIGHT = {
+  sunPos: [420, 210, 175], sunColour: 0xfff6e0, sunIntensity: 3.2,
+  rimColour: 0x9fc8ff, skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, fog: 0xa8cfe0,
 };
 export const DISTRICTS = [
   { id: 'marina', name: 'Marina', rect: [-240, -240, -120, -80], owner: 'shark', colour: '#e5484d' },
@@ -105,13 +107,14 @@ export const WEAPONS = {
   pistol: { name: 'Pistol', damage: 34, rate: 0.28, range: 70, auto: false },
   smg: { name: 'SMG', damage: 18, rate: 0.09, range: 60, auto: true },
 };
-// Golden-hour palette: purple sky, orange horizon, warm dusk sea and sand,
-// dark warm asphalt, sunset-lit grass. The sky dome gradient (textures.js)
-// carries the orange → pink → purple blend; these are the flat fallbacks.
+// Bright midday palette: blue sky, pale horizon, white sun, bright turquoise
+// sea and sand, lighter asphalt, sunlit grass. The sky dome gradient
+// (textures.js) carries the blue → pale-horizon blend; these are the flat
+// fallbacks.
 export const PALETTE = {
-  skyTop: 0x5a2a7a, skyHorizon: 0xff8c42, sun: 0xffb347,
-  sea: 0x1a7f8e, sand: 0xe8c48a, road: 0x4a4550, sidewalk: 0xb8a88e,
-  grass: 0x4a7a3a, building: 0xf2e3c8, neon: 0xff4d8d,
+  skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, sun: 0xfff6e0,
+  sea: 0x1e9bb5, sand: 0xf0d49a, road: 0x55565e, sidewalk: 0xc8b89a,
+  grass: 0x5da244, building: 0xf6e8c8, neon: 0xff4d8d,
   crew: '#37c978', shark: '#e5484d', police: '#4d8dff',
 };
 export const MISSIONS = [
@@ -222,7 +225,7 @@ export const RACE_POINTS = [
   [-120, -120], [-60, -60], [0, -120], [60, -60], [120, -120], [120, 0], [60, 60], [-60, -180],
 ];
 export const STATIONS = [
-  { name: 'RADIO LUMEN 88.1 — Golden Hour FM', root: 220, steps: [0, 3, 5, 7, 10, 12, 15, 17] },
+  { name: 'RADIO LUMEN 88.1 — Daylight FM', root: 220, steps: [0, 3, 5, 7, 10, 12, 15, 17] },
   { name: 'RADIO TIBURON 94.5 — Shark Rock', root: 164.8, steps: [0, 2, 3, 5, 7, 8, 10, 12] },
   { name: 'RADIO SOL 101.9 — Sol Hits', root: 196, steps: [0, 2, 4, 7, 9, 12, 14, 16] },
 ];

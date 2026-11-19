@@ -1,7 +1,7 @@
-// LUMEN BAY r8 — deterministic seeded RNG. One stream drives the whole world
+// LUMEN BAY r8c — deterministic seeded RNG. One stream drives the whole world
 // (building heights, palm rows, traffic colours, pedestrian routes, umbrella
-// placement), so the same seed always builds the same golden-hour Puerto
-// Lumen. NEW in r8: randRange(), a float in [min, max) for sunset jitter
+// placement), so the same seed always builds the same bright daytime Puerto
+// Lumen. NEW in r8: randRange(), a float in [min, max) for daylight jitter
 // (cloud drift, dust spread, glow variation).
 /** Mulberry32: small, fast, deterministic for a fixed seed. */
 export function createRandom(seed) {
@@ -46,7 +46,7 @@ export function wrapAngle(a) {
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
-/** Sunset pick: saturated hue from a small golden-hour palette. */
+/** Daylight pick: saturated hue from a small bright-day palette. */
 export function pastelPick(rng) {
   const hues = [8, 32, 48, 150, 175, 195, 285, 330];
   return hues[Math.floor(rng() * hues.length)];

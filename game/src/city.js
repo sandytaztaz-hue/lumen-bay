@@ -1,10 +1,11 @@
-// LUMEN BAY r8 — the city, PACKED at golden hour. Ground, sunset sea, road
-// grid, warm-dusk buildings with LIT amber windows and glowing neon signs,
-// Palm Avenue, Playa Dorada umbrella rows, a ferris wheel on the beach
-// horizon, pink clouds, street furniture, landmarks and the festival.
-// Returns the colliders (AABBs) the player, cars and line-of-sight checks
-// all share. Sunset 18:48: lamps are ON, windows glow, the sea catches the
-// orange sun. Gameplay layout unchanged from r7.
+// LUMEN BAY r8c — the city, PACKED in bright daylight. Ground, bright
+// turquoise day sea, road grid, sunlit buildings with reflective blue-glass
+// windows and neon signs glowing softer in daylight, Palm Avenue, Playa
+// Dorada umbrella rows, a ferris wheel on the beach horizon, white clouds,
+// street furniture, landmarks and the festival. Returns the colliders
+// (AABBs) the player, cars and line-of-sight checks all share. Midday
+// 12:30: lamps are OFF, windows are glass, the sea is bright turquoise.
+// Gameplay layout unchanged from r7.
 import * as THREE from 'three';
 import { WORLD, DISTRICTS, LANDMARKS, ROB_TARGETS, PROPERTIES, FERRIS } from './config.js';
 import { buildingTexture, roadTexture, sandTexture, waterTexture, palmTexture, neonSignTexture, umbrellaTexture, cloudTexture, makeLanternMaterial, plazaTexture, sunGlowTexture } from './textures.js';
@@ -23,9 +24,9 @@ export function createCity(scene, rng) {
   const landmarks = {};
   const group = new THREE.Group();
   scene.add(group);
-  // --- ground: dusk grass base, wide sand beach south + west, sunset sea.
+  // --- ground: bright midday grass base, wide sand beach south + west, day sea.
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size * 2.4, WORLD.size * 2.4),
-    new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 1 }));
+    new THREE.MeshStandardMaterial({ color: 0x5da244, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
   group.add(ground);
   const sandTex = sandTexture(rng);
@@ -86,7 +87,7 @@ export function createCity(scene, rng) {
       group.add(s2);
     }
   }
-  // --- buildings: warm dusk facades, lit amber windows, varied rooflines.
+  // --- buildings: bright daylight facades, reflective glass windows, varied rooflines.
   const hues = [8, 32, 48, 150, 175, 195, 285, 330];
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x2a2438, roughness: 0.9 });
   for (let bx = -4; bx <= 3; bx += 1) {
@@ -152,7 +153,7 @@ export function createCity(scene, rng) {
   group.add(lamp);
   landmarks.lighthouseLamp = lamp;
   const beam = new THREE.Mesh(new THREE.ConeGeometry(9, 40, 12, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+    new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }));
   beam.rotation.z = Math.PI / 2;
   beam.position.set(LANDMARKS.lighthouse.pos[0] + 20, ly + 4, LANDMARKS.lighthouse.pos[1]);
   group.add(beam);
@@ -186,7 +187,8 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
     if (Math.abs(x % 60) < 9 || Math.abs(z % 60) < 9) continue;
     plantPalm(x, z);
   }
-  // FERRIS WHEEL on the beach horizon: tall, colourful gondolas, lit at dusk.
+  // FERRIS WHEEL on the beach horizon: tall, colourful gondolas, bright
+  // painted steel in daylight (no dusk glow — emissive kept faint).
   const fw = new THREE.Group();
   fw.position.set(FERRIS.pos[0], 0, FERRIS.pos[1]);
   const legMat = new THREE.MeshStandardMaterial({ color: 0xffe9d0, roughness: 0.6 });
@@ -197,11 +199,11 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
   }
   const wheel = new THREE.Group();
   wheel.position.set(0, FERRIS.height, 0);
-  const rimMat = new THREE.MeshStandardMaterial({ color: 0xff2a5e, roughness: 0.5, metalness: 0.3, emissive: 0x550022 });
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0xff2a5e, roughness: 0.5, metalness: 0.3, emissive: 0x1a0010 });
   const rim = new THREE.Mesh(new THREE.TorusGeometry(FERRIS.radius, 0.7, 8, 40), rimMat);
   wheel.add(rim);
   const rim2 = new THREE.Mesh(new THREE.TorusGeometry(FERRIS.radius * 0.55, 0.5, 8, 32),
-    new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.5, emissive: 0x554400 }));
+    new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.5, emissive: 0x1a1500 }));
   wheel.add(rim2);
   const gondCols = [0xff2a5e, 0xffd23f, 0x19b8c4, 0x37c978, 0xff7a1a, 0xc78bff];
   for (let i = 0; i < FERRIS.gondolas; i += 1) {
@@ -211,7 +213,7 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
     spoke.rotation.z = a + Math.PI / 2;
     wheel.add(spoke);
     const gond = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 3),
-      new THREE.MeshStandardMaterial({ color: gondCols[i % gondCols.length], roughness: 0.6, emissive: gondCols[i % gondCols.length], emissiveIntensity: 0.25 }));
+      new THREE.MeshStandardMaterial({ color: gondCols[i % gondCols.length], roughness: 0.6, emissive: gondCols[i % gondCols.length], emissiveIntensity: 0.08 }));
     gond.position.set(Math.cos(a) * FERRIS.radius, Math.sin(a) * FERRIS.radius, 0);
     wheel.add(gond);
   }
@@ -256,16 +258,17 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
     group.add(top);
     colliders.push({ x0: x - 2.3, z0: z - 1.5, x1: x + 2.3, z1: z + 1.5 });
   }
-  // Clouds: big soft PINK sunset billboards high in the sky.
+  // Clouds: big soft WHITE daytime billboards high in the sky.
   const cloudTex = cloudTexture(rng);
-  const cloudMat = new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false, color: 0xffd0b8 });
+  const cloudMat = new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false, color: 0xffffff });
   for (let i = 0; i < 12; i += 1) {
     const cl = new THREE.Mesh(new THREE.PlaneGeometry(90 + rng() * 60, 45 + rng() * 25), cloudMat);
     cl.position.set(-320 + rng() * 640, 95 + rng() * 55, -320 + rng() * 640);
     cl.rotation.y = rng() * Math.PI;
     group.add(cl);
   }
-  // Street furniture: benches, hydrants, street lights (ON at dusk), traffic lights.
+  // Street furniture: benches, hydrants, street lights (OFF in daylight —
+  // pale unlit heads), traffic lights.
   const benchMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.9 });
   const hydMat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.5 });
   const lampMat = new THREE.MeshStandardMaterial({ color: 0x2a2438, roughness: 0.6, metalness: 0.5 });
@@ -285,9 +288,9 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
     for (const c of [i * BLOCK]) {
       const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 7, 6), lampMat);
       lamp.position.set(c + 7, 3.5, -180); group.add(lamp);
-      // Lamp heads glow warm amber at dusk.
+      // Lamp heads are OFF at midday: pale grey-white, no amber glow.
       const head = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.45, 0.6),
-        new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
+        new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.6 }));
       head.position.set(c + 7, 7, -180); group.add(head);
       const lamp2 = lamp.clone(); lamp2.position.set(-180, 3.5, c + 7); group.add(lamp2);
     }
@@ -319,7 +322,8 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
 }
 function addNeonAndFestival(scene, group, rng, landmarks) {
   // Big GLOWING signs over the shops: FLAMINGO, HOTEL LUMEN, CASINO ROW,
-  // MERCADO, PLAYA BAR, TALLER LUMEN — dark boards, bright neon text (dusk).
+  // MERCADO, PLAYA BAR, TALLER LUMEN — dark boards, bright neon text; in
+  // daylight the glow halos are softer (opacity 0.3, not dusk 0.45).
   // r8b: every sign gets a coloured glow halo behind it (bloom feel), plus
   // a "CASH IN HAND" pawn-shop sign over Torre Boulevard (the night
   // reference) and lit purple/teal shopfronts along the festival streets.
@@ -346,16 +350,17 @@ function addNeonAndFestival(scene, group, rng, landmarks) {
     // Glow halo behind the board so the neon reads as LIT, not flat text.
     const nx = Math.sin(s.ry || 0), nz = Math.cos(s.ry || 0);
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glowTex, color: s.colour, transparent: true, opacity: 0.45, depthWrite: false,
+      map: glowTex, color: s.colour, transparent: true, opacity: 0.3, depthWrite: false,
     }));
     halo.position.set(s.pos[0] - nx * 0.5, s.pos[1], s.pos[2] - nz * 0.5);
     halo.scale.set(22, 10, 1);
     group.add(halo);
   }
-  // Lit shopfronts: emissive purple/teal boxes at street level along Torre
+  // Shopfronts: colourful purple/teal boxes at street level along Torre
   // Boulevard (shot 2) and Festival Avenue (shot 3), set AGAINST the
   // building faces (not floating mid-sidewalk) with a striped awning on top
-  // so they read as shops/stalls, not flat coloured slabs.
+  // so they read as shops/stalls, not flat coloured slabs. In daylight the
+  // emissive is faint and the window slits are sky-blue glass, not lit amber.
   const shopfronts = [
     { pos: [48, 2, -141.5], colour: 0x7a2aff, w: 9 },
     { pos: [72, 2, -141.5], colour: 0x19b8c4, w: 8 },
@@ -364,16 +369,16 @@ function addNeonAndFestival(scene, group, rng, landmarks) {
   ];
   for (const s of shopfronts) {
     const front = new THREE.Mesh(new THREE.BoxGeometry(s.w, 4, 0.6),
-      new THREE.MeshStandardMaterial({ color: s.colour, roughness: 0.5, emissive: s.colour, emissiveIntensity: 0.55 }));
+      new THREE.MeshStandardMaterial({ color: s.colour, roughness: 0.5, emissive: s.colour, emissiveIntensity: 0.25 }));
     front.position.set(s.pos[0], s.pos[1], s.pos[2]);
     group.add(front);
-    // Dark door + lit window slits break up the flat face.
+    // Dark door + sky-glass window slits break up the flat face.
     const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3, 0.2),
       new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.7 }));
     door.position.set(s.pos[0] - s.w / 4, 1.5, s.pos[2] + 0.35);
     group.add(door);
     const win = new THREE.Mesh(new THREE.BoxGeometry(s.w / 2, 1.6, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0xffe9b0 }));
+      new THREE.MeshBasicMaterial({ color: 0x9fd0e8 }));
     win.position.set(s.pos[0] + s.w / 4, 2.2, s.pos[2] + 0.35);
     group.add(win);
     const awn = new THREE.Mesh(new THREE.BoxGeometry(s.w + 0.6, 0.3, 1.4),
@@ -410,12 +415,12 @@ function addNeonAndFestival(scene, group, rng, landmarks) {
     pier.position.set(-252, 0.6, -200 + i * 26);
     group.add(pier);
   }
-  // Safehouse + garage buildings (bigger, distinct, warm-lit at dusk).
-  const houseMat = new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.85, emissive: 0x332200, emissiveIntensity: 0.4 });
+  // Safehouse + garage buildings (bigger, distinct, bright-painted in daylight).
+  const houseMat = new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.85, emissive: 0x332200, emissiveIntensity: 0.1 });
   const house = new THREE.Mesh(new THREE.BoxGeometry(16, 9, 12), houseMat);
   house.position.set(-180, 4.5, 20); house.castShadow = true;
   group.add(house);
-  const garageMat = new THREE.MeshStandardMaterial({ color: 0x19b8c4, roughness: 0.8, emissive: 0x003333, emissiveIntensity: 0.4 });
+  const garageMat = new THREE.MeshStandardMaterial({ color: 0x19b8c4, roughness: 0.8, emissive: 0x003333, emissiveIntensity: 0.1 });
   const garage = new THREE.Mesh(new THREE.BoxGeometry(20, 7, 14), garageMat);
   garage.position.set(-180, 3.5, -40); garage.castShadow = true;
   group.add(garage);
