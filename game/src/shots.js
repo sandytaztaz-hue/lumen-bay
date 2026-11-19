@@ -25,9 +25,10 @@ export function stageShot1(G) {
   G.setWanted(4);
   G.spawnPoliceBehind(3); // cruisers RIGHT behind the hero, in frame
   G.heli.active = true;
-  G.heli.hover = 20; // low enough to sit inside the chase-cam frame, not above it
+  G.heli.hover = 12; // r8b: lower + 1.35x bigger body, so the heli reads in frame
   G.spawnRoadblockAhead();
-  G.spawnTrafficNear(-80, 180, 8); // ahead of the hero car, in the mid-road
+  G.spawnTrafficNear(-40, 180, 8); // r8b: far ahead of the hero, in the mid-road
+  G.clearTrafficNear(-150, 180, 30); // r8b: NO stray pickup may overlap the hero
   G.spawnPedsNear(-100, 192, 14);
   G.missions.startMission(11); // Street King race is live: checkpoints on minimap
   G.missions.hudTimerText = '1:47';
@@ -38,10 +39,10 @@ export function stageShot1(G) {
   G.hud.notify('ROADBLOCK AHEAD', 'Ram it or dodge — 24m', 'danger', true);
   G.hud.notify('NOS READY', 'Tank full — hold Shift to burn', 'good', true);
   G.addAlert('info', 'VEHICLE STOLEN: VELOZ COMET RS');
-  // 3/4 rear angle: a stronger side offset (-0.38) shows the hero's flank +
+  // 3/4 rear angle: a stronger side offset (-0.5) shows the hero's flank +
   // driver and puts the far-side chase fan at ~the hero's distance from the
   // lens, so the cruisers match its scale instead of looming over it.
-  G.camYaw = Math.PI / 2 - 0.38;
+  G.camYaw = Math.PI / 2 - 0.5;
   G.state.cash = 18450;
   // Anchor: the chase autopilot holds speed 34, so without this the hero
   // drives hundreds of units during a slow SwiftShader settle and the
@@ -56,8 +57,14 @@ export function stageShot2(G) {
   G.player.heading = Math.PI;
   G.player.mesh.group.rotation.y = Math.PI;
   G.player.weapon = 'smg';
-  G.spawnEnemiesAt(60, -126, 3, 'shark');
-  G.spawnEnemiesAt(64, -131, 3, 'shark');
+  // r8b: enemies CLOSE — 4–6 m ahead, a tight squad filling the frame, not
+  // a distant line down an empty road. Player faces -z (heading PI).
+  G.spawnEnemiesAt(60, -124.5, 3, 'shark');
+  G.spawnEnemiesAt(63, -127.5, 3, 'shark');
+  // r8b: a persistent muzzle flash at the lead guard's gun + one at Mara's
+  // muzzle, so the firefight reads in the still (live flashes last 60 ms).
+  G.addMuzzleFlash(60, 1.5, -125.5);
+  G.addMuzzleFlash(60, 1.4, -121.5);
   G.spawnPedsNear(60, -138, 6);
   G.missions.startMission(14); // El Puerto Es Nuestro finale
   G.setWanted(5); // finale heat: the mission def sets wanted 5 — keep it
@@ -156,7 +163,7 @@ export function shotAutopilot(G, dt) {
     // the helicopter ahead-right in frame, circling over the chase.
     G.player.car.speed = 34;
     G.player.car.heading += Math.sin(performance.now() * 0.0004) * 0.05 * dt;
-    if (G.heli) { G.heli.angle = 0.35; }
+    if (G.heli) { G.heli.angle = 0.5; }
     const fx = Math.sin(G.player.car.heading), fz = Math.cos(G.player.car.heading);
     const rx = Math.cos(G.player.car.heading), rz = -Math.sin(G.player.car.heading);
     for (const rb of G.roadblocks || []) {
@@ -169,16 +176,28 @@ export function shotAutopilot(G, dt) {
         c.mesh.group.rotation.y = c.heading;
       });
     }
-    // Pin the chase cruisers in a far-side fan behind the hero car —
-    // backs 4 / 5.5 / 7, lats -3.5 / -4.5 / -5.5 (never camera-side/centre).
+    // Pin the chase: ONE cruiser tight behind the hero (back 2.5, lat -2.5)
+    // and TWO head-on cruisers ahead of it (13/16 m, lats -4.5/+4.5,
+    // facing the hero) — the HALCYON composition. The far-side fan is
+    // dead: the offset chase camera puts any further-back cruiser past a
+    // 45-degree bearing, cropped as a giant wheel at the frame edge.
     const chase = (G.police || []).filter((c) => c.kind === 'chase');
-    chase.forEach((c, i) => {
-      const back = 4 + i * 1.5;
-      const lat = -3.5 - i * 1;
-      c.x = G.player.x - fx * back + rx * lat;
-      c.z = G.player.z - fz * back + rz * lat;
+    chase.forEach((c) => {
+      c.x = G.player.x - fx * 2.5 + rx * -3.5;
+      c.z = G.player.z - fz * 2.5 + rz * -3.5;
       c.heading = G.player.car.heading;
       c.speed = 34;
+      c.mesh.group.position.set(c.x, 0, c.z);
+      c.mesh.group.rotation.y = c.heading;
+    });
+    const headon = (G.police || []).filter((c) => c.kind === 'headon');
+    headon.forEach((c, i) => {
+      const ahead = i === 0 ? 13 : 16;
+      const lat = i === 0 ? -4.5 : 4.5;
+      c.x = G.player.x + fx * ahead + rx * lat;
+      c.z = G.player.z + fz * ahead + rz * lat;
+      c.heading = G.player.car.heading + Math.PI;
+      c.speed = 0;
       c.mesh.group.position.set(c.x, 0, c.z);
       c.mesh.group.rotation.y = c.heading;
     });

@@ -239,3 +239,96 @@ export function lanternTexture() {
 export function makeLanternMaterial() {
   return new THREE.MeshBasicMaterial({ map: lanternTexture(), transparent: true, depthWrite: false });
 }
+// ---- r8b: patterned clothes, paved plaza, police lettering, sun streak -----
+/** A shirt fabric: solid / stripes / checks / polka dots / print, painted on
+ a small canvas from the SEEDED rng so every pedestrian's outfit is stable
+ across runs. `pattern` 0 solid, 1 stripes, 2 checks, 3 dots, 4 print. */
+export function shirtTexture(rng, base, pattern) {
+  const c = makeCanvas(128, 128);
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 128, 128);
+  const alt = pattern === 1 ? 'rgba(255,255,255,0.85)' : pattern === 2 ? 'rgba(20,20,30,0.55)'
+    : pattern === 3 ? 'rgba(255,255,255,0.9)' : 'rgba(255,210,63,0.9)';
+  if (pattern === 1) { // horizontal stripes
+    for (let y = 0; y < 128; y += 22) g.fillRect(0, y, 128, 9);
+  } else if (pattern === 2) { // checks / plaid
+    for (let x = 0; x < 128; x += 32) g.fillRect(x, 0, 12, 128);
+    for (let y = 0; y < 128; y += 32) g.fillRect(0, y, 128, 12);
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let x = 0; x < 128; x += 32) g.fillRect(x + 12, 0, 4, 128);
+  } else if (pattern === 3) { // polka dots
+    for (let y = 16; y < 128; y += 32) for (let x = 16; x < 128; x += 32) {
+      g.beginPath(); g.arc(x + ((y / 32) % 2) * 16, y, 8, 0, Math.PI * 2); g.fill();
+    }
+  } else if (pattern === 4) { // bold print: big flowers / palm blobs
+    g.fillStyle = alt;
+    for (let i = 0; i < 5; i += 1) {
+      const x = 16 + rng() * 96, y = 16 + rng() * 96;
+      g.beginPath(); g.arc(x, y, 12, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(x + 14, y + 6, 7, 0, Math.PI * 2); g.fill();
+    }
+    g.fillStyle = 'rgba(20,60,20,0.7)';
+    for (let i = 0; i < 4; i += 1) g.fillRect(10 + rng() * 100, 10 + rng() * 100, 16, 5);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+/** Paved festival plaza: warm terracotta stone tiles with grout lines and
+ speckles — a street-festival floor, not a lawn. */
+export function plazaTexture(rng) {
+  const c = makeCanvas(256, 256);
+  const g = c.getContext('2d');
+  g.fillStyle = '#b98a5e'; g.fillRect(0, 0, 256, 256);
+  const tiles = ['#c99a6b', '#b98a5e', '#d8ab7d', '#a87a4e', '#c48a5a'];
+  for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {
+    g.fillStyle = tiles[Math.floor(rng() * tiles.length)];
+    g.fillRect(x * 32 + 2, y * 32 + 2, 28, 28);
+  }
+  g.strokeStyle = 'rgba(60,35,20,0.5)'; g.lineWidth = 2;
+  for (let i = 0; i <= 8; i += 1) {
+    g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, 256); g.stroke();
+    g.beginPath(); g.moveTo(0, i * 32); g.lineTo(256, i * 32); g.stroke();
+  }
+  for (let i = 0; i < 500; i += 1) {
+    g.fillStyle = `rgba(255,220,170,${rng() * 0.12})`;
+    g.fillRect(rng() * 256, rng() * 256, 2, 2);
+  }
+  return toTexture(c, 10, 10);
+}
+/** Bold "POLICE" door lettering on a transparent canvas (white text, dark
+ outline) — the cruiser's readable marking, like the top-3 police cars. */
+export function policeTextTexture(text) {
+  const c = makeCanvas(256, 64);
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 256, 64);
+  g.font = 'bold 44px system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 8; g.strokeStyle = '#111111';
+  g.strokeText(text, 128, 34);
+  g.fillStyle = '#ffffff';
+  g.fillText(text, 128, 34);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+/** Horizontal anamorphic sun streak: a thin bright bar with a soft falloff,
+ painted for the golden-hour glare across the sun disc (top-3 style). */
+export function sunStreakTexture() {
+  const c = makeCanvas(256, 32);
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 256, 0);
+  grad.addColorStop(0, 'rgba(255,220,150,0)');
+  grad.addColorStop(0.5, 'rgba(255,240,200,0.95)');
+  grad.addColorStop(1, 'rgba(255,220,150,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 256, 32);
+  const grad2 = g.createLinearGradient(0, 0, 0, 32);
+  grad2.addColorStop(0, 'rgba(255,220,150,0)');
+  grad2.addColorStop(0.5, 'rgba(255,240,200,0.9)');
+  grad2.addColorStop(1, 'rgba(255,220,150,0)');
+  g.globalCompositeOperation = 'destination-in';
+  g.fillStyle = grad2; g.fillRect(0, 0, 256, 32);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}

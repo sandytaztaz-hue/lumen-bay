@@ -19,16 +19,22 @@ palm-lined Ocean Boulevard, beach umbrellas and food carts. You are
 **Mara Solis**, getaway driver for a small crew — fixer **Tio Reyes**, hacker
 **Lena Cruz**, wheelman **Big Dario**. The rival crew **Los Tiburones**, led by
 El Tiburon, holds all 12 districts of the city. Take it back, one district at
-a time — in a big red **Veloz Comet RS** convertible with real metallic
+a time — in a big hot pink-red **Veloz Comet RS** convertible with real metallic
 clearcoat paint, down streets packed with traffic, crowds and police.
 
 ## The look — rebuilt for golden hour
 
-The cover shot is a golden-hour beach-avenue chase into the low sun: the red
-convertible big in frame, NOS burning, dust behind the wheels, three police
-cruisers close behind with flashing red/blue light bars, the helicopter
-overhead with a visible searchlight cone, a roadblock ahead, the ferris wheel
-and umbrellas on the beach. The HUD is dense and readable at a glance: a
+The cover shot is a golden-hour beach-avenue chase into the low sun: the hot
+pink-red Comet RS — a real low-slung GT with a long hood, grille, mirrors,
+door lines, wheel arches and a visible driver — BIG in frame (~30% of frame
+width) on a close low chase camera, NOS burning, dust behind the wheels, three
+black-and-white police cruisers with "POLICE" door markings and flashing
+red/blue light bars spread close behind it, the helicopter overhead with a
+visible searchlight cone, a roadblock ahead, the ferris wheel
+and umbrellas on the beach. The streets are alive: crowds where every person
+looks different — striped, checked and printed shirts, hats, backpacks, tall,
+short, stocky and thin — and glowing neon signs (CASH IN HAND, TACOS, BAR
+LUNA) over lit shopfronts. The HUD is dense and readable at a glance: a
 mission panel with the job title, named objectives with checkmarks, stage x/y,
 a big timer, the NEXT step, alert banners (ROADBLOCK AHEAD / VEHICLE STOLEN),
 STORY progress and REP; WANTED stars up top with an IN SIGHT banner; a live

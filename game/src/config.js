@@ -87,13 +87,15 @@ export const UPGRADES = {
   armour: { name: 'Armour', max: 3, prices: [600, 1200, 2200], resist: [0, 0.25, 0.45, 0.6] },
   nos: { name: 'NOS Tank', max: 3, prices: [700, 1300, 2400], capacity: [60, 90, 120, 160] },
 };
+// r8b: the hero Comet RS is the reference's glossy hot pink-red (HALCYON's
+// pink sports car), not flat racing red; cruisers are black-and-white.
 export const CARS = {
-  comet: { name: 'Veloz Comet RS', colour: 0xd90429, top: 34, accel: 16 },
+  comet: { name: 'Veloz Comet RS', colour: 0xe8124a, top: 34, accel: 16 },
   sedan: { name: 'Solmar Sedan', colour: 0x3fa7ff, top: 26, accel: 12 },
   pickup: { name: 'Dune Pickup', colour: 0x8a6f4d, top: 28, accel: 13 },
   taxi: { name: 'Lumen Taxi', colour: 0xffd23f, top: 26, accel: 12 },
   shark: { name: 'Tiburon Coupe', colour: 0x222226, top: 32, accel: 15 },
-  police: { name: 'LCPD Cruiser', colour: 0x1c4ed8, top: 33, accel: 16 },
+  police: { name: 'LCPD Cruiser', colour: 0xf2f2f2, top: 33, accel: 16 },
 };
 // Police call-sign roster for the LCPD response list (top-3 style: unit names,
 // distances, statuses like RAMMING / SPOTLIGHT / ROADBLOCK / FIRING).

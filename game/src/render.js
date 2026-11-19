@@ -7,7 +7,7 @@
 // rim light gives the sunset edge glow. Long shadows, warm mauve fog.
 import * as THREE from 'three';
 import { WORLD, PALETTE, SUNSET } from './config.js';
-import { sunsetSkyTexture, sunGlowTexture } from './textures.js';
+import { sunsetSkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
 
 export function createRenderer3D(canvas, opts) {
   const o = opts || {};
@@ -87,10 +87,25 @@ export function createRenderer3D(canvas, opts) {
   glow.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
   glow.scale.set(300, 300, 1);
   scene.add(glow);
+  // r8b anamorphic glare: two thin horizontal streak planes across the disc
+  // (the top-3 poster sun), so the disc is a glare, not a flat circle.
+  const streakTex = sunStreakTexture();
+  const streaks = [];
+  for (const [w, h, op] of [[340, 12, 0.65], [220, 6, 0.5]]) {
+    const streak = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({
+        map: streakTex, transparent: true, opacity: op, fog: false,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+    streak.position.set(SUNSET.sunPos[0], SUNSET.sunPos[1], SUNSET.sunPos[2]);
+    streak.lookAt(0, 0, 0);
+    scene.add(streak);
+    streaks.push(streak);
+  }
   const camera = new THREE.PerspectiveCamera(72, 1280 / 720, 0.1, 1400);
   scene.add(camera);
   // Debug probe (like window.__game): sun disc + glow + camera for CDP checks.
-  window.__r8sun = { disc: sunDisc, glow, camera };
+  window.__r8sun = { disc: sunDisc, glow, camera, streaks };
   return { renderer, scene, camera, sun, skyDome };
 }
 export function resizeRenderer(r, w, h) {
@@ -98,13 +113,15 @@ export function resizeRenderer(r, w, h) {
   r.camera.aspect = w / h;
   r.camera.updateProjectionMatrix();
 }
-/** Chase camera: CLOSE and LOW so the hero car is poster-big — but far
- enough back (dist ~9.5) that the police cruisers chasing right behind it
- stay IN FRAME ahead of the camera (r8 lesson: at dist 6.5 the whole chase
- was behind the lens and invisible). FOV 72, NOS kick to 82. */
+/** Chase camera: CLOSE and LOW so the hero car is poster-big — r8b dist 9.5
+ / height 3.2 (r8: 10.5 / 3.4, hero only ~12% of frame; dist 7.0 made the
+ chase cruisers loom over the lens). The hero mesh is 1.35x poster-scaled,
+ so the two together land it near ~30% of frame width like the HALCYON
+ reference. NOS kick is small now (76, not 82) so the burn doesn't shrink
+ the hero back down. */
 export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, speed, nosBurning, dt) {
-  const dist = inCar ? 10.5 : 8;
-  const height = inCar ? 3.4 : 3.0;
+  const dist = inCar ? 9.5 : 8;
+  const height = inCar ? 3.2 : 3.0;
   const yaw = camYaw;
   const tx = px - Math.sin(yaw) * dist;
   const tz = pz - Math.cos(yaw) * dist;
@@ -112,8 +129,8 @@ export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, s
   camera.position.x += (tx - camera.position.x) * Math.min(1, dt * 8);
   camera.position.y += (ty - camera.position.y) * Math.min(1, dt * 8);
   camera.position.z += (tz - camera.position.z) * Math.min(1, dt * 8);
-  camera.lookAt(px + Math.sin(heading) * 4, 1.6, pz + Math.cos(heading) * 4);
-  const targetFov = nosBurning ? 82 : 72;
+  camera.lookAt(px + Math.sin(heading) * 1.0, 1.6, pz + Math.cos(heading) * 1.0);
+  const targetFov = nosBurning ? 76 : 72;
   if (Math.abs(camera.fov - targetFov) > 0.2) {
     camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
     camera.updateProjectionMatrix();

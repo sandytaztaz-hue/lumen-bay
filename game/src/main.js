@@ -20,6 +20,7 @@ import { Race } from './race.js';
 import { AudioEngine, safeFreq } from './audio.js';
 import { createHud, updateHud } from './hud.js';
 import { createRenderer3D, resizeRenderer, updateCamera, makeBeacon, setBeacon, spawnTracer, spawnMuzzle, spawnDamageNumber } from './render.js';
+import { sunGlowTexture } from './textures.js';
 import { createInput, moveVector, driveVector, ACTION_CONFIRM, ACTION_PAUSE, ACTION_MISSION, ACTION_INTERACT, ACTION_WEAPON1, ACTION_WEAPON2, ACTION_WEAPON3, ACTION_RADIO } from './input.js';
 import { stageShot, shotAutopilot } from './shots.js';
 
@@ -173,28 +174,38 @@ function spawnPoliceNear(count) {
     police.push(car);
   }
 }
-/** Stage cruisers RIGHT behind the player car (shot 1 cover): a tight chase
- formation the camera sees, kind 'chase' so the autopilot pins them. Backs
- are 4 / 6.5 / 9 units — all AHEAD of the chase camera (dist 9.5), so the
- cruisers stay in frame instead of hiding behind the lens. */
+/** Stage cruisers for the shot-1 cover: ONE tight chaser right behind the
+ hero (back 2.5, lat -2.5 — the only far-side slot whose bearing from the
+ offset chase camera stays in frame) PLUS two head-on cruisers AHEAD of the
+ hero (13/16 m, lats -4.5/+4.5, facing the hero) — the HALCYON composition:
+ the hero big, police smaller ahead of it with light bars facing the lens.
+ The r8b wide/tight/shallow fans all failed the same way: the chase camera
+ sits ~4.5 units to the side of the hero, so any far-side cruiser further
+ back than ~3 units sits past a 45-degree bearing and crops off the frame
+ edge as a giant wheel. */
 function spawnPoliceBehind(count) {
   const heading = player.inCar && player.car ? player.car.heading : player.heading;
   const fx = Math.sin(heading), fz = Math.cos(heading);
   const rx = Math.cos(heading), rz = -Math.sin(heading);
   for (let i = 0; i < count; i += 1) {
     if (police.length >= 5) break;
-    // Far-side fan (backs 4 / 5.5 / 7, lats -3.5 / -4.5 / -5.5): every
-    // cruiser sits on the FAR side of the chase line, so perspective puts
-    // them at ~the hero's distance from the lens (~1.0-1.1x its size)
-    // instead of looming over it. A cruiser between camera and hero always
-    // covers the hero — that slot stays empty. Camera-side/centre: never.
-    const back = 4 + i * 1.5;
-    const lat = -3.5 - i * 1;
-    const car = makeCar('police', player.x - fx * back + rx * lat, player.z - fz * back + rz * lat, heading, { kind: 'chase' });
-    car.speed = 34;
-    car.unit = nextUnitName();
-    R.scene.add(car.mesh.group);
-    police.push(car);
+    // ONE tight chaser behind the hero + TWO head-on cruisers ahead of it
+    // (the HALCYON composition — see the header above for why the fan died).
+    if (i === 0) {
+      const car = makeCar('police', player.x - fx * 2.5 + rx * -3.5, player.z - fz * 2.5 + rz * -3.5, heading, { kind: 'chase' });
+      car.speed = 34;
+      car.unit = nextUnitName();
+      R.scene.add(car.mesh.group);
+      police.push(car);
+    } else {
+      const ahead = i === 1 ? 13 : 16;
+      const lat = i === 1 ? -4.5 : 4.5;
+      const car = makeCar('police', player.x + fx * ahead + rx * lat, player.z + fz * ahead + rz * lat, heading + Math.PI, { kind: 'headon' });
+      car.speed = 0;
+      car.unit = nextUnitName();
+      R.scene.add(car.mesh.group);
+      police.push(car);
+    }
   }
 }
 function spawnRoadblockAhead() {
@@ -317,8 +328,10 @@ function endRun(kind) {
 // ---- enemies / pickups --------------------------------------------------------
 function spawnEnemiesAt(x, z, count, kind) {
   for (let i = 0; i < count; i += 1) {
-    const ex = clamp(x + (rng() - 0.5) * 16, -230, 230);
-    const ez = clamp(z + (rng() - 0.5) * 16, -230, 230);
+    // r8b: tight cluster (±4) so the squad reads as one close group, not a
+    // scattered line — shot 2 stages them 4–6 m from the player.
+    const ex = clamp(x + (rng() - 0.5) * 8, -230, 230);
+    const ez = clamp(z + (rng() - 0.5) * 8, -230, 230);
     enemies.push(spawnEnemy(R.scene, ex, ez, kind));
   }
 }
@@ -518,6 +531,32 @@ const G = {
     const extra = spawnPedestriansNear(R.scene, rng, x, z, n);
     for (const p of extra) peds.push(p);
     return extra;
+  },
+  /** r8b shot staging: pull every traffic car out of a radius around the
+   hero, so no stray pickup ever overlaps the hero in the cover shot. */
+  clearTrafficNear(x, z, r) {
+    for (let i = traffic.length - 1; i >= 0; i -= 1) {
+      if (dist2([traffic[i].x, traffic[i].z], [x, z]) < r) {
+        R.scene.remove(traffic[i].mesh.group);
+        traffic.splice(i, 1);
+      }
+    }
+  },
+  /** r8b shot staging: a PERSISTENT muzzle-flash glow at a gun position, so
+   shot 2's firefight reads in a still (the live 60 ms flash never lands
+   in a screenshot). */
+  addMuzzleFlash(x, y, z) {
+    const flash = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: sunGlowTexture(), color: 0xffe9a0, transparent: true, opacity: 0.95, depthWrite: false,
+    }));
+    flash.position.set(x, y, z);
+    flash.scale.set(3.2, 3.2, 1);
+    R.scene.add(flash);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
+    core.position.set(x, y, z);
+    R.scene.add(core);
+    return flash;
   },
   warpTo(x, z) {
     player.x = x; player.z = z;
@@ -840,6 +879,45 @@ function resizeIfNeeded() {
 }
 resizeIfNeeded();
 // ---- probe / debug API (used by scripted playtests, harmless in play) --------
+// r8b measurement probe: the hero car's fraction of frame width in shot 0,
+// from the projected world bounding box of the player car mesh.
+window.__r8bMeasure = () => {
+  const car = player.car;
+  if (!car) return { heroFrac: null, reason: 'not-in-car' };
+  const box = new THREE.Box3().setFromObject(car.mesh.group);
+  const cam = R.camera;
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  for (const [x, y, z] of [
+    [box.min.x, box.min.y, box.min.z], [box.max.x, box.min.y, box.min.z],
+    [box.min.x, box.max.y, box.min.z], [box.max.x, box.max.y, box.min.z],
+    [box.min.x, box.min.y, box.max.z], [box.max.x, box.min.y, box.max.z],
+    [box.min.x, box.max.y, box.max.z], [box.max.x, box.max.y, box.max.z],
+  ]) {
+    const v = new THREE.Vector3(x, y, z).project(cam);
+    if (v.x < minX) minX = v.x;
+    if (v.x > maxX) maxX = v.x;
+    if (v.y < minY) minY = v.y;
+    if (v.y > maxY) maxY = v.y;
+  }
+  const heroFrac = (maxX - minX) / 2; // NDC width (-1..1) -> fraction of frame
+  const policeFracs = police.map((c) => {
+    const b = new THREE.Box3().setFromObject(c.mesh.group);
+    let a = 1e9, d = -1e9;
+    for (const [x, y, z] of [[b.min.x, b.min.y, b.min.z], [b.max.x, b.max.y, b.max.z]]) {
+      const v = new THREE.Vector3(x, y, z).project(cam);
+      if (v.x < a) a = v.x;
+      if (v.x > d) d = v.x;
+    }
+    return Math.round(((d - a) / 2) * 1000) / 10;
+  });
+  return {
+    heroFrac: Math.round(heroFrac * 1000) / 10,
+    heroHeightFrac: Math.round(((maxY - minY) / 2) * 1000) / 10,
+    heroCentreX: Math.round(((minX + maxX) / 4) * 1000) / 10,
+    policeFracs, policeCount: police.length,
+    camPos: [Math.round(cam.position.x), Math.round(cam.position.y), Math.round(cam.position.z)],
+  };
+};
 window.__game = {
   G, state, player, missions, turf, garage, race, enemies, police, audio,
   warpTo: (x, z) => G.warpTo(x, z),

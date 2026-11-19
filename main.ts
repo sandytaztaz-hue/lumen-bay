@@ -1,4 +1,6 @@
-// LUMEN BAY r8 — the entry program (Node 22, standard library only).
+// LUMEN BAY r8b — the entry program (Node 22, standard library only).
+// r8b rebuilds the hero/police cars, the chase framing, crowd variety and
+// neon on top of the r8 sunset build; gameplay/missions unchanged.
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's

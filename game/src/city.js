@@ -7,7 +7,7 @@
 // orange sun. Gameplay layout unchanged from r7.
 import * as THREE from 'three';
 import { WORLD, DISTRICTS, LANDMARKS, ROB_TARGETS, PROPERTIES, FERRIS } from './config.js';
-import { buildingTexture, roadTexture, sandTexture, waterTexture, palmTexture, neonSignTexture, umbrellaTexture, cloudTexture, makeLanternMaterial } from './textures.js';
+import { buildingTexture, roadTexture, sandTexture, waterTexture, palmTexture, neonSignTexture, umbrellaTexture, cloudTexture, makeLanternMaterial, plazaTexture, sunGlowTexture } from './textures.js';
 import { hash2 } from './random.js';
 
 const ROAD_Y = 0.02;
@@ -49,6 +49,16 @@ export function createCity(scene, rng) {
   seaW.rotation.x = -Math.PI / 2;
   seaW.position.set(-WORLD.half - 150, WORLD.seaLevel, 0);
   group.add(seaW);
+  // r8b: Festival Square is a PAVED plaza (warm terracotta stone tiles),
+  // not a lawn — the festival reads as a street festival. Plane sits just
+  // above the grass (y 0.012) and below the road strips (y 0.02).
+  const plazaTex = plazaTexture(rng);
+  const plaza = new THREE.Mesh(new THREE.PlaneGeometry(112, 112),
+    new THREE.MeshStandardMaterial({ map: plazaTex, roughness: 0.95 }));
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.set(180, 0.012, 0);
+  plaza.receiveShadow = true;
+  group.add(plaza);
   // --- road grid: warm dark asphalt strips every 60 units, both directions.
   const roadTex = roadTexture(rng);
   const roadMat = new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.95 });
@@ -310,6 +320,9 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
 function addNeonAndFestival(scene, group, rng, landmarks) {
   // Big GLOWING signs over the shops: FLAMINGO, HOTEL LUMEN, CASINO ROW,
   // MERCADO, PLAYA BAR, TALLER LUMEN — dark boards, bright neon text (dusk).
+  // r8b: every sign gets a coloured glow halo behind it (bloom feel), plus
+  // a "CASH IN HAND" pawn-shop sign over Torre Boulevard (the night
+  // reference) and lit purple/teal shopfronts along the festival streets.
   const signs = [
     { text: 'FLAMINGO', pos: [-120, 7, -168], colour: '#ff2a5e' },
     { text: 'HOTEL LUMEN', pos: [60, 9, -168], colour: '#19b8c4' },
@@ -317,13 +330,56 @@ function addNeonAndFestival(scene, group, rng, landmarks) {
     { text: 'CASINO ROW', pos: [60, 8, -12], colour: '#c78bff' },
     { text: 'TALLER LUMEN', pos: [-180, 6, -52], colour: '#37c978' },
     { text: 'PLAYA BAR', pos: [-150, 5, 138], colour: '#ff2a5e' },
+    { text: 'CASH IN HAND', pos: [60, 14, -170.5], colour: '#ffd23f' },
+    { text: 'PAWN SHOP', pos: [84, 6, -141], colour: '#ff7a1a' },
+    { text: 'TACOS', pos: [150, 7, -21], colour: '#ff2a5e' },
+    { text: 'BAR LUNA', pos: [191, 6, 26], colour: '#19b8c4', ry: -Math.PI / 2 },
   ];
+  const glowTex = sunGlowTexture();
   for (const s of signs) {
     const tex = neonSignTexture(s.text, s.colour);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4),
       new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
     sign.position.set(s.pos[0], s.pos[1], s.pos[2]);
+    if (s.ry) sign.rotation.y = s.ry;
     group.add(sign);
+    // Glow halo behind the board so the neon reads as LIT, not flat text.
+    const nx = Math.sin(s.ry || 0), nz = Math.cos(s.ry || 0);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTex, color: s.colour, transparent: true, opacity: 0.45, depthWrite: false,
+    }));
+    halo.position.set(s.pos[0] - nx * 0.5, s.pos[1], s.pos[2] - nz * 0.5);
+    halo.scale.set(22, 10, 1);
+    group.add(halo);
+  }
+  // Lit shopfronts: emissive purple/teal boxes at street level along Torre
+  // Boulevard (shot 2) and Festival Avenue (shot 3), set AGAINST the
+  // building faces (not floating mid-sidewalk) with a striped awning on top
+  // so they read as shops/stalls, not flat coloured slabs.
+  const shopfronts = [
+    { pos: [48, 2, -141.5], colour: 0x7a2aff, w: 9 },
+    { pos: [72, 2, -141.5], colour: 0x19b8c4, w: 8 },
+    { pos: [168, 2, -16], colour: 0xc78bff, w: 10 },
+    { pos: [196, 2, 16], colour: 0x19b8c4, w: 9 },
+  ];
+  for (const s of shopfronts) {
+    const front = new THREE.Mesh(new THREE.BoxGeometry(s.w, 4, 0.6),
+      new THREE.MeshStandardMaterial({ color: s.colour, roughness: 0.5, emissive: s.colour, emissiveIntensity: 0.55 }));
+    front.position.set(s.pos[0], s.pos[1], s.pos[2]);
+    group.add(front);
+    // Dark door + lit window slits break up the flat face.
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.7 }));
+    door.position.set(s.pos[0] - s.w / 4, 1.5, s.pos[2] + 0.35);
+    group.add(door);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(s.w / 2, 1.6, 0.2),
+      new THREE.MeshBasicMaterial({ color: 0xffe9b0 }));
+    win.position.set(s.pos[0] + s.w / 4, 2.2, s.pos[2] + 0.35);
+    group.add(win);
+    const awn = new THREE.Mesh(new THREE.BoxGeometry(s.w + 0.6, 0.3, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.8 }));
+    awn.position.set(s.pos[0], 4.15, s.pos[2] + 0.3);
+    group.add(awn);
   }
   // Festival Square: lantern strings, a stage, stalls.
   const fest = new THREE.Group();
