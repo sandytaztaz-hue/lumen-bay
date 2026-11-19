@@ -1,12 +1,13 @@
-// LUMEN BAY r9a (V1) — a tiny static server for game/ (Node 22, standard library
+// LUMEN BAY r9b (V2) — a tiny static server for game/ (Node 22, standard library
 // only), so the entry can be played locally without a build step:
 // `node serve.ts` serves game/ on http://localhost:8080. Bright daytime build
-// (12:30); shot 2 is the Torre Lumen vault breach, dialogue avatars are drawn
-// character portraits. It sends the MIME types a browser game needs, refuses any path
+// (12:30); shot 1 is the lower-flank chase, shot 2 the NOS drift chase,
+// dialogue avatars are drawn character portraits. It sends the MIME types a
+// browser game needs, refuses any path
 // outside game/, and otherwise does nothing clever.
 // `node serve.ts` serves game/ on http://localhost:8080. It sends the MIME
 // types a browser game needs, refuses any path outside game/, and otherwise
-// does nothing clever. (r9a — vault-breach variant.)
+// does nothing clever. (r9b — drift-chase variant.)
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';

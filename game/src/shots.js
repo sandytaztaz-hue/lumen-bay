@@ -1,8 +1,11 @@
-// LUMEN BAY r9a (V1) — the screenshot scenes behind ?shot=1..4. Shot 1 is
-// the r8c cover (bright midday chase). Shot 2 is NEW: VAULT BREACH at Torre
-// Lumen — gold + cash spilling, guards down, live squad firing. Shots 3–4
-// are the r8c festival robbery + MISSION PASSED frames. All dialogue boxes
-// now show drawn character portraits (see hud.js), never letter circles.
+// LUMEN BAY r9b (V2) — the screenshot scenes behind ?shot=1..4. Shot 1 is
+// the r8c cover re-shot from a LOWER FLANK angle (more side-on, lower
+// camera — the hero reads pinker and bigger, fixing r8c's rear-high
+// darkness). Shot 2 is NEW: NOS DRIFT CHASE through Festival Square —
+// hero car drifting past the crowd, police cruiser inches behind, lanterns,
+// NOS burning. Shots 3–4 are the r8c festival robbery + MISSION PASSED
+// frames. All dialogue boxes now show drawn character portraits (see
+// hud.js), never letter circles.
 // real gameplay state (not a mock): the world runs its normal loop from there,
 // the autopilot just holds the pose, and main.js sets window.__shotReady once
 // the scene has rendered. Shot 1 is the cover: BRIGHT MIDDAY beach-avenue chase
@@ -29,7 +32,9 @@ export function stageShot1(G) {
   G.setWanted(4);
   G.spawnPoliceBehind(3); // cruisers RIGHT behind the hero, in frame
   G.heli.active = true;
-  G.heli.hover = 12; // r8b: lower + 1.35x bigger body, so the heli reads in frame
+  G.heli.hover = 20; // r9b: higher than r8b's 12 — from the lower flank
+  // camera the 12-hover heli's rotor bar crossed the top of the frame;
+  // 16 still crossed it, 20 lifts the rotor toward the top edge.
   G.spawnRoadblockAhead();
   G.spawnTrafficNear(-40, 180, 8); // r8b: far ahead of the hero, in the mid-road
   G.clearTrafficNear(-150, 180, 30); // r8b: NO stray pickup may overlap the hero
@@ -43,58 +48,67 @@ export function stageShot1(G) {
   G.hud.notify('ROADBLOCK AHEAD', 'Ram it or dodge — 24m', 'danger', true);
   G.hud.notify('NOS READY', 'Tank full — hold Shift to burn', 'good', true);
   G.addAlert('info', 'VEHICLE STOLEN: VELOZ COMET RS');
-  // 3/4 rear angle: a stronger side offset (-0.5) shows the hero's flank +
-  // driver and puts the far-side chase fan at ~the hero's distance from the
-  // lens, so the cruisers match its scale instead of looming over it.
-  G.camYaw = Math.PI / 2 - 0.5;
+  // r9b LOWER FLANK angle: a stronger side offset (-0.65, ~37°) plus a
+  // slightly LOWER camera (camPitch -0.1 → eye ~2.8) shows the hero's pink
+  // flank + driver instead of its dark cabin roof — the r8c rear-high shot
+  // read the car dark navy; from the flank the pink paint owns the frame.
+  // (First try at -0.85/-0.2 cropped the hero's nose off the right edge and
+  // put the low heli's rotor bar across the top — backed off both.)
+  G.camYaw = Math.PI / 2 - 0.65;
+  G.camPitch = -0.1;
+  G.setCamDist(11);
+  // r9b: pull the camera back a touch (dist 11) — at 9.5 the long hero nose
+  // cropped off the right edge from this side-on angle.
   G.state.cash = 18450;
   // Anchor: the chase autopilot holds speed 34, so without this the hero
   // drives hundreds of units during a slow SwiftShader settle and the
   // framing drifts. The anchor snaps it back every frame (staging hold).
   G.anchor = [-150, 180];
 }
-// r9a V1 — VAULT BREACH at Torre Lumen: the vault door blown, gold bars +
-// cash stacks spilling across the foreground, two sharks DOWN in front of
-// the lens, a live squad still firing ahead, Mara + a crew ally at the door,
-// muzzle flashes, 5 stars, heli overhead. Foreground FILLED — no empty road.
+// r9b V2 — NOS DRIFT CHASE through Festival Square: the hero Comet RS
+// drifting past the festival crowd with NOS burning, a police cruiser inches
+// behind, two head-on cruisers ahead, heli low overhead, lanterns + crowd
+// all around. Foreground FILLED — car, cruiser, crowd, no empty road.
+// Staged at the PLAZA CENTRE (180,0): the NOS FOV kick (76°) shows more
+// foreground than shot 3's 72°, and from the old (150,30) anchor that extra
+// foreground fell past the plaza's edge onto grass.
 export function stageShot2(G) {
   G.startPlay();
-  G.warpTo(60, -118);
-  G.player.heading = Math.PI;
-  G.player.mesh.group.rotation.y = Math.PI;
-  G.player.weapon = 'smg';
-  // Crew at the vault: the player (Mara) centre + an orange-jacket ally at
-  // the door, both facing the tower (-z).
-  G.spawnAlly(57.5, -122, Math.PI);
-  // Guards DOWN in the near foreground (between the lens at z≈-110 and the
-  // player) — the breach reads as won at a glance.
-  G.spawnDowned(58.5, -114.5, 'shark');
-  G.spawnDowned(62, -115.5, 'shark');
-  // Gold + cash spilling out of the vault, centre frame + foreground.
-  G.spawnLootPile(60, -120.5);
-  G.spawnLootPile(63.5, -117.5);
-  // Live squad still up ahead, tight and close, firing back.
-  G.spawnEnemiesAt(60, -126, 3, 'shark');
-  G.spawnEnemiesAt(64, -129, 2, 'shark');
-  G.addMuzzleFlash(60, 1.5, -125.5);
-  G.addMuzzleFlash(63.5, 1.4, -128);
-  G.addMuzzleFlash(58, 1.4, -119.5);
-  G.spawnPedsNear(60, -138, 6);
-  G.missions.startMission(14); // El Puerto Es Nuestro finale
-  G.setWanted(5); // finale heat, pinned AFTER startMission
+  G.enterCar(G.parked[0]); // hot pink-red Comet RS, the hero car
+  G.warpTo(180, 0); // Festival Square centre, heading into the lanterns
+  G.player.car.heading = 2.6;
+  G.player.car.speed = 34;
+  G.garage.nos = 120;
+  G.nosBurning = true;
+  G.setFestival(true); // lanterns + festival crowd
+  G.setWanted(4);
+  G.spawnPoliceBehind(3); // ONE tight chaser + TWO head-on, HALCYON layout
   G.heli.active = true;
-  G.heli.hover = 14;
-  G.setDialogue('MARA', "Vault's open — gold on the floor, sharks down. Grab it all and run!");
-  G.hud.log('MARA: "Vault\'s open — gold on the floor, sharks down."');
-  G.hud.feed('Mara cracked the Torre Lumen vault — $48,500');
-  G.hud.feed('Mara downed a Tiburones shark');
-  G.hud.notify('VAULT CRACKED', 'Torre Lumen — $48,500 in gold + cash', 'good', true);
-  G.hud.notify('WANTED LEVEL UP', '5 stars — the whole LCPD is on you', 'danger', true);
-  G.hud.notify('SMG READY', '30/120 — hold click to spray', 'good', true);
-  G.state.cash = 48500;
-  G.state.health = 82;
-  G.state.armour = 45;
-  G.camYaw = Math.PI;
+  G.heli.hover = 12; // low heli, searchlight cone over the square
+  G.spawnTrafficNear(195, -15, 4); // cars ahead in the square
+  G.clearTrafficNear(180, 0, 12); // nothing may overlap the hero
+  G.clearTrafficNear(172, 6, 14); // ...or loom at the lens (camera ≈ (172,6))
+  G.spawnPedsNear(170, 10, 10);
+  G.spawnPedsNear(200, -10, 14);
+  // r9: the ped clusters' spread can drop a ped right on the lens
+  // (camera ≈ (172,6) for this camYaw) — clear a 12-unit bubble around it.
+  G.clearPedsNear(172, 6, 12);
+  G.missions.startMission(11); // Street King race is live
+  G.missions.hudTimerText = '2:05';
+  G.setDialogue('MARA', "Drift the square — cruiser's on our bumper, crowd's going wild!");
+  G.hud.log('MARA: "Drift the square — cruiser\'s on our bumper."');
+  G.hud.log('NOS burning — hold Shift on the straight.');
+  G.hud.notify('NOS BURNING', 'Drift through Festival Square — 34 km/h sideways', 'good', true);
+  G.hud.notify('WANTED LEVEL UP', '4 stars — LCPD is all over you', 'danger', true);
+  G.hud.notify('DRIFT!', 'Festival crowd is cheering — +250 REP', 'good', true);
+  G.addAlert('info', 'DRIFT: NOS BURNING IN THE SQUARE');
+  // 3/4 rear angle (like shot 3): the offset shows the flank + driver and
+  // the car reads ~2x bigger than dead-behind.
+  G.camYaw = 2.6 - 0.38;
+  G.state.cash = 15800;
+  // Anchor: the drift autopilot holds speed 34, so without this the hero
+  // drives out of the square during a slow SwiftShader settle.
+  G.anchor = [180, 0];
 }
 // Festival robbery at Festival Square: lanterns GLOWING at dusk, crowds,
 // stalls, red Comet RS, wanted 3.
@@ -172,6 +186,39 @@ export function shotAutopilot(G, dt) {
   if (G.shotMode === 3) {
     // Festival robbery shot: hold still so the robbery channel stays live.
     G.player.car.speed = 0;
+    return;
+  }
+  if (G.shotMode === 2) {
+    // r9b NOS drift chase: hold speed 34 + NOS burn, keep the cruiser tight
+    // behind (the chase look) and the heli low over the square, gentle
+    // drift sway on the heading. The anchor (frame()) keeps the hero in
+    // the square; this keeps the chase glued to it.
+    G.player.car.speed = 34;
+    G.nosBurning = true;
+    G.player.car.heading += Math.sin(performance.now() * 0.0006) * 0.08 * dt;
+    if (G.heli) { G.heli.angle = 0.5; }
+    const fx = Math.sin(G.player.car.heading), fz = Math.cos(G.player.car.heading);
+    const rx = Math.cos(G.player.car.heading), rz = -Math.sin(G.player.car.heading);
+    const chase = (G.police || []).filter((c) => c.kind === 'chase');
+    chase.forEach((c) => {
+      c.x = G.player.x - fx * 2.5 + rx * -3.5;
+      c.z = G.player.z - fz * 2.5 + rz * -3.5;
+      c.heading = G.player.car.heading;
+      c.speed = 34;
+      c.mesh.group.position.set(c.x, 0, c.z);
+      c.mesh.group.rotation.y = c.heading;
+    });
+    const headon = (G.police || []).filter((c) => c.kind === 'headon');
+    headon.forEach((c, i) => {
+      const ahead = i === 0 ? 13 : 16;
+      const lat = i === 0 ? -4.5 : 4.5;
+      c.x = G.player.x + fx * ahead + rx * lat;
+      c.z = G.player.z + fz * ahead + rz * lat;
+      c.heading = G.player.car.heading + Math.PI;
+      c.speed = 0;
+      c.mesh.group.position.set(c.x, 0, c.z);
+      c.mesh.group.rotation.y = c.heading;
+    });
     return;
   }
   if (G.shotMode === 1) {

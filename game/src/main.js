@@ -761,8 +761,9 @@ function update(dt) {
     player.z = player.car.z;
     player.heading = player.car.heading;
     player.car.mesh.flame.visible = nosBurning;
-    // Shot 1 cover: NOS burns the whole time for the screenshot, no input needed.
-    if (shotMode === 1) { nosBurning = true; player.car.mesh.flame.visible = true; }
+    // Shot 1 cover + r9b shot 2 (NOS drift chase): NOS burns the whole time
+    // for the screenshot, no input needed.
+    if (shotMode === 1 || shotMode === 2) { nosBurning = true; player.car.mesh.flame.visible = true; }
     if (input.held.brake) player.car.speed *= Math.max(0, 1 - 3 * dt);
     // NOS READY toast: once per refill, live play only (shots seed their own).
     if (!shotMode && garage.nosFull() && !state.nosReadyNotified) {
