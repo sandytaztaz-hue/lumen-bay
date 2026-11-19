@@ -1,7 +1,9 @@
-// LUMEN BAY r6 — the story engine: 15 missions in order, each a list of staged
+// LUMEN BAY r7 — the story engine: 15 missions in order, each a list of staged
 // objectives. A stage completes from the world state the main loop feeds in
 // (position, car, kills, robbery, race, purchase); the engine never touches the
 // renderer directly — it reports events and the main loop acts on them.
+// NEW in r7: missionPanel() hands the HUD the crystal-clear job card (title,
+// objectives with checkmarks, stage x/y, next step) the top-3 entries show.
 import { MISSIONS, dist2 } from './config.js';
 
 export class MissionEngine {
@@ -16,17 +18,31 @@ export class MissionEngine {
     this.done = false;
     this.banner = null;       // { title, sub, until } shown by the HUD
     this.objective = 'Press M to start the story';
+    this.hudTimerText = '';   // shot staging may pin a big timer here
   }
-
   current() {
     return this.missionIdx < MISSIONS.length ? MISSIONS[this.missionIdx] : null;
   }
-
   stage() {
     const m = this.current();
     return m ? m.stages[this.stageIdx] : null;
   }
-
+  /** The mission-panel card for the HUD: title, objectives, stage, next step. */
+  missionPanel() {
+    const m = this.current();
+    if (!m) return { title: 'STORY COMPLETE', objectives: [{ label: 'El puerto es nuestro — Puerto Lumen is yours', done: true }], stage: '15/15', next: 'Free roam — rob, race, take turf', timer: '', reward: 8000 };
+    const objectives = m.stages.map((s, i) => ({ label: s.label, done: this.active ? i < this.stageIdx : false }));
+    const next = this.active
+      ? (this.stageIdx < m.stages.length ? m.stages[this.stageIdx].label : 'Job done — press M for the next job')
+      : `Press M to start — ${m.brief}`;
+    return {
+      title: `JOB ${m.id}: ${m.title.toUpperCase()}`,
+      objectives,
+      stage: `${this.active ? Math.min(this.stageIdx + 1, m.stages.length) : 1}/${m.stages.length}`,
+      next, timer: this.hudTimerText || '',
+      reward: m.reward,
+    };
+  }
   startMission(i) {
     const m = MISSIONS[i];
     if (!m) return false;
@@ -45,7 +61,6 @@ export class MissionEngine {
     this.ctx.onMissionStart(m);
     return true;
   }
-
   setupStage() {
     const s = this.stage();
     if (!s) return;
@@ -61,7 +76,6 @@ export class MissionEngine {
     if (s.t === 'evade' && this.ctx.wanted < 2) this.ctx.setWanted(this.missionIdx + 1 === 10 ? 4 : 2);
     this.refreshObjective();
   }
-
   refreshObjective() {
     const m = this.current();
     const s = this.stage();
@@ -69,18 +83,13 @@ export class MissionEngine {
     if (!this.active) { this.objective = `Job ${m.id}: ${m.title} — press M to start`; return; }
     this.objective = `Job ${m.id}: ${m.title} — ${s ? s.label : ''}`;
   }
-
   completeStage() {
     const m = this.current();
     this.stageIdx += 1;
-    if (this.stageIdx >= m.stages.length) {
-      this.completeMission();
-      return;
-    }
+    if (this.stageIdx >= m.stages.length) { this.completeMission(); return; }
     this.ctx.log(`Objective done — next: ${m.stages[this.stageIdx].label}`);
     this.setupStage();
   }
-
   completeMission() {
     const m = this.current();
     this.active = false;
@@ -92,14 +101,12 @@ export class MissionEngine {
     this.missionIdx += 1;
     this.stageIdx = 0;
     const next = this.current();
-    if (next) {
-      this.objective = `Job ${next.id}: ${next.title} — press M to start`;
-    } else {
+    if (next) this.objective = `Job ${next.id}: ${next.title} — press M to start`;
+    else {
       this.objective = 'Story complete — Puerto Lumen is yours. Free roam!';
       this.ctx.log('EL PUERTO ES NUESTRO — all 12 districts held. 12/12 TURF.');
     }
   }
-
   failTimed() {
     const m = this.current();
     this.ctx.log(`Too slow — ${m.title} failed. Press M to retry.`);
@@ -108,17 +115,13 @@ export class MissionEngine {
     this.refreshObjective();
   }
 }
-
 // ---- per-frame stage checks -------------------------------------------------
-
 MissionEngine.prototype.update = function update(dt) {
   if (!this.active) return;
   const s = this.stage();
   const ctx = this.ctx;
   if (!s) return;
-  const px = ctx.playerX;
-  const pz = ctx.playerZ;
-
+  const px = ctx.playerX, pz = ctx.playerZ;
   if (s.t === 'goto' || s.t === 'drive' || s.t === 'pickup') {
     if (dist2([px, pz], s.pos) < s.radius) {
       if (s.t === 'pickup') ctx.log('Picked up.');
@@ -174,13 +177,8 @@ MissionEngine.prototype.update = function update(dt) {
     return;
   }
   if (s.t === 'race') {
-    if (ctx.raceWon) {
-      ctx.raceWon = false;
-      this.completeStage();
-    } else if (ctx.raceLost) {
-      ctx.raceLost = false;
-      this.failTimed();
-    }
+    if (ctx.raceWon) { ctx.raceWon = false; this.completeStage(); }
+    else if (ctx.raceLost) { ctx.raceLost = false; this.failTimed(); }
     return;
   }
   if (s.t === 'buy') {
@@ -191,7 +189,6 @@ MissionEngine.prototype.update = function update(dt) {
     return;
   }
 };
-
 /** Seconds left on a timed / wait stage, for the HUD timer. */
 MissionEngine.prototype.stageTimeLeft = function stageTimeLeft() {
   const s = this.stage();
@@ -200,7 +197,6 @@ MissionEngine.prototype.stageTimeLeft = function stageTimeLeft() {
   if (s.t === 'wait') return Math.max(0, s.seconds - this.waitT);
   return null;
 };
-
 /** Current stage target position for the beacon / minimap, or null. */
 MissionEngine.prototype.stageTarget = function stageTarget() {
   const s = this.stage();

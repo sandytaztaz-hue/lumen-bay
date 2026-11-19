@@ -4,43 +4,92 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>LUMEN BAY: Sunset Getaway — Puerto Lumen</title>
+<title>LUMEN BAY: Midday Getaway — Puerto Lumen</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1210;
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2f7fe0;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; display: none;
     text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 5; }
-  .panel { background: rgba(10,12,20,0.62); border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 8px; padding: 6px 10px; }
-  #hud-minimap { position: absolute; top: 12px; left: 12px; width: 200px; height: 200px;
-    border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; background: #10151f; }
-  #hud-turf { position: absolute; top: 220px; left: 12px; font-weight: 800; color: #37c978;
-    font-size: 15px; letter-spacing: 1px; }
-  #hud-top-right { position: absolute; top: 12px; right: 12px; text-align: right; min-width: 230px; }
-  #hud-stars { font-size: 22px; letter-spacing: 2px; color: #ffd23f; }
-  #hud-cash { font-size: 24px; font-weight: 800; color: #7dff9a; }
+  .panel { background: rgba(10,14,24,0.72); border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 10px; padding: 8px 12px; }
+  /* Top-left: mission panel — job title, objectives, stage, timer, next step. */
+  #hud-mission-panel { position: absolute; top: 12px; left: 12px; width: 350px;
+    background: rgba(10,14,24,0.78); border: 1px solid rgba(255,210,63,0.5);
+    border-radius: 10px; padding: 10px 12px; }
+  #hud-mission-title { font-size: 17px; font-weight: 900; color: #ffd23f; letter-spacing: 0.5px; }
+  #hud-mission-objectives { margin-top: 6px; font-size: 13.5px; line-height: 1.55; font-weight: 600; }
+  #hud-mission-objectives .obj.done { color: #7dff9a; }
+  #hud-mission-stage { margin-top: 6px; font-size: 12px; font-weight: 800; color: #9fd4ff; letter-spacing: 1px; }
+  #hud-mission-timer { font-size: 26px; font-weight: 900; color: #ffd23f; display: none; }
+  #hud-mission-next { margin-top: 4px; font-size: 12.5px; font-weight: 700; color: #ffe9b0; }
+  #hud-objective { display: none; }
+  /* Left-middle: police response list + roadblock banner. */
+  #hud-police-panel { position: absolute; top: 210px; left: 12px; width: 350px;
+    background: rgba(10,14,24,0.72); border: 1px solid rgba(77,141,255,0.5);
+    border-radius: 10px; padding: 8px 12px; }
+  #hud-police-panel h3 { margin: 0 0 5px; font-size: 12px; letter-spacing: 2px; color: #9fd4ff; }
+  #hud-police-list .unit { display: flex; gap: 8px; font-size: 13px; font-weight: 700; line-height: 1.6; }
+  #hud-police-list .uname { flex: 1; }
+  #hud-police-list .udist { color: #cfe8ff; }
+  #hud-police-list .ustat { padding: 0 6px; border-radius: 4px; background: #ff5252; font-size: 11px; }
+  #hud-police-list .ustat.roadblock { background: #ff2a2a; }
+  #hud-police-list .ustat.ramming { background: #ff7a1a; }
+  #hud-police-list .ustat.clear { background: #37c978; }
+  #hud-roadblock-banner { margin-top: 6px; background: #ffd23f; color: #1a1210; font-weight: 900;
+    font-size: 13px; text-align: center; border-radius: 6px; padding: 4px; display: none; }
+  /* Top-center: WANTED + stars, big. */
+  #hud-wanted { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); text-align: center; }
+  #hud-wanted-label { font-size: 20px; font-weight: 900; letter-spacing: 4px; color: #ffd23f; }
+  #hud-stars { font-size: 30px; letter-spacing: 3px; color: #ffd23f; }
+  /* Top-right: big green cash, weapon, bars, clock. */
+  #hud-top-right { position: absolute; top: 12px; right: 12px; text-align: right; min-width: 250px;
+    background: rgba(10,14,24,0.72); border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 10px; padding: 8px 12px; }
+  #hud-cash { font-size: 32px; font-weight: 900; color: #7dff9a; }
+  #hud-weapon { font-size: 15px; font-weight: 800; }
   .bar { height: 10px; background: rgba(0,0,0,0.55); border-radius: 5px; overflow: hidden; margin: 3px 0; }
   .bar > div { height: 100%; }
+  .barlabel { font-size: 10px; font-weight: 800; letter-spacing: 1px; color: #cfe8ff; text-align: left; }
   #hud-health-fill { background: #37c978; width: 100%; }
   #hud-armour-fill { background: #4d8dff; width: 0%; }
   #hud-nos-fill { background: #66c8ff; width: 100%; }
-  #hud-clock { font-size: 13px; color: #ffd27a; }
-  #hud-objective { position: absolute; left: 50%; transform: translateX(-50%); top: 12px;
-    max-width: 560px; text-align: center; font-size: 15px; font-weight: 700; }
-  #hud-timer { position: absolute; left: 50%; transform: translateX(-50%); top: 52px;
+  #hud-clock { font-size: 14px; font-weight: 800; color: #ffd27a; }
+  #hud-timer { position: absolute; left: 50%; transform: translateX(-50%); top: 96px;
     font-size: 22px; font-weight: 800; color: #ffd23f; display: none; }
-  #hud-log { position: absolute; left: 12px; bottom: 110px; width: 420px; font-size: 13px;
-    line-height: 1.5; }
-  #hud-log div { background: rgba(10,12,20,0.55); border-radius: 4px; padding: 2px 8px; margin-top: 3px; }
-  #hud-feed { position: absolute; right: 12px; top: 170px; width: 300px; text-align: right;
+  #hud-log { position: absolute; right: 12px; top: 300px; width: 320px; font-size: 12px; line-height: 1.5; text-align: left; }
+  #hud-log div { background: rgba(10,14,24,0.6); border-radius: 4px; padding: 2px 8px; margin-top: 3px; }
+  #hud-feed { position: absolute; right: 12px; top: 210px; width: 300px; text-align: right;
     font-size: 13px; color: #ffd23f; }
-  #hud-bottom { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 10px; align-items: flex-end; }
-  #hud-speed { font-size: 26px; font-weight: 800; }
-  #hud-weapon { font-size: 15px; font-weight: 700; }
-  #hud-radio { font-size: 12px; color: #ffd27a; }
-  #hud-prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: 90px;
-    font-size: 16px; font-weight: 700; background: rgba(10,12,20,0.7); padding: 6px 14px;
+  /* Bottom-left: street label + detailed ROUND minimap + turf. */
+  #hud-street-label { position: absolute; left: 12px; bottom: 288px; font-size: 13px; font-weight: 800;
+    color: #fff; background: rgba(10,14,24,0.72); padding: 3px 10px; border-radius: 6px; letter-spacing: 0.5px; }
+  #hud-minimap { position: absolute; left: 12px; bottom: 40px; width: 240px; height: 240px;
+    border: 3px solid rgba(255,255,255,0.65); border-radius: 50%; background: #0e2a3a; }
+  #hud-turf { position: absolute; left: 12px; bottom: 12px; font-weight: 900; color: #37c978;
+    font-size: 16px; letter-spacing: 1px; }
+  /* Bottom-center: dialogue box with portrait. */
+  #hud-dialogue { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px;
+    width: 540px; display: none; align-items: center; gap: 12px;
+    background: rgba(10,14,24,0.78); border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 10px; padding: 10px 14px; }
+  #hud-dialogue-avatar { width: 44px; height: 44px; min-width: 44px; border-radius: 50%;
+    background: #ff7a1a; color: #fff; font-size: 22px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center; }
+  #hud-dialogue-name { font-size: 13px; font-weight: 900; color: #ffd23f; letter-spacing: 1px; }
+  #hud-dialogue-text { font-size: 14px; font-weight: 600; line-height: 1.4; }
+  /* Bottom-right: big speed + gear + vehicle + condition + radio. */
+  #hud-speed-panel { position: absolute; right: 12px; bottom: 12px; text-align: right;
+    background: rgba(10,14,24,0.72); border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 10px; padding: 8px 14px; min-width: 230px; }
+  #hud-speed-big { font-size: 52px; font-weight: 900; line-height: 1; color: #fff; }
+  #hud-speed-big .unit { font-size: 18px; font-weight: 800; color: #cfe8ff; }
+  #hud-gear { font-size: 13px; font-weight: 800; color: #9fd4ff; }
+  #hud-vehicle-name { font-size: 15px; font-weight: 900; color: #ffd23f; }
+  #hud-radio { font-size: 12px; font-weight: 700; color: #ffd27a; }
+  #hud-speed { display: none; }
+  #hud-prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: 110px;
+    font-size: 16px; font-weight: 700; background: rgba(10,14,24,0.75); padding: 6px 14px;
     border-radius: 8px; display: none; }
   #hud-banner { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%);
     text-align: center; display: none; }
@@ -57,7 +106,7 @@
   @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -46px; } }
   .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: center; text-align: center; color: #fff; z-index: 10;
-    background: linear-gradient(180deg, rgba(43,58,110,0.55), rgba(255,122,60,0.55)); }
+    background: linear-gradient(180deg, rgba(47,127,224,0.6), rgba(25,184,196,0.55)); }
   .screen h1 { font-size: 64px; margin: 0; letter-spacing: 4px; color: #ffd23f;
     text-shadow: 0 4px 18px rgba(0,0,0,0.7); }
   .screen h2 { font-size: 22px; margin: 6px 0 18px; color: #fff; font-weight: 600; }
@@ -68,7 +117,7 @@
   .screen button:hover { background: #ffe27a; }
   .screen button.secondary { background: #37c978; color: #0a1410; }
   .screen .controls { font-size: 13px; color: #ffe9b0; margin-top: 14px; line-height: 1.7; }
-  #screen-pause, #screen-busted { display: none; background: rgba(10,12,20,0.75); }
+  #screen-pause, #screen-busted { display: none; background: rgba(10,14,24,0.75); }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
 <script type="importmap">
@@ -76,36 +125,63 @@
 </script>
 </head>
 <body>
-<canvas id="game" aria-label="LUMEN BAY: Sunset Getaway — open-world crime game in Puerto Lumen"></canvas>
+<canvas id="game" aria-label="LUMEN BAY: Midday Getaway — open-world crime game in Puerto Lumen"></canvas>
 <div id="fx"></div>
 <div id="hud">
-  <canvas id="hud-minimap" width="200" height="200"></canvas>
-  <div id="hud-turf">TURF 1/12</div>
-  <div id="hud-top-right">
-    <div id="hud-stars">☆☆☆☆☆</div>
-    <div id="hud-cash">$1,200</div>
-    <div class="bar"><div id="hud-health-fill"></div></div>
-    <div class="bar"><div id="hud-armour-fill"></div></div>
-    <div class="bar"><div id="hud-nos-fill"></div></div>
-    <div id="hud-clock">18:40</div>
+  <div id="hud-mission-panel">
+    <div id="hud-mission-title">JOB 1: FIRST KEYS</div>
+    <div id="hud-mission-objectives"></div>
+    <div id="hud-mission-stage">STAGE 1/3</div>
+    <div id="hud-mission-timer"></div>
+    <div id="hud-mission-next">NEXT: Reach the marina docks</div>
+    <div id="hud-objective">Press M to start the story</div>
   </div>
-  <div id="hud-objective" class="panel">Press M to start the story</div>
+  <div id="hud-police-panel">
+    <h3>LCPD RESPONSE</h3>
+    <div id="hud-police-list"></div>
+    <div id="hud-roadblock-banner">⚠ ROADBLOCK AHEAD — RAM IT OR DODGE ⚠</div>
+  </div>
+  <div id="hud-wanted">
+    <div id="hud-wanted-label">NOT WANTED</div>
+    <div id="hud-stars">☆☆☆☆☆</div>
+  </div>
+  <div id="hud-top-right">
+    <div id="hud-cash">$1,200</div>
+    <div id="hud-weapon">Pistol ∞</div>
+    <div class="barlabel">HEALTH</div><div class="bar"><div id="hud-health-fill"></div></div>
+    <div class="barlabel">ARMOUR</div><div class="bar"><div id="hud-armour-fill"></div></div>
+    <div class="barlabel">NOS</div><div class="bar"><div id="hud-nos-fill"></div></div>
+    <div id="hud-clock">12:30</div>
+  </div>
   <div id="hud-timer"></div>
   <div id="hud-log"></div>
   <div id="hud-feed"></div>
-  <div id="hud-bottom">
-    <div class="panel"><div id="hud-speed">ON FOOT</div><div id="hud-weapon">Pistol ∞</div><div id="hud-radio">RADIO LUMEN 88.1 — Sunset FM</div></div>
+  <div id="hud-street-label">MIRAMAR STRIP — Ocean Boulevard</div>
+  <canvas id="hud-minimap" width="240" height="240"></canvas>
+  <div id="hud-turf">TURF 1/12</div>
+  <div id="hud-dialogue">
+    <div id="hud-dialogue-avatar">T</div>
+    <div><div id="hud-dialogue-name">TIO REYES</div><div id="hud-dialogue-text"></div></div>
   </div>
+  <div id="hud-speed-panel">
+    <div><span id="hud-speed-big">0</span> <span class="unit">km/h</span></div>
+    <div id="hud-gear">GEAR 1</div>
+    <div id="hud-vehicle-name">VELOZ COMET RS</div>
+    <div class="barlabel">CONDITION</div><div class="bar"><div id="hud-condition-fill" style="background:#37c978;width:100%"></div></div>
+    <div id="hud-radio">RADIO SOL 101.9 — Sol Hits</div>
+  </div>
+  <div id="hud-speed">ON FOOT</div>
   <div id="hud-prompt"></div>
   <div id="hud-banner"><div id="hud-banner-title">JOB DONE</div><div id="hud-banner-sub"></div></div>
   <div id="hud-garage" class="panel"><h2>TALLER LUMEN — GARAGE</h2><div id="hud-garage-list"></div></div>
 </div>
 <div id="screen-title" class="screen">
   <h1>LUMEN BAY</h1>
-  <h2>SUNSET GETAWAY — Puerto Lumen</h2>
+  <h2>MIDDAY GETAWAY — Puerto Lumen</h2>
   <p>Mara Solis, getaway driver. Los Tiburones hold all 12 districts of Puerto Lumen.
   Take the city back — one mission, one robbery, one race at a time. 15 story missions,
-  garage upgrades, NOS, properties, street races. El puerto es nuestro.</p>
+  garage upgrades, NOS, properties, street races. Bright midday, packed streets,
+  big red Comet RS. El puerto es nuestro.</p>
   <div>
     <button id="btn-new">NEW GAME</button>
     <button id="btn-continue">CONTINUE</button>
@@ -117,7 +193,7 @@
 </div>
 <div id="screen-pause" class="screen">
   <h1>PAUSED</h1>
-  <p>Progress saves automatically. The sun is still setting over Puerto Lumen.</p>
+  <p>Progress saves automatically. The midday sun is still shining over Puerto Lumen.</p>
   <p>Press Esc to keep playing.</p>
 </div>
 <div id="screen-busted" class="screen">

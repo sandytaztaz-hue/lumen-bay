@@ -36,7 +36,6 @@ const MIME = {
   '.ogg': 'audio/ogg',
   '.txt': 'text/plain; charset=utf-8',
 };
-
 createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   let pathname;

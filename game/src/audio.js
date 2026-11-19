@@ -1,5 +1,5 @@
-// LUMEN BAY r6 — sound: WebAudio synth only, no audio files. Engine hum,
-// sirens, gunshots, radio music (3 original synthwave stations), mission
+// LUMEN BAY r7 — sound: WebAudio synth only, no audio files. Engine hum,
+// sirens, gunshots, radio music (3 original midday stations), mission
 // stingers and the cash-register robbery sting.
 //
 // SAFETY RULE (a real bug class in synth audio): every arpeggio/melody table
@@ -12,22 +12,13 @@ export function safeFreq(v, fallback) {
   if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return fallback || 440;
   return Math.min(20000, Math.max(20, v));
 }
-
 export class AudioEngine {
   constructor() {
-    this.ctx = null;
-    this.master = null;
-    this.musicGain = null;
-    this.engineOsc = null;
-    this.engineGain = null;
-    this.station = 0;
-    this.radioOn = false;
-    this.musicTimer = null;
-    this.step = 0;
-    this.sirenOsc = null;
-    this.sirenGain = null;
+    this.ctx = null; this.master = null; this.musicGain = null;
+    this.engineOsc = null; this.engineGain = null;
+    this.station = 0; this.radioOn = false; this.musicTimer = null; this.step = 0;
+    this.sirenOsc = null; this.sirenGain = null;
   }
-
   /** Create/resume the context. Must be called from a user gesture. */
   ensure() {
     if (!this.ctx) {
@@ -47,8 +38,7 @@ export class AudioEngine {
       this.engineGain = this.ctx.createGain();
       this.engineGain.gain.value = 0.0;
       const lp = this.ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 320;
+      lp.type = 'lowpass'; lp.frequency.value = 320;
       this.engineOsc.connect(lp);
       lp.connect(this.engineGain);
       this.engineGain.connect(this.master);
@@ -57,14 +47,12 @@ export class AudioEngine {
     if (this.ctx.state === 'suspended') void this.ctx.resume();
     return true;
   }
-
   setEngine(rpm, driving) {
     if (!this.ctx || !this.engineOsc) return;
     const f = safeFreq(40 + rpm * 1.6, 55);
     this.engineOsc.frequency.setTargetAtTime(f, this.ctx.currentTime, 0.05);
     this.engineGain.gain.setTargetAtTime(driving ? 0.05 : 0.015, this.ctx.currentTime, 0.1);
   }
-
   /** One-shot blip: guarded frequency, short envelope, no leak. */
   blip(freq, dur, type, vol) {
     if (!this.ctx) return;
@@ -75,12 +63,9 @@ export class AudioEngine {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(vol || 0.15, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + (dur || 0.12));
-    o.connect(g);
-    g.connect(this.master);
-    o.start(t);
-    o.stop(t + (dur || 0.12) + 0.02);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + (dur || 0.12) + 0.02);
   }
-
   gunshot() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -93,24 +78,20 @@ export class AudioEngine {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.5, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    src.connect(g);
-    g.connect(this.master);
+    src.connect(g); g.connect(this.master);
     src.start(t);
     this.blip(180, 0.08, 'square', 0.2);
   }
-
   cashSting() {
     if (!this.ctx) return;
     this.blip(1320, 0.1, 'sine', 0.2);
     setTimeout(() => this.blip(1760, 0.16, 'sine', 0.2), 90);
   }
-
   missionSting(win) {
     if (!this.ctx) return;
     const notes = win ? [523, 659, 784, 1046] : [392, 330, 262];
     notes.forEach((f, i) => setTimeout(() => this.blip(f, 0.18, 'triangle', 0.22), i * 110));
   }
-
   nosWhoosh() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -127,15 +108,11 @@ export class AudioEngine {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.25, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    src.connect(bp);
-    bp.connect(g);
-    g.connect(this.master);
+    src.connect(bp); bp.connect(g); g.connect(this.master);
     src.start(t);
   }
 }
-
 // ---- radio + sirens ---------------------------------------------------------
-
 /** Start the radio loop for the current station. Arp steps walk a fixed table
 // of scale ratios; the table is longer than any step the sequencer can reach,
 // and every note goes through safeFreq. */
@@ -144,7 +121,6 @@ AudioEngine.prototype.startRadio = function startRadio() {
   this.radioOn = true;
   this.step = 0;
   const st = STATIONS[this.station];
-  // Scale ratios: 8 steps, sequencer only ever reads steps 0..7.
   const ratios = [1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2];
   this.musicTimer = setInterval(() => {
     if (!this.ctx || !this.radioOn) return;
@@ -158,22 +134,18 @@ AudioEngine.prototype.startRadio = function startRadio() {
     this.step += 1;
   }, 170);
 };
-
 AudioEngine.prototype.stopRadio = function stopRadio() {
   this.radioOn = false;
   if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; }
 };
-
 AudioEngine.prototype.nextStation = function nextStation() {
   this.station = (this.station + 1) % STATIONS.length;
   this.step = 0;
   return STATIONS[this.station].name;
 };
-
 AudioEngine.prototype.stationName = function stationName() {
   return STATIONS[this.station].name;
 };
-
 /** Two-tone police siren while wanted >= 1; silent otherwise. */
 AudioEngine.prototype.setSiren = function setSiren(on) {
   if (!this.ctx) return;
@@ -184,16 +156,12 @@ AudioEngine.prototype.setSiren = function setSiren(on) {
     this.sirenGain = this.ctx.createGain();
     this.sirenGain.gain.value = 0.04;
     const lfo = this.ctx.createOscillator();
-    lfo.type = 'square';
-    lfo.frequency.value = 0.6;
+    lfo.type = 'square'; lfo.frequency.value = 0.6;
     const lfoGain = this.ctx.createGain();
     lfoGain.gain.value = 180;
-    lfo.connect(lfoGain);
-    lfoGain.connect(this.sirenOsc.frequency);
-    this.sirenOsc.connect(this.sirenGain);
-    this.sirenGain.connect(this.master);
-    this.sirenOsc.start();
-    lfo.start();
+    lfo.connect(lfoGain); lfoGain.connect(this.sirenOsc.frequency);
+    this.sirenOsc.connect(this.sirenGain); this.sirenGain.connect(this.master);
+    this.sirenOsc.start(); lfo.start();
     this._sirenLfo = lfo;
   } else if (!on && this.sirenOsc) {
     try { this.sirenOsc.stop(); } catch { /* already stopped */ }
@@ -203,7 +171,6 @@ AudioEngine.prototype.setSiren = function setSiren(on) {
     this._sirenLfo = null;
   }
 };
-
 AudioEngine.prototype.dispose = function dispose() {
   this.stopRadio();
   this.setSiren(false);

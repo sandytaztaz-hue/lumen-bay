@@ -1,4 +1,4 @@
-// LUMEN BAY r6 — turf war: the 12 districts, robberies and ownable properties.
+// LUMEN BAY r7 — turf war: the 12 districts, robberies and ownable properties.
 // Los Tiburones hold the city at the start; Mara's crew takes it back one
 // district at a time. Robberies and races flip districts; owned properties hold
 // them and pay passive income per in-game hour.
@@ -12,11 +12,7 @@ export class Turf {
     this.robbery = null; // { target, t, total }
     this.incomeAcc = 0;
   }
-
-  held() {
-    return this.owners.filter((o) => o === 'crew').length;
-  }
-
+  held() { return this.owners.filter((o) => o === 'crew').length; }
   districtIndexAt(x, z) {
     for (let i = 0; i < DISTRICTS.length; i += 1) {
       const r = DISTRICTS[i].rect;
@@ -24,20 +20,12 @@ export class Turf {
     }
     return -1;
   }
-
   flip(id) {
     const i = DISTRICTS.findIndex((d) => d.id === id);
-    if (i >= 0 && this.owners[i] !== 'crew') {
-      this.owners[i] = 'crew';
-      return true;
-    }
+    if (i >= 0 && this.owners[i] !== 'crew') { this.owners[i] = 'crew'; return true; }
     return false;
   }
-
-  isOwned(propId) {
-    return this.owned.includes(propId);
-  }
-
+  isOwned(propId) { return this.owned.includes(propId); }
   buyProperty(propId) {
     const p = PROPERTIES.find((x) => x.id === propId);
     if (!p || this.isOwned(propId)) return null;
@@ -45,7 +33,6 @@ export class Turf {
     this.flip(p.district);
     return p;
   }
-
   /** Passive income: every owned property pays per in-game hour (1 hour = 60 s). */
   update(dt, addCash, log) {
     this.incomeAcc += dt;
@@ -56,13 +43,9 @@ export class Turf {
         const p = PROPERTIES.find((x) => x.id === id);
         if (p) total += p.income;
       }
-      if (total > 0) {
-        addCash(total);
-        log(`Property income +$${total}.`);
-      }
+      if (total > 0) { addCash(total); log(`Property income +$${total}.`); }
     }
   }
-
   /** Nearest robbable target within 8 units of the player, or null. */
   nearestRobTarget(x, z) {
     let best = null;
@@ -74,13 +57,11 @@ export class Turf {
     }
     return best;
   }
-
   startRobbery(target) {
     this.robbery = { target, t: 0, total: 5 };
     return this.robbery;
   }
-
-  /** Advance a robbery channel; returns 'done' when the 5 s channel completes. */
+  /** Advance a robbery channel; returns the target when the 5 s channel completes. */
   updateRobbery(dt) {
     if (!this.robbery) return null;
     this.robbery.t += dt;
@@ -92,18 +73,13 @@ export class Turf {
     }
     return null;
   }
-
-  cancelRobbery() {
-    this.robbery = null;
-  }
-
+  cancelRobbery() { this.robbery = null; }
   tickCooldowns(dt) {
     for (const k of Object.keys(this.robCooldowns)) {
       this.robCooldowns[k] -= dt;
       if (this.robCooldowns[k] <= 0) delete this.robCooldowns[k];
     }
   }
-
   /** Heat shield: owned property in this district halves heat gain. */
   heatFactorAt(x, z) {
     const i = this.districtIndexAt(x, z);
@@ -112,9 +88,7 @@ export class Turf {
     return PROPERTIES.some((p) => p.district === d.id && this.isOwned(p.id)) ? 0.5 : 1;
   }
 }
-
 // ---- property helpers -------------------------------------------------------
-
 /** Nearest buyable property within 10 units of the player, or null. */
 export function nearestProperty(turf, x, z) {
   let best = null;
@@ -126,7 +100,6 @@ export function nearestProperty(turf, x, z) {
   }
   return best;
 }
-
 /** One-line turf summary for the HUD: "TURF 4/12". */
 export function turfLabel(turf) {
   return `TURF ${turf.held()}/12`;

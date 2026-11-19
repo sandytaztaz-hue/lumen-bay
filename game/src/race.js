@@ -1,9 +1,10 @@
-// LUMEN BAY r6 — street races: checkpoint races against a Tiburones rival.
+// LUMEN BAY r7 — street races: checkpoint races against a Tiburones rival.
 // The rival drives the checkpoint line with NOS bursts on the straights; the
 // player wins by passing every checkpoint first. A win flips a district.
 import * as THREE from 'three';
 import { dist2, clamp } from './config.js';
 import { makeCar, driveCar } from './vehicles.js';
+import { resolveCollisions as _rc } from './city.js';
 
 export class Race {
   constructor(scene) {
@@ -18,7 +19,6 @@ export class Race {
     this.lost = false;
     this.raceT = 0;
   }
-
   start(points) {
     this.stop();
     this.active = true;
@@ -43,7 +43,6 @@ export class Race {
     }
     this.updateMarkerColours();
   }
-
   updateMarkerColours() {
     for (let i = 0; i < this.markers.length; i += 1) {
       const m = this.markers[i];
@@ -52,11 +51,9 @@ export class Race {
       else m.material.color.setHex(0x888888);
     }
   }
-
   nextCheckpoint() {
     return this.index < this.checkpoints.length ? this.checkpoints[this.index] : null;
   }
-
   /** Advance the race: player + rival checkpoints, rival AI, win/lose. */
   update(dt, px, pz, colliders, onPlayerCheckpoint) {
     if (!this.active) return;
@@ -66,13 +63,10 @@ export class Race {
       this.index += 1;
       onPlayerCheckpoint(this.index, this.checkpoints.length);
       this.updateMarkerColours();
-      if (this.index >= this.checkpoints.length) {
-        // Player finished all checkpoints — win unless the rival already did.
-        if (this.rivalIndex < this.checkpoints.length) {
-          this.won = true;
-          this.finish();
-          return;
-        }
+      if (this.index >= this.checkpoints.length && this.rivalIndex < this.checkpoints.length) {
+        this.won = true;
+        this.finish();
+        return;
       }
     }
     // Rival AI: drive toward its next checkpoint, NOS on long straights.
@@ -92,19 +86,13 @@ export class Race {
         const nx = this.rival.x + Math.sin(this.rival.heading) * this.rival.speed * dt;
         const nz = this.rival.z + Math.cos(this.rival.heading) * this.rival.speed * dt;
         const pos = { x: nx, z: nz };
-        const before = { x: this.rival.x, z: this.rival.z };
-        // Reuse the collision resolver via a tiny local import-free call.
-        const { resolveCollisions } = Race;
-        if (resolveCollisions) {
-          resolveCollisions(colliders, pos, 2.2);
-          if (Math.abs(pos.x - nx) > 0.01 || Math.abs(pos.z - nz) > 0.01) this.rival.speed *= 0.5;
-        }
+        _rc(colliders, pos, 2.2);
+        if (Math.abs(pos.x - nx) > 0.01 || Math.abs(pos.z - nz) > 0.01) this.rival.speed *= 0.5;
         this.rival.x = pos.x;
         this.rival.z = pos.z;
         this.rival.mesh.group.position.set(this.rival.x, 0, this.rival.z);
         this.rival.mesh.group.rotation.y = this.rival.heading;
         this.rival.mesh.flame.visible = straight && this.rival.speed > 30;
-        void before;
       }
       if (this.rivalIndex >= this.checkpoints.length && this.index < this.checkpoints.length) {
         this.lost = true;
@@ -112,7 +100,6 @@ export class Race {
       }
     }
   }
-
   finish() {
     this.active = false;
     for (const m of this.markers) this.scene.remove(m);
@@ -122,14 +109,11 @@ export class Race {
       this.rival = null;
     }
   }
-
   stop() {
     if (this.active || this.markers.length || this.rival) this.finish();
     this.won = false;
     this.lost = false;
   }
 }
-
 // The collision resolver, bound lazily so the class stays import-cycle free.
-import { resolveCollisions as _rc } from './city.js';
 Race.resolveCollisions = _rc;

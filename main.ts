@@ -1,4 +1,4 @@
-// LUMEN BAY r6 — the entry program (Node 22, standard library only).
+// LUMEN BAY r7 — the entry program (Node 22, standard library only).
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's
@@ -18,7 +18,6 @@ mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
-
 // The scorer's caps (reference/gate.json): only text_max_bytes shapes the
 // dossier bytes; the others refuse an entry the scorer would refuse — more than
 // 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of
