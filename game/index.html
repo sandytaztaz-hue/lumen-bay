@@ -3,109 +3,129 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LUMEN BAY — Sunset Getaway</title>
+<link rel="icon" href="data:,">
+<title>LUMEN BAY: Sunset Getaway — Puerto Lumen</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1420; font-family: Arial, Helvetica, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1210;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
-  .panel { background: rgba(10, 14, 26, 0.62); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 8px 10px; }
-  #minimap-wrap { position: absolute; top: 12px; left: 12px; }
-  #minimap { display: block; border-radius: 8px; border: 2px solid rgba(255,255,255,.35); }
-  #top-right { position: absolute; top: 12px; right: 12px; text-align: right; }
-  #stars { font-size: 26px; letter-spacing: 3px; color: #ffd24a; }
-  #cash { font-size: 26px; font-weight: bold; color: #7dff9a; }
-  #jobs { font-size: 13px; color: #d8d8e0; margin-top: 2px; }
-  #clock { font-size: 15px; color: #ffd9a0; margin-top: 2px; }
-  #bottom-left { position: absolute; left: 12px; bottom: 12px; width: 300px; }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 13px; font-weight: bold; }
-  .bar { flex: 1; height: 12px; background: rgba(0,0,0,.55); border-radius: 6px; overflow: hidden; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; display: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 5; }
+  .panel { background: rgba(10,12,20,0.62); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 8px; padding: 6px 10px; }
+  #hud-minimap { position: absolute; top: 12px; left: 12px; width: 200px; height: 200px;
+    border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; background: #10151f; }
+  #hud-turf { position: absolute; top: 220px; left: 12px; font-weight: 800; color: #37c978;
+    font-size: 15px; letter-spacing: 1px; }
+  #hud-top-right { position: absolute; top: 12px; right: 12px; text-align: right; min-width: 230px; }
+  #hud-stars { font-size: 22px; letter-spacing: 2px; color: #ffd23f; }
+  #hud-cash { font-size: 24px; font-weight: 800; color: #7dff9a; }
+  .bar { height: 10px; background: rgba(0,0,0,0.55); border-radius: 5px; overflow: hidden; margin: 3px 0; }
   .bar > div { height: 100%; }
-  #healthfill { background: #2ee66b; width: 100%; }
-  #armourfill { background: #39d5ff; width: 0%; }
-  #weapon { font-size: 16px; margin-top: 6px; }
-  #speed { font-size: 22px; font-weight: bold; color: #ffd24a; }
-  #bottom-right { position: absolute; right: 12px; bottom: 12px; text-align: right; }
-  #radio { font-size: 14px; color: #ffd9a0; }
-  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 640px; text-align: center; font-size: 16px; font-weight: bold; color: #fff; }
-  #eventlog { position: absolute; left: 12px; bottom: 150px; width: 420px; font-size: 13px; line-height: 1.45; color: #f0e8d8; }
-  #eventlog div { background: rgba(10,14,26,.45); border-radius: 4px; padding: 2px 6px; margin-top: 3px; display: inline-block; }
-  #banner { position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%); text-align: center; opacity: 0; transition: opacity .3s; }
-  .banner-title { font-size: 56px; font-weight: bold; color: #ffd24a; letter-spacing: 4px; text-shadow: 0 3px 12px rgba(0,0,0,.9); }
-  .banner-sub { font-size: 22px; color: #fff; margin-top: 6px; }
-  #damage-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-  .damage-number { position: absolute; font-size: 20px; font-weight: bold; transform: translate(-50%, -50%); text-shadow: 0 1px 3px #000; }
-  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: #fff; background: linear-gradient(180deg, rgba(20,10,30,.55), rgba(60,20,10,.72)); z-index: 10; }
-  .screen h1 { font-size: 64px; margin: 0; color: #ffd24a; letter-spacing: 6px; text-shadow: 0 4px 18px rgba(0,0,0,.9); }
-  .screen h2 { font-size: 22px; margin: 8px 0 0; color: #ffb36b; font-weight: normal; letter-spacing: 2px; }
-  .screen p { font-size: 15px; line-height: 1.6; max-width: 620px; color: #f0e8d8; }
-  .screen button { pointer-events: auto; margin: 8px; padding: 12px 28px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; background: #ff7e4a; color: #fff; cursor: pointer; }
-  .screen button:hover { background: #ff9a5a; }
-  .screen button.secondary { background: rgba(255,255,255,.18); }
-  .controls { font-size: 14px; line-height: 1.9; color: #d8d8e0; background: rgba(10,14,26,.55); border-radius: 8px; padding: 10px 18px; margin-top: 14px; text-align: left; }
-  #save-info { margin-top: 10px; font-size: 14px; color: #7dff9a; }
+  #hud-health-fill { background: #37c978; width: 100%; }
+  #hud-armour-fill { background: #4d8dff; width: 0%; }
+  #hud-nos-fill { background: #66c8ff; width: 100%; }
+  #hud-clock { font-size: 13px; color: #ffd27a; }
+  #hud-objective { position: absolute; left: 50%; transform: translateX(-50%); top: 12px;
+    max-width: 560px; text-align: center; font-size: 15px; font-weight: 700; }
+  #hud-timer { position: absolute; left: 50%; transform: translateX(-50%); top: 52px;
+    font-size: 22px; font-weight: 800; color: #ffd23f; display: none; }
+  #hud-log { position: absolute; left: 12px; bottom: 110px; width: 420px; font-size: 13px;
+    line-height: 1.5; }
+  #hud-log div { background: rgba(10,12,20,0.55); border-radius: 4px; padding: 2px 8px; margin-top: 3px; }
+  #hud-feed { position: absolute; right: 12px; top: 170px; width: 300px; text-align: right;
+    font-size: 13px; color: #ffd23f; }
+  #hud-bottom { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 10px; align-items: flex-end; }
+  #hud-speed { font-size: 26px; font-weight: 800; }
+  #hud-weapon { font-size: 15px; font-weight: 700; }
+  #hud-radio { font-size: 12px; color: #ffd27a; }
+  #hud-prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: 90px;
+    font-size: 16px; font-weight: 700; background: rgba(10,12,20,0.7); padding: 6px 14px;
+    border-radius: 8px; display: none; }
+  #hud-banner { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%);
+    text-align: center; display: none; }
+  #hud-banner-title { font-size: 54px; font-weight: 900; color: #ffd23f; letter-spacing: 3px; }
+  #hud-banner-sub { font-size: 22px; font-weight: 700; color: #fff; }
+  #hud-garage { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 460px; display: none; pointer-events: none; }
+  #hud-garage h2 { margin: 0 0 8px; color: #ffd23f; }
+  #hud-garage-list div { font-size: 15px; padding: 4px 0; }
+  #hud-garage-list .dim { color: #aaa; font-size: 13px; }
+  #fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+  .dmg { position: absolute; font-weight: 800; font-size: 18px; transform: translate(-50%, -50%);
+    animation: floatUp 0.9s ease-out forwards; text-shadow: 0 1px 3px #000; }
+  @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -46px; } }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; color: #fff; z-index: 10;
+    background: linear-gradient(180deg, rgba(43,58,110,0.55), rgba(255,122,60,0.55)); }
+  .screen h1 { font-size: 64px; margin: 0; letter-spacing: 4px; color: #ffd23f;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.7); }
+  .screen h2 { font-size: 22px; margin: 6px 0 18px; color: #fff; font-weight: 600; }
+  .screen p { max-width: 620px; font-size: 15px; line-height: 1.6; margin: 6px 0; }
+  .screen button { pointer-events: auto; font-size: 18px; font-weight: 700; padding: 12px 28px;
+    margin: 8px; border-radius: 10px; border: none; cursor: pointer;
+    background: #ffd23f; color: #1a1210; }
+  .screen button:hover { background: #ffe27a; }
+  .screen button.secondary { background: #37c978; color: #0a1410; }
+  .screen .controls { font-size: 13px; color: #ffe9b0; margin-top: 14px; line-height: 1.7; }
+  #screen-pause, #screen-busted { display: none; background: rgba(10,12,20,0.75); }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three/three.module.min.js" } }
 </script>
 </head>
 <body>
-<canvas id="game" aria-label="LUMEN BAY: drive Mara Solis through Puerto Lumen, steal cars, outrun the police and finish 12 story missions"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
-
-<div id="hud" style="display:none">
-  <div id="minimap-wrap"><canvas id="minimap" width="190" height="190"></canvas></div>
-  <div id="objective" class="panel">Press M to start Job 1</div>
-  <div id="top-right">
-    <div id="stars">☆☆☆☆☆</div>
-    <div id="cash">$500</div>
-    <div id="jobs">JOBS 0/12</div>
-    <div id="clock">18:40</div>
+<canvas id="game" aria-label="LUMEN BAY: Sunset Getaway — open-world crime game in Puerto Lumen"></canvas>
+<div id="fx"></div>
+<div id="hud">
+  <canvas id="hud-minimap" width="200" height="200"></canvas>
+  <div id="hud-turf">TURF 1/12</div>
+  <div id="hud-top-right">
+    <div id="hud-stars">☆☆☆☆☆</div>
+    <div id="hud-cash">$1,200</div>
+    <div class="bar"><div id="hud-health-fill"></div></div>
+    <div class="bar"><div id="hud-armour-fill"></div></div>
+    <div class="bar"><div id="hud-nos-fill"></div></div>
+    <div id="hud-clock">18:40</div>
   </div>
-  <div id="bottom-left" class="panel">
-    <div class="bar-row"><span>HP</span><div class="bar"><div id="healthfill"></div></div></div>
-    <div class="bar-row"><span>ARM</span><div class="bar"><div id="armourfill"></div></div></div>
-    <div id="weapon">PISTOL • ∞</div>
-    <div id="speed"></div>
+  <div id="hud-objective" class="panel">Press M to start the story</div>
+  <div id="hud-timer"></div>
+  <div id="hud-log"></div>
+  <div id="hud-feed"></div>
+  <div id="hud-bottom">
+    <div class="panel"><div id="hud-speed">ON FOOT</div><div id="hud-weapon">Pistol ∞</div><div id="hud-radio">RADIO LUMEN 88.1 — Sunset FM</div></div>
   </div>
-  <div id="bottom-right" class="panel"><div id="radio">♪ LUMEN FM 88.5 — Sunset Synth</div></div>
-  <div id="eventlog"></div>
-  <div id="banner"><div class="banner-title"></div><div class="banner-sub"></div></div>
+  <div id="hud-prompt"></div>
+  <div id="hud-banner"><div id="hud-banner-title">JOB DONE</div><div id="hud-banner-sub"></div></div>
+  <div id="hud-garage" class="panel"><h2>TALLER LUMEN — GARAGE</h2><div id="hud-garage-list"></div></div>
 </div>
-<div id="damage-layer"></div>
-
-<div id="screen-title" class="screen" style="display:flex">
+<div id="screen-title" class="screen">
   <h1>LUMEN BAY</h1>
-  <h2>SUNSET GETAWAY — PUERTO LUMEN, 18:40</h2>
-  <p>Mara Solis, getaway driver. Twelve story jobs with Tio Reyes, Lena Cruz and Big Dario:
-  steal the Comet GT, outrun five-star police, escape the helicopter, and pull the last
-  sunset heist at Torre Lumen. Steal any car, fight on foot, and mind the wanted stars.</p>
+  <h2>SUNSET GETAWAY — Puerto Lumen</h2>
+  <p>Mara Solis, getaway driver. Los Tiburones hold all 12 districts of Puerto Lumen.
+  Take the city back — one mission, one robbery, one race at a time. 15 story missions,
+  garage upgrades, NOS, properties, street races. El puerto es nuestro.</p>
   <div>
-    <button id="new-btn">NEW GAME</button>
-    <button id="continue-btn" class="secondary" style="display:none">CONTINUE</button>
+    <button id="btn-new">NEW GAME</button>
+    <button id="btn-continue">CONTINUE</button>
   </div>
-  <div id="save-info"></div>
   <div class="controls">
-    WASD move / drive &nbsp;·&nbsp; Mouse drag orbit &nbsp;·&nbsp; Click shoot &nbsp;·&nbsp; E steal / enter car<br>
-    Shift sprint &nbsp;·&nbsp; Space handbrake &nbsp;·&nbsp; 1 pistol / 2 SMG &nbsp;·&nbsp; M start job &nbsp;·&nbsp; R radio &nbsp;·&nbsp; Esc pause
+    WASD move / drive &nbsp;·&nbsp; Mouse orbit &amp; aim &nbsp;·&nbsp; Click shoot &nbsp;·&nbsp; E enter / steal / interact<br>
+    Shift sprint / NOS &nbsp;·&nbsp; Space handbrake &nbsp;·&nbsp; M mission &nbsp;·&nbsp; 1/2/3 weapons &nbsp;·&nbsp; R radio &nbsp;·&nbsp; Esc pause
   </div>
 </div>
-
 <div id="screen-pause" class="screen">
   <h1>PAUSED</h1>
-  <p>Puerto Lumen waits. The sun is still setting.</p>
-  <div>
-    <button id="resume-btn">RESUME</button>
-    <button id="restart-btn" class="secondary">RESTART</button>
-  </div>
+  <p>Progress saves automatically. The sun is still setting over Puerto Lumen.</p>
+  <p>Press Esc to keep playing.</p>
 </div>
-
-<div id="screen-over" class="screen">
-  <h1 id="over-title">BUSTED</h1>
-  <p id="over-text"></p>
-  <div><button id="respawn-btn">BACK TO THE SAFEHOUSE</button></div>
+<div id="screen-busted" class="screen">
+  <h1 id="busted-title">BUSTED</h1>
+  <p id="busted-sub"></p>
+  <button id="btn-resume">BACK TO THE SAFEHOUSE</button>
 </div>
-
+<p id="status" role="status" aria-live="polite"></p>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

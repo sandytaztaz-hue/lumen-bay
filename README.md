@@ -1,93 +1,83 @@
-# LUMEN BAY — Sunset Getaway
+# LUMEN BAY: Sunset Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in Puerto Lumen
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-
-An original open-world crime game for the make.fun bounty
-[Make GTA 6 (gta6-01)](https://make.fun/bounty/gta6-01): a sun-soaked island
-city, a getaway driver, twelve story jobs, five-star police and a helicopter.
+An original open-world crime game built for the make.fun bounty
+[gta6-01 — Make GTA 6](https://make.fun/bounty/gta6-01) ($1,666, top 100 paid).
+Nothing in it comes from Rockstar Games or any commercial game: the city, the
+characters, the story, the art and the music are all original, built fresh for
+this entry in a single recorded session.
 
 ## The game
 
-Puerto Lumen, golden hour, 18:40. You are **Mara Solis**, getaway driver,
-working with fixer **Tio Reyes**, hacker **Lena Cruz** and wheelman **Big Dario**.
-Steal cars, outrun the police, escape the helicopter, and pull the last sunset
-heist at the Torre Lumen clock tower.
+Puerto Lumen is a sun-soaked island city at golden hour (18:40): Torre Lumen
+clock tower on the marina, Mercado Viejo market square, Playa Dorada beach,
+Farol Rojo lighthouse, Casino Row, Festival Square. You are **Mara Solis**,
+getaway driver for a small crew — fixer **Tio Reyes**, hacker **Lena Cruz**,
+wheelman **Big Dario**. The rival crew **Los Tiburones**, led by El Tiburon,
+holds all 12 districts of the city. Take it back, one district at a time.
 
-Landmarks: Torre Lumen clock tower, Marina Lumen docks, Mercado Viejo market
-square, Playa Dorada beach, Farol Rojo lighthouse, Taller Lumen garage, and
-Mara's safehouse. The ocean borders the city to the north and the south.
+## The hook — turf war
 
-## How to play
-
-Serve `game/` with any static server (`node serve.ts`, then open
-http://localhost:8080) and play with keyboard and mouse. No network requests:
-every texture is painted procedurally, every sound is synthesized with
-WebAudio, and three.js 0.170.0 is vendored under `game/vendor/three/`.
-
-- **WASD** move / drive, **mouse drag** orbit camera, **click** shoot
-- **E** steal / enter a car (repair at Taller Lumen when the car is damaged)
-- **Shift** sprint, **Space** handbrake
-- **1** pistol, **2** SMG (find a yellow pickup first)
-- **M** start the next story job, **R** cycle radio stations, **Esc** pause
+Robberies and street races win turf; owned properties hold it. The HUD turf
+meter shows districts held / 12. The finale takes the last district at Torre
+Lumen, and the city flies crew colours at 12/12.
 
 ## Systems
 
-- **12 story missions** — steal, deliver, timed runs, evades, shootouts and a
-  two-stage finale, each with dialogue, a map beacon and a cash reward.
-- **Traffic** — 12 AI cars looping the road grid; **24 pedestrians** who flee
-  from gunfire.
-- **Wanted 0–5 stars** — stealing, shooting and speeding past police raise
-  the heat. Cruisers chase and ram; at 3+ stars a helicopter circles with a
-  spotlight. Heat decays when you break line of sight. Get caught and you are
-  BUSTED; die and you are WASTED — both cost you at the safehouse.
-- **Combat** — pistol and SMG, hitscan shots, tracers, muzzle flash, floating
-  damage numbers, a kill feed, and police on foot who shoot back.
-- **Economy** — mission cash, car repair at Taller Lumen, health and armour
-  pickups, and a localStorage save (Continue on the title screen).
-- **HUD** — minimap with roads, the player arrow, the mission marker, police
-  blips and the helicopter; wanted stars, health and armour bars, cash, speed,
-  weapon, objective banner, event log, radio station and the 18:40 clock.
-- **Audio** — engine hum, sirens, gunshots, mission stingers and three
-  original synthwave radio stations, all synthesized live.
+- **On foot and by car** — third-person WASD + mouse orbit, sprint; arcade
+  driving with chase camera, handbrake, steal any car with E.
+- **15 story missions** — steal, deliver, timed, evade, shootout, race, rob,
+  multi-stage finale. Each pays cash and unlocks the next.
+- **Wanted 0–5 stars** — police cruisers chase and ram; at 3+ stars a
+  helicopter circles with a spotlight and police set **roadblocks** across the
+  road ahead. **Line-of-sight chases**: break sight behind buildings and the
+  heat decays faster.
+- **Combat** — fists, pistol (infinite ammo), SMG pickup; hitscan shooting,
+  muzzle flash, tracers, floating damage numbers, kill feed. Health and armour
+  pickups around the city.
+- **Garage upgrades (Taller Lumen)** — Engine Lv 1–3 (top speed), Armour Lv 1–3
+  (damage resistance + visible plates), NOS Tank Lv 1–3 (bigger boost).
+- **NOS boost** — hold Shift while driving: speed burst, flames, FOV kick,
+  whoosh; the meter refills slowly and at repair.
+- **Robberies** — hold E at a marked shop or rival stash (5 s channel): cash
+  payout, +2 stars, alarm sting. Stash houses pay more and flip their district.
+- **Ownable properties** — buy a garage ($2,500), a shop ($4,000), a safehouse
+  upgrade ($6,000): passive income per hour, heat shield in their district,
+  shown on the minimap.
+- **Street races** — checkpoint races against a Tiburones rival who burns NOS
+  on the straights. Win cash + flip a district.
+- **Traffic** (12 AI cars), **pedestrians** (24, flee gunfire), **radio**
+  (3 original synthwave stations, WebAudio synth only), **save** (localStorage,
+  Continue on the title screen), pause menu, BUSTED / WASTED respawn.
 
-## The 12 jobs
+## Controls
 
-1. First Keys — steal the Comet GT at the marina
-2. The Drop — 90-second delivery to Mercado Viejo
-3. Hot Wheels — lose a 2-star tail
-4. The Marina Job — crate run to Taller Lumen
-5. Payday — ambush the courier van
-6. The Informant — rescue Dario from the market cordon
-7. Night Shift — drive Lena to three hack checkpoints
-8. The Swap — steal a police cruiser
-9. Beach Run — 120-second smuggle run to the lighthouse
-10. High Tide — helicopter chase to Farol Rojo
-11. The Getaway — rob the Casino Sol vault
-12. The Last Sunset — the Torre Lumen finale
+WASD move / drive · Mouse orbit & aim · Click shoot · E enter / steal / interact
+· Shift sprint / NOS · Space handbrake · M mission · 1/2/3 weapons · R radio · Esc pause
 
-## Layout
+## Play
 
-- `game/index.html` — page, HUD markup, import map
-- `game/src/config.js` — tuning numbers and colours
-- `game/src/random.js` — seeded RNG
-- `game/src/textures.js` — procedural canvas textures
-- `game/src/city.js` — Puerto Lumen: roads, buildings, landmarks, ocean
-- `game/src/vehicles.js` — cars, traffic AI, police cruisers, helicopter
-- `game/src/people.js` — pedestrians, foot police, pickups, crew
-- `game/src/missions.js` — the 12 story missions and their state machine
-- `game/src/audio.js` — WebAudio synth: engine, sirens, shots, radio
-- `game/src/hud.js` — minimap, bars, banner, event log, damage numbers
-- `game/src/render.js` — sunset sky, lighting, cameras, tracers, beacon
-- `game/src/shots.js` — the four staged screenshot scenes (`?shot=1..4`)
-- `game/src/input.js` — keyboard and mouse
-- `game/src/main.js` — boot, the fixed-step loop, screens, save/load
-- `main.ts` — hands the game in: copies `game/` + `screenshots/` to `/output`
-  and writes `dossier.json`
-- `screenshots/` — 1-chase.jpg (cover), 2-shootout.jpg, 3-job.jpg, 4-done.jpg
+```sh
+node serve.ts
+# open http://localhost:8080
+```
+
+## Hand in
+
+```sh
+mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+```
+
+`main.ts` copies `game/` and `screenshots/` to the output dir and writes
+`dossier.json` with the vendored make.fun library. Screenshots are real
+headless-Chrome renders of the game (`?shot=1..4`).
+
+## Tech
+
+three.js 0.170.0 vendored under `game/vendor/three/` (MIT). All art is
+procedural canvas textures from a seeded RNG; all sound is WebAudio synth —
+no external assets, no network requests at runtime.
 
 ## License
 
-MIT — see `LICENSE`. three.js is MIT-licensed; its license is in
-`game/vendor/three/LICENSE`.
+LUMEN BAY: Sunset Getaway is released under the MIT License (see LICENSE).
+three.js is vendored under `game/vendor/three/` under its own MIT License.

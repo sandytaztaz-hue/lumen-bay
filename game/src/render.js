@@ -1,146 +1,139 @@
-// Rendering: the sunset itself. A warm gradient sky dome, a low orange sun,
-// long-shadow directional light, sea haze fog, the chase camera and the
-// third-person camera, plus the transient effects — tracers, muzzle flash and
-// the pulsing mission beacon.
+// LUMEN BAY r6 — the renderer: three.js scene, sunset lighting, chase camera,
+// muzzle flashes, tracers, damage numbers and the mission beacon.
 import * as THREE from 'three';
-import { PALETTE } from './config.js';
+import { WORLD, PALETTE } from './config.js';
 
-export function createScene(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+export function createRenderer3D(canvas, opts) {
+  const o = opts || {};
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(o.lowRes ? 0.5 : Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = o.shadows !== false;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
-
+  renderer.toneMappingExposure = 1.05;
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(PALETTE.fog, 180, 720);
+  scene.background = new THREE.Color(PALETTE.skyHorizon);
+  scene.fog = new THREE.Fog(0xff9a56, 180, 520);
 
-  // Sky dome: a big sphere shaded top-to-bottom from dusk blue to sunset orange.
-  const skyGeo = new THREE.SphereGeometry(900, 24, 14);
-  const skyMat = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    depthWrite: false,
-    uniforms: {
-      top: { value: new THREE.Color(PALETTE.skyTop) },
-      mid: { value: new THREE.Color(PALETTE.skyMid) },
-      low: { value: new THREE.Color(PALETTE.skyLow) },
-    },
-    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 low;
-      void main(){ float h = normalize(vP).y; vec3 c = h > 0.25 ? mix(mid, top, smoothstep(0.25, 0.8, h)) : mix(low, mid, smoothstep(-0.05, 0.25, h)); gl_FragColor = vec4(c, 1.0); }`,
-  });
-  scene.add(new THREE.Mesh(skyGeo, skyMat));
-
-  // The low sun: a glowing disc hanging over the western sea.
-  const sun = new THREE.Mesh(
-    new THREE.CircleGeometry(46, 24),
-    new THREE.MeshBasicMaterial({ color: PALETTE.sun, fog: false }),
-  );
-  sun.position.set(-620, 118, -260);
-  sun.lookAt(0, 60, 0);
+  // Low golden sun from the west, long shadows across the streets.
+  const sun = new THREE.DirectionalLight(0xffd27a, 2.6);
+  sun.position.set(-180, 90, 60);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -260;
+  sun.shadow.camera.right = 260;
+  sun.shadow.camera.top = 260;
+  sun.shadow.camera.bottom = -260;
+  sun.shadow.camera.far = 600;
   scene.add(sun);
-
-  const hemi = new THREE.HemisphereLight(0xffb36b, 0x3a2a3a, 0.85);
+  const hemi = new THREE.HemisphereLight(0xffb27a, 0x2a3a5a, 0.9);
   scene.add(hemi);
-  const sunLight = new THREE.DirectionalLight(0xff9a4a, 2.1);
-  sunLight.position.set(-320, 150, -180);
-  scene.add(sunLight);
-  const fill = new THREE.DirectionalLight(0x6a7ab8, 0.35);
-  fill.position.set(200, 120, 240);
+  const fill = new THREE.DirectionalLight(0xff8a5a, 0.5);
+  fill.position.set(150, 40, -100);
   scene.add(fill);
 
-  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 40, 80);
+  // The sun disc itself, low over the sea.
+  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(22, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd27a, fog: false }));
+  sunDisc.position.set(-320, 42, 180);
+  sunDisc.lookAt(0, 30, 0);
+  scene.add(sunDisc);
+
+  const camera = new THREE.PerspectiveCamera(62, 1280 / 720, 0.1, 1200);
   scene.add(camera);
-  return { renderer, scene, camera };
+  return { renderer, scene, camera, sun };
 }
 
-export function resize(renderer, camera) {
-  const w = window.innerWidth, h = window.innerHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+export function resizeRenderer(r, w, h) {
+  r.renderer.setSize(w, h, false);
+  r.camera.aspect = w / h;
+  r.camera.updateProjectionMatrix();
 }
 
-/** Third-person camera: orbits the player on foot, chases the car when driving. */
-export function updateCamera(camera, target, yaw, pitch, distance, dt, smoothing = 8) {
-  const cx = target.x - Math.sin(yaw) * Math.cos(pitch) * distance;
-  const cz = target.z - Math.cos(yaw) * Math.cos(pitch) * distance;
-  const cy = target.y + 2.2 + Math.sin(pitch) * distance;
-  const k = Math.min(1, smoothing * dt);
-  camera.position.x += (cx - camera.position.x) * k;
-  camera.position.y += (cy - camera.position.y) * k;
-  camera.position.z += (cz - camera.position.z) * k;
-  camera.lookAt(target.x, target.y + 1.6, target.z);
-}
-
-/** A hitscan tracer: a bright line from muzzle to impact that fades in 120 ms. */
-export class Tracers {
-  constructor(scene) {
-    this.scene = scene;
-    this.lines = [];
-  }
-
-  fire(from, to, color = 0xffe9a0) {
-    const geo = new THREE.BufferGeometry().setFromPoints([from, to]);
-    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 }));
-    this.scene.add(line);
-    this.lines.push({ line, life: 0.12 });
-  }
-
-  update(dt) {
-    for (let i = this.lines.length - 1; i >= 0; i -= 1) {
-      const t = this.lines[i];
-      t.life -= dt;
-      t.line.material.opacity = Math.max(0, t.life / 0.12);
-      if (t.life <= 0) {
-        this.scene.remove(t.line);
-        t.line.geometry.dispose();
-        t.line.material.dispose();
-        this.lines.splice(i, 1);
-      }
-    }
+/** Chase camera: behind and above the player/car, mouse orbit, FOV kick on NOS. */
+export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, speed, nosBurning, dt) {
+  const dist = inCar ? 13 : 9;
+  const height = inCar ? 5.2 : 4.2;
+  const yaw = camYaw;
+  const tx = px - Math.sin(yaw) * dist;
+  const tz = pz - Math.cos(yaw) * dist;
+  const ty = height + camPitch * 4;
+  camera.position.x += (tx - camera.position.x) * Math.min(1, dt * 8);
+  camera.position.y += (ty - camera.position.y) * Math.min(1, dt * 8);
+  camera.position.z += (tz - camera.position.z) * Math.min(1, dt * 8);
+  camera.lookAt(px + Math.sin(heading) * 4, 2, pz + Math.cos(heading) * 4);
+  const targetFov = nosBurning ? 74 : 62;
+  if (Math.abs(camera.fov - targetFov) > 0.2) {
+    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
+    camera.updateProjectionMatrix();
   }
 }
 
-/** A muzzle flash: a point light that flares for one frame at the gun. */
-export class MuzzleFlash {
-  constructor(scene) {
-    this.light = new THREE.PointLight(0xffc36b, 0, 26, 1.6);
-    scene.add(this.light);
-    this.life = 0;
-  }
-
-  fire(pos) {
-    this.light.position.copy(pos);
-    this.light.intensity = 60;
-    this.life = 0.06;
-  }
-
-  update(dt) {
-    if (this.life > 0) {
-      this.life -= dt;
-      if (this.life <= 0) this.light.intensity = 0;
-    }
-  }
-}
-
-/** The mission beacon: a tall pulsing column of light over the current target. */
+/** A glowing beacon pillar at the current objective, visible across the city. */
 export function makeBeacon(scene) {
-  const mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.6, 2.6, 90, 12, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }),
-  );
+  const geo = new THREE.CylinderGeometry(2.2, 2.2, 60, 12, 1, true);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xffd23f, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = 30;
   mesh.visible = false;
   scene.add(mesh);
-  return mesh;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(6, 0.4, 8, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd23f }));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.3;
+  ring.visible = false;
+  scene.add(ring);
+  return { mesh, ring };
 }
 
-export function updateBeacon(beacon, marker, time) {
-  if (!marker) { beacon.visible = false; return; }
-  beacon.visible = true;
-  beacon.position.set(marker.x, 45, marker.z);
-  beacon.material.opacity = 0.2 + Math.sin(time * 3.2) * 0.1;
-  beacon.rotation.y = time * 0.8;
+export function setBeacon(beacon, pos) {
+  if (!pos) { beacon.mesh.visible = false; beacon.ring.visible = false; return; }
+  beacon.mesh.visible = true;
+  beacon.ring.visible = true;
+  beacon.mesh.position.x = pos[0];
+  beacon.mesh.position.z = pos[1];
+  beacon.ring.position.x = pos[0];
+  beacon.ring.position.z = pos[1];
+}
+
+/** A tracer line from the muzzle to the hit point, fading in 80 ms. */
+export function spawnTracer(scene, from, to) {
+  const geo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(from[0], from[1], from[2]),
+    new THREE.Vector3(to[0], to[1], to[2]),
+  ]);
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95 }));
+  scene.add(line);
+  setTimeout(() => { scene.remove(line); geo.dispose(); }, 90);
+  return line;
+}
+
+/** A muzzle flash: a small bright sprite at the gun, gone in 60 ms. */
+export function spawnMuzzle(scene, pos) {
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffe9a0 }));
+  flash.position.set(pos[0], pos[1], pos[2]);
+  scene.add(flash);
+  setTimeout(() => scene.remove(flash), 60);
+}
+
+// ---- floating damage numbers (DOM, projected from 3D) -----------------------
+
+/** A damage number that floats up and fades over the hit point. */
+export function spawnDamageNumber(layer, camera, x, y, z, text, colour) {
+  if (!layer) return;
+  const v = new THREE.Vector3(x, y, z).project(camera);
+  if (v.z > 1) return;
+  const sx = (v.x * 0.5 + 0.5) * window.innerWidth;
+  const sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
+  const div = document.createElement('div');
+  div.className = 'dmg';
+  div.textContent = text;
+  div.style.left = `${sx}px`;
+  div.style.top = `${sy}px`;
+  div.style.color = colour || '#ffd23f';
+  layer.appendChild(div);
+  setTimeout(() => div.remove(), 900);
 }

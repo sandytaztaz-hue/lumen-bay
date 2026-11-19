@@ -1,71 +1,116 @@
-// Keyboard and mouse input. Held keys give movement and driving; one-shot
-// presses (enter a car, start a mission, pause, switch weapon, cycle radio)
-// are queued as flags and taken once by the loop, so a press between two frames
-// is never lost and never counted twice. The camera orbits by mouse drag.
-export const ACTION_ENTER = 1;
-export const ACTION_MISSION = 2;
-export const ACTION_PAUSE = 4;
-export const ACTION_FIRE = 8;
+// LUMEN BAY r6 — input: keyboard state, one-shot action flags, mouse orbit
+// and click-to-fire. Held keys steer; presses are queued once and taken by the
+// loop, so a press between frames is never lost or double-counted.
+
+export const ACTION_CONFIRM = 1;
+export const ACTION_PAUSE = 2;
+export const ACTION_MISSION = 4;
+export const ACTION_INTERACT = 8;
 export const ACTION_WEAPON1 = 16;
 export const ACTION_WEAPON2 = 32;
-export const ACTION_RADIO = 64;
-export const ACTION_CONFIRM = 128;
+export const ACTION_WEAPON3 = 64;
+export const ACTION_RADIO = 128;
+
+const KEYMAP = {
+  KeyW: 'up', ArrowUp: 'up',
+  KeyS: 'down', ArrowDown: 'down',
+  KeyA: 'left', ArrowLeft: 'left',
+  KeyD: 'right', ArrowRight: 'right',
+  ShiftLeft: 'sprint', ShiftRight: 'sprint',
+  Space: 'brake',
+};
 
 export function createInput(canvas) {
-  const keys = new Set();
+  const held = { up: false, down: false, left: false, right: false, sprint: false, brake: false };
   let actions = 0;
+  let mouseDX = 0;
+  let mouseDY = 0;
+  let mouseDown = false;
+  let firing = false;
   let dragging = false;
-  let lastX = 0, lastY = 0;
-  let yawDelta = 0, pitchDelta = 0;
+  let lastX = 0;
+  let lastY = 0;
 
   window.addEventListener('keydown', (event) => {
+    const name = KEYMAP[event.code];
+    if (name) { held[name] = true; event.preventDefault(); return; }
     if (event.repeat) return;
-    keys.add(event.code);
-    switch (event.code) {
-      case 'KeyE': actions |= ACTION_ENTER; break;
-      case 'KeyM': actions |= ACTION_MISSION; break;
-      case 'Escape': case 'KeyP': actions |= ACTION_PAUSE; break;
-      case 'Digit1': actions |= ACTION_WEAPON1; break;
-      case 'Digit2': actions |= ACTION_WEAPON2; break;
-      case 'KeyR': actions |= ACTION_RADIO; break;
-      case 'Enter': case 'Space': actions |= ACTION_CONFIRM; break;
-      default: break;
-    }
-    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
+    if (event.code === 'Enter' || event.code === 'Space') actions |= ACTION_CONFIRM;
+    else if (event.code === 'Escape' || event.code === 'KeyP') actions |= ACTION_PAUSE;
+    else if (event.code === 'KeyM') actions |= ACTION_MISSION;
+    else if (event.code === 'KeyE') actions |= ACTION_INTERACT;
+    else if (event.code === 'Digit1') actions |= ACTION_WEAPON1;
+    else if (event.code === 'Digit2') actions |= ACTION_WEAPON2;
+    else if (event.code === 'Digit3') actions |= ACTION_WEAPON3;
+    else if (event.code === 'KeyR') actions |= ACTION_RADIO;
   });
-  window.addEventListener('keyup', (event) => keys.delete(event.code));
-  window.addEventListener('blur', () => keys.clear());
-
-  canvas.addEventListener('mousedown', (event) => {
-    if (event.button === 0) { actions |= ACTION_FIRE; keys.add('MouseLeft'); }
-    if (event.button === 2 || event.button === 0) { dragging = true; lastX = event.clientX; lastY = event.clientY; }
+  window.addEventListener('keyup', (event) => {
+    const name = KEYMAP[event.code];
+    if (name) held[name] = false;
   });
-  window.addEventListener('mouseup', (event) => { dragging = false; if (event.button === 0) keys.delete('MouseLeft'); });
-  window.addEventListener('mousemove', (event) => {
+  window.addEventListener('blur', () => {
+    for (const k of Object.keys(held)) held[k] = false;
+    firing = false;
+    dragging = false;
+  });
+  canvas.addEventListener('pointerdown', (event) => {
+    mouseDown = true;
+    firing = true;
+    dragging = true;
+    lastX = event.clientX;
+    lastY = event.clientY;
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener('pointermove', (event) => {
     if (!dragging) return;
-    yawDelta += (event.clientX - lastX) * 0.005;
-    pitchDelta += (event.clientY - lastY) * 0.004;
-    lastX = event.clientX; lastY = event.clientY;
+    mouseDX += event.clientX - lastX;
+    mouseDY += event.clientY - lastY;
+    lastX = event.clientX;
+    lastY = event.clientY;
   });
-  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+  const endPointer = () => { mouseDown = false; firing = false; dragging = false; };
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
 
   return {
-    get forward() { return keys.has('KeyW') || keys.has('ArrowUp'); },
-    get back() { return keys.has('KeyS') || keys.has('ArrowDown'); },
-    get left() { return keys.has('KeyA') || keys.has('ArrowLeft'); },
-    get right() { return keys.has('KeyD') || keys.has('ArrowRight'); },
-    get sprint() { return keys.has('ShiftLeft') || keys.has('ShiftRight'); },
-    get handbrake() { return keys.has('Space'); },
-    get firing() { return keys.has('MouseLeft'); },
-    takeActions() { const a = actions; actions = 0; return a; },
-    takeOrbit() {
-      const d = { yaw: yawDelta, pitch: pitchDelta };
-      yawDelta = 0; pitchDelta = 0;
+    held,
+    get firing() { return firing; },
+    get mouseDown() { return mouseDown; },
+    takeMouse() {
+      const d = { dx: mouseDX, dy: mouseDY };
+      mouseDX = 0;
+      mouseDY = 0;
       return d;
     },
-    // Test hooks: probes and the shot autopilot drive the game through these.
-    press(code) { keys.add(code); },
-    release(code) { keys.delete(code); },
-    queue(action) { actions |= action; },
+    takeActions() {
+      const taken = actions;
+      actions = 0;
+      return taken;
+    },
+    /** Test hook: pretend a key was pressed (used by the scripted probes). */
+    press(action) { actions |= action; },
+    setHeld(name, v) { if (name in held) held[name] = v; },
   };
+}
+
+// ---- steering helpers -------------------------------------------------------
+
+/** Forward/strafe from held keys, relative to a camera yaw. */
+export function moveVector(held, yaw) {
+  const f = (held.up ? 1 : 0) - (held.down ? 1 : 0);
+  const s = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+  const sin = Math.sin(yaw);
+  const cos = Math.cos(yaw);
+  const mx = sin * f + cos * s;
+  const mz = cos * f - sin * s;
+  const len = Math.hypot(mx, mz);
+  if (len > 1) return [mx / len, mz / len];
+  return [mx, mz];
+}
+
+/** Car throttle/steer from held keys. */
+export function driveVector(held) {
+  const throttle = (held.up ? 1 : 0) - (held.down ? 0.7 : 0);
+  const steer = (held.left ? 1 : 0) - (held.right ? 1 : 0);
+  return { throttle, steer };
 }

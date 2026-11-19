@@ -1,170 +1,183 @@
-// Procedural canvas textures: every surface in Puerto Lumen is painted at load
-// from a seeded RNG — building facades, road asphalt, sand, water, neon signs,
-// the clock tower face and the lighthouse bands. No external images anywhere.
+// LUMEN BAY r6 — procedural canvas textures. Every surface in Puerto Lumen is
+// painted on a <canvas> at boot from the seeded RNG: no image files, no network.
 import * as THREE from 'three';
-import { int, pick, range } from './random.js';
+import { randInt } from './random.js';
 
-function canvas(w, h) {
+function makeCanvas(w, h) {
   const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  return [c, c.getContext('2d')];
+  c.width = w;
+  c.height = h;
+  return c;
 }
 
-function toTexture(c, repeatX = 1, repeatY = 1) {
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(repeatX, repeatY);
-  t.anisotropy = 4;
-  return t;
+function toTexture(canvas, repeatX, repeatY) {
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX || 1, repeatY || 1);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-/** A sun-bleached facade: warm plaster, a grid of lit windows, a shop awning. */
-export function buildingTexture(rng, base) {
-  const [c, g] = canvas(256, 256);
-  g.fillStyle = base; g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 900; i += 1) {
-    g.fillStyle = rng() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-    g.fillRect(rng() * 256, rng() * 256, range(rng, 2, 9), range(rng, 2, 9));
+/** A sun-warmed building facade: pastel plaster, lit windows, a shop awning. */
+export function buildingTexture(rng, hue) {
+  const c = makeCanvas(256, 256);
+  const g = c.getContext('2d');
+  const base = `hsl(${hue}, ${55 + randInt(rng, 0, 20)}%, ${62 + randInt(rng, 0, 14)}%)`;
+  g.fillStyle = base;
+  g.fillRect(0, 0, 256, 256);
+  // Plaster noise.
+  for (let i = 0; i < 500; i += 1) {
+    g.fillStyle = `rgba(0,0,0,${0.02 + rng() * 0.05})`;
+    g.fillRect(rng() * 256, rng() * 256, 2, 2);
   }
-  const cols = 5, rows = 7;
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < cols; x += 1) {
-      const wx = 18 + x * 46, wy = 16 + y * 33;
-      const lit = rng() > 0.45;
-      g.fillStyle = '#241a12'; g.fillRect(wx - 3, wy - 3, 30, 26);
-      g.fillStyle = lit ? pick(rng, ['#ffd98a', '#ffb36b', '#fff2c0']) : '#3a4a5e';
-      g.fillRect(wx, wy, 24, 20);
-      g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(wx, wy, 24, 4);
+  // Window grid, some lit gold by the sunset.
+  for (let row = 0; row < 5; row += 1) {
+    for (let col = 0; col < 4; col += 1) {
+      const x = 24 + col * 56;
+      const y = 22 + row * 46;
+      const lit = rng() < 0.45;
+      g.fillStyle = lit ? '#ffd27a' : '#2c3550';
+      g.fillRect(x, y, 34, 28);
+      g.strokeStyle = 'rgba(255,255,255,0.35)';
+      g.strokeRect(x, y, 34, 28);
+      g.beginPath();
+      g.moveTo(x + 17, y);
+      g.lineTo(x + 17, y + 28);
+      g.stroke();
     }
   }
-  // Ground-floor shopfront with a striped awning.
-  g.fillStyle = '#1d1410'; g.fillRect(0, 222, 256, 34);
-  for (let x = 0; x < 8; x += 1) {
-    g.fillStyle = x % 2 ? '#e84a6f' : '#f6ead2';
-    g.fillRect(x * 32, 214, 32, 12);
-  }
-  return toTexture(c);
+  // Ground-floor awning stripe.
+  g.fillStyle = `hsl(${(hue + 180) % 360}, 70%, 55%)`;
+  g.fillRect(0, 224, 256, 32);
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  for (let x = 0; x < 256; x += 32) g.fillRect(x, 224, 16, 32);
+  return toTexture(c, 1, 1);
 }
 
-/** Asphalt with a centre line, edge lines and patchy wear. */
+/** Asphalt with a dashed centre line and worn edges. */
 export function roadTexture(rng) {
-  const [c, g] = canvas(128, 128);
-  g.fillStyle = '#2e2e38'; g.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 500; i += 1) {
-    g.fillStyle = rng() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.10)';
-    g.fillRect(rng() * 128, rng() * 128, range(rng, 1, 4), range(rng, 1, 4));
+  const c = makeCanvas(128, 128);
+  const g = c.getContext('2d');
+  g.fillStyle = '#33363d';
+  g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 300; i += 1) {
+    g.fillStyle = `rgba(255,255,255,${rng() * 0.04})`;
+    g.fillRect(rng() * 128, rng() * 128, 2, 2);
   }
-  g.fillStyle = '#d8c25a'; g.fillRect(62, 0, 4, 128);
-  g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(6, 0, 3, 128); g.fillRect(119, 0, 3, 128);
-  return toTexture(c, 1, 8);
+  g.fillStyle = '#e8d44d';
+  g.fillRect(62, 8, 4, 40);
+  g.fillRect(62, 80, 4, 40);
+  g.fillStyle = 'rgba(255,255,255,0.5)';
+  g.fillRect(4, 0, 3, 128);
+  g.fillRect(121, 0, 3, 128);
+  return toTexture(c, 1, 1);
 }
 
-/** Warm beach sand with speckles and a few shells. */
+/** Golden beach sand with speckles and a soft dune ripple. */
 export function sandTexture(rng) {
-  const [c, g] = canvas(256, 256);
-  g.fillStyle = '#e8c98a'; g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 1600; i += 1) {
-    g.fillStyle = pick(rng, ['rgba(120,80,30,0.12)', 'rgba(255,255,255,0.14)', 'rgba(200,140,60,0.15)']);
-    g.fillRect(rng() * 256, rng() * 256, range(rng, 1, 3), range(rng, 1, 3));
+  const c = makeCanvas(128, 128);
+  const g = c.getContext('2d');
+  g.fillStyle = '#e8c98a';
+  g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 900; i += 1) {
+    const v = rng();
+    g.fillStyle = v < 0.5 ? 'rgba(120,80,20,0.12)' : 'rgba(255,240,200,0.18)';
+    g.fillRect(rng() * 128, rng() * 128, 2, 1);
+  }
+  g.strokeStyle = 'rgba(160,110,40,0.15)';
+  for (let i = 0; i < 6; i += 1) {
+    g.beginPath();
+    g.moveTo(0, 10 + i * 20 + rng() * 6);
+    g.bezierCurveTo(40, 6 + i * 20, 80, 16 + i * 20, 128, 10 + i * 20);
+    g.stroke();
+  }
+  return toTexture(c, 8, 8);
+}
+
+/** Sunset sea: deep teal with warm sparkle streaks. */
+export function waterTexture(rng) {
+  const c = makeCanvas(256, 256);
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 256, 256);
+  grad.addColorStop(0, '#1d6f8e');
+  grad.addColorStop(0.6, '#2a8aa8');
+  grad.addColorStop(1, '#ff9a56');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 140; i += 1) {
+    g.fillStyle = `rgba(255,210,122,${0.08 + rng() * 0.2})`;
+    g.fillRect(rng() * 256, rng() * 256, 14 + rng() * 30, 2);
   }
   return toTexture(c, 6, 6);
 }
 
-/** Open water: deep teal with sun glints and soft wave bands. */
-export function waterTexture(rng) {
-  const [c, g] = canvas(256, 256);
-  g.fillStyle = '#1f6f8e'; g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 40; i += 1) {
-    g.strokeStyle = `rgba(255,255,255,${range(rng, 0.05, 0.16)})`;
-    g.lineWidth = range(rng, 1, 3);
+// ---- more painted surfaces -------------------------------------------------
+
+/** Palm fronds on transparency, for crossed-plane palm trees. */
+export function palmTexture(rng) {
+  const c = makeCanvas(128, 128);
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 128, 128);
+  g.strokeStyle = '#3f7a2e';
+  g.lineWidth = 5;
+  g.lineCap = 'round';
+  for (let i = 0; i < 8; i += 1) {
+    const a = (i / 8) * Math.PI * 2 + rng() * 0.3;
     g.beginPath();
-    const y = rng() * 256;
-    g.moveTo(0, y); g.bezierCurveTo(80, y + range(rng, -8, 8), 170, y + range(rng, -8, 8), 256, y);
+    g.moveTo(64, 70);
+    g.quadraticCurveTo(64 + Math.cos(a) * 40, 70 + Math.sin(a) * 40 - 22, 64 + Math.cos(a) * 58, 70 + Math.sin(a) * 58 - 8);
     g.stroke();
   }
-  for (let i = 0; i < 220; i += 1) {
-    g.fillStyle = 'rgba(255,220,160,0.20)';
-    g.fillRect(rng() * 256, rng() * 256, range(rng, 2, 7), 1);
-  }
-  return toTexture(c, 10, 10);
+  g.strokeStyle = '#7a5a34';
+  g.lineWidth = 7;
+  g.beginPath();
+  g.moveTo(64, 70);
+  g.lineTo(64, 126);
+  g.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-/** A glowing neon shop sign: text on a dark plate with a bright rim. */
-export function neonSignTexture(text, color) {
-  const [c, g] = canvas(512, 128);
-  g.fillStyle = '#140d18'; g.fillRect(0, 0, 512, 128);
-  g.strokeStyle = color; g.lineWidth = 6; g.strokeRect(6, 6, 500, 116);
-  g.font = 'bold 64px Arial, sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = color; g.shadowBlur = 26;
-  g.fillStyle = color; g.fillText(text, 256, 66);
-  g.shadowBlur = 0; g.fillStyle = '#ffffff'; g.fillText(text, 256, 66);
-  return toTexture(c);
+/** A neon shop sign: bright text on a dark board, drawn per shop name. */
+export function neonSignTexture(text, colour) {
+  const c = makeCanvas(256, 64);
+  const g = c.getContext('2d');
+  g.fillStyle = '#14101c';
+  g.fillRect(0, 0, 256, 64);
+  g.font = 'bold 30px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.shadowColor = colour;
+  g.shadowBlur = 14;
+  g.fillStyle = colour;
+  g.fillText(text.slice(0, 14).toUpperCase(), 128, 34);
+  g.shadowBlur = 0;
+  g.strokeStyle = colour;
+  g.lineWidth = 2;
+  g.strokeRect(3, 3, 250, 58);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-/** The Torre Lumen clock face: cream dial, roman numerals, golden hands at 18:40. */
-export function clockTexture() {
-  const [c, g] = canvas(256, 256);
-  g.fillStyle = '#f6ead2'; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = '#8a6a2f'; g.lineWidth = 10; g.beginPath(); g.arc(128, 128, 114, 0, Math.PI * 2); g.stroke();
-  g.fillStyle = '#241a12'; g.font = 'bold 30px Georgia, serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  const nums = ['XII', 'I', 'II', 'III', 'IIII', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
-  for (let i = 0; i < 12; i += 1) {
-    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-    g.fillText(nums[i], 128 + Math.cos(a) * 88, 128 + Math.sin(a) * 88);
-  }
-  // 18:40 — hour hand near VII, minute hand on VIII.
-  const ha = ((6 + 40 / 60) / 12) * Math.PI * 2 - Math.PI / 2;
-  const ma = (40 / 60) * Math.PI * 2 - Math.PI / 2;
-  g.strokeStyle = '#241a12'; g.lineCap = 'round';
-  g.lineWidth = 12; g.beginPath(); g.moveTo(128, 128); g.lineTo(128 + Math.cos(ha) * 58, 128 + Math.sin(ha) * 58); g.stroke();
-  g.lineWidth = 8; g.beginPath(); g.moveTo(128, 128); g.lineTo(128 + Math.cos(ma) * 92, 128 + Math.sin(ma) * 92); g.stroke();
-  g.fillStyle = '#c0392b'; g.beginPath(); g.arc(128, 128, 9, 0, Math.PI * 2); g.fill();
-  return toTexture(c);
+/** Festival lantern glow texture (radial warm light). */
+export function lanternTexture() {
+  const c = makeCanvas(64, 64);
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+  grad.addColorStop(0, 'rgba(255,190,90,1)');
+  grad.addColorStop(0.5, 'rgba(255,110,60,0.55)');
+  grad.addColorStop(1, 'rgba(255,80,40,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-/** Red and white horizontal bands for the Farol Rojo lighthouse. */
-export function lighthouseTexture() {
-  const [c, g] = canvas(128, 256);
-  for (let i = 0; i < 8; i += 1) {
-    g.fillStyle = i % 2 ? '#f6ead2' : '#c0392b';
-    g.fillRect(0, i * 32, 128, 32);
-  }
-  return toTexture(c);
-}
-
-/** Warm plaster for the safehouse walls. */
-export function plasterTexture(rng, base) {
-  const [c, g] = canvas(128, 128);
-  g.fillStyle = base; g.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 300; i += 1) {
-    g.fillStyle = rng() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-    g.fillRect(rng() * 128, rng() * 128, range(rng, 2, 8), range(rng, 2, 8));
-  }
-  return toTexture(c);
-}
-
-export function makeTextures(rng) {
-  const facades = [
-    '#e8a06a', '#d98a5f', '#c97e6b', '#e0b56f', '#b98a7a',
-    '#7fa3b8', '#a8b89a', '#d9a0a0', '#e8c98a', '#c9b8a0',
-  ].map((base) => buildingTexture(rng, base));
-  return {
-    facades,
-    road: roadTexture(rng),
-    sand: sandTexture(rng),
-    water: waterTexture(rng),
-    plaster: plasterTexture(rng, '#e8cfa8'),
-    lighthouse: lighthouseTexture(),
-    clock: clockTexture(),
-    signs: {
-      mercado: neonSignTexture('MERCADO VIEJO', '#ff4fa3'),
-      taller: neonSignTexture('TALLER LUMEN', '#39d5ff'),
-      casino: neonSignTexture('CASINO SOL', '#ffd24a'),
-      playa: neonSignTexture('PLAYA DORADA', '#7dff9a'),
-      faro: neonSignTexture('FAROL ROJO', '#ff6a4a'),
-    },
-  };
+/** A paper-lantern disc used by the festival scene and shot 3. */
+export function makeLanternMaterial() {
+  return new THREE.MeshBasicMaterial({ map: lanternTexture(), transparent: true, depthWrite: false });
 }

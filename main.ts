@@ -1,12 +1,11 @@
-// LUMEN BAY's hand-in program (Node 22, standard library only): it copies
-// game/ and screenshots/ from beside this file to /output and writes
-// /output/dossier.json, the summary the judge reads, with the vendored make.fun
-// library. Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
+// LUMEN BAY r6 — the entry program (Node 22, standard library only).
+// It hands the game in: copies game/ and screenshots/ from beside this file to
+// /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
+// /output/dossier.json with the vendored make.fun library, exactly as the kit's
+// starter does. No build step, no network, no install.
+//
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-// The game itself is a complete open-world crime game in game/: a 3D sunset
-// island city with 12 story missions, traffic, pedestrians, a 5-star wanted
-// system with police cruisers and a helicopter, combat, a dense HUD with a
-// minimap, synth audio and a localStorage save.
+
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,10 +19,10 @@ cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the
-// bytes; the others refuse an entry the scorer would refuse (more than 4
-// screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of
-// game files, in all, or a path under game/ over 1000 bytes).
+// The scorer's caps (reference/gate.json): only text_max_bytes shapes the
+// dossier bytes; the others refuse an entry the scorer would refuse — more than
+// 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of
+// game files in all, or a path under game/ over 1000 bytes.
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {
