@@ -206,7 +206,10 @@ function spawnPoliceBehind(count) {
     // ONE tight chaser behind the hero + TWO head-on cruisers ahead of it
     // (the HALCYON composition — see the header above for why the fan died).
     if (i === 0) {
-      const car = makeCar('police', player.x - fx * 2.5 + rx * -3.5, player.z - fz * 2.5 + rz * -3.5, heading, { kind: 'chase' });
+      // r11: lat -4.8 (was -3.5) — the chase cruiser sat directly astern and
+      // the hero hid it; pushed to the camera side it peeks out beside the
+      // hero instead of vanishing behind it (see shotAutopilot's pin too).
+      const car = makeCar('police', player.x - fx * 2.5 + rx * -4.8, player.z - fz * 2.5 + rz * -4.8, heading, { kind: 'chase' });
       car.speed = 34;
       car.unit = nextUnitName();
       R.scene.add(car.mesh.group);
@@ -590,15 +593,17 @@ const G = {
   },
   /** r8b shot staging: a PERSISTENT muzzle-flash glow at a gun position, so
    shot 2's firefight reads in a still (the live 60 ms flash never lands
-   in a screenshot). */
-  addMuzzleFlash(x, y, z) {
+   in a screenshot). r11: optional scale — shot 2's flashes are 3.6 (the
+   2.2 flashes were too small to read at night); shot 3 keeps the default. */
+  addMuzzleFlash(x, y, z, scale) {
+    const s = scale || 2.2;
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({
       map: sunGlowTexture(), color: 0xffe9a0, transparent: true, opacity: 0.95, depthWrite: false,
     }));
     flash.position.set(x, y, z);
-    flash.scale.set(2.2, 2.2, 1); // bright but not a blinding orb at 8–10 units — the first take's 3.2 scale read as two huge white balls
+    flash.scale.set(s, s, 1); // bright but not a blinding orb at 8–10 units — the first take's 3.2 scale read as two huge white balls
     R.scene.add(flash);
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8),
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.4 * (s / 2.2), 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
     core.position.set(x, y, z);
     R.scene.add(core);
@@ -712,7 +717,7 @@ const G = {
    without it the puddles vanished into the dark asphalt on the first take. */
   spawnPuddle(x, z, w, d) {
     const puddle = new THREE.Mesh(new THREE.PlaneGeometry(w || 6, d || 3),
-      new THREE.MeshStandardMaterial({ color: 0x0a1a2e, roughness: 0.08, metalness: 0.9, emissive: 0x0e2233, emissiveIntensity: 0.15 }));
+      new THREE.MeshStandardMaterial({ color: 0x0a1a2e, roughness: 0.08, metalness: 0.9, emissive: 0x14344d, emissiveIntensity: 0.3 })); // r11: emissive 0x0e2233/0.15 was invisible on dark asphalt — brighter blue so puddles read as water, not dark patches
     puddle.rotation.x = -Math.PI / 2;
     puddle.position.set(x, 0.05, z);
     R.scene.add(puddle);
@@ -782,10 +787,11 @@ const G = {
   /** r10: the Torre Lumen VAULT as a staged interior set — dark marble
    floor with a gold border, three walls (the south side stays OPEN as a
    cutaway so the high camera looks straight down into the room), a big
-   round gold vault door with spokes + a lit VAULT neon sign on the north
-   wall. No ceiling: the high-wide camera shoots over the walls. The room
-   is a set in the world, not a building — the sky dome is hidden for
-   this shot, so the world outside the walls reads as dark warm void. */
+   round gold vault door with spokes on the north wall. r11: NO VAULT sign
+   plane — it collided with the DOM WANTED stars (see below). No ceiling:
+   the high-wide camera shoots over the walls. The room is a set in the
+   world, not a building — the sky dome is hidden for this shot, so the
+   world outside the walls reads as dark warm void. */
   spawnVaultRoom(cx, cz) {
     const group = new THREE.Group();
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 20),
@@ -799,15 +805,21 @@ const G = {
       trim.position.set(x, 0.1, z);
       group.add(trim);
     }
+    // r11: walls are 13 high, not 8 — the 8-high north wall let the Torre
+    // Lumen tower's HOTEL LUMEN neon sign (y 7–11 at z=-168) show OVER the
+    // wall, where the DOM WANTED label overlaps it, and let a stray police
+    // cruiser show on a rooftop edge top-left. At 13 the wall blocks both:
+    // from the r11 camera (y≈14, 24 units south) the over-wall sightline at
+    // the sign is y≈12.7, above the sign's top. The gold door is unaffected.
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a2a3a, roughness: 0.8 });
-    const north = new THREE.Mesh(new THREE.BoxGeometry(26, 8, 0.8), wallMat);
-    north.position.set(cx, 4, cz - 10); group.add(north);
-    const west = new THREE.Mesh(new THREE.BoxGeometry(0.8, 8, 20), wallMat);
-    west.position.set(cx - 13, 4, cz); group.add(west);
-    const east = new THREE.Mesh(new THREE.BoxGeometry(0.8, 8, 20), wallMat);
-    east.position.set(cx + 13, 4, cz); group.add(east);
+    const north = new THREE.Mesh(new THREE.BoxGeometry(26, 13, 0.8), wallMat);
+    north.position.set(cx, 6.5, cz - 10); group.add(north);
+    const west = new THREE.Mesh(new THREE.BoxGeometry(0.8, 13, 20), wallMat);
+    west.position.set(cx - 13, 6.5, cz); group.add(west);
+    const east = new THREE.Mesh(new THREE.BoxGeometry(0.8, 13, 20), wallMat);
+    east.position.set(cx + 13, 6.5, cz); group.add(east);
     // Round vault door: gold disc + ring + spokes + handle, on the north
-    // wall's inside face, with the lit VAULT sign above it.
+    // wall's inside face. (r11: no VAULT sign above it — see below.)
     const door = new THREE.Mesh(new THREE.CircleGeometry(3.5, 24), gold);
     door.position.set(cx, 3.5, cz - 9.5); group.add(door);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.3, 8, 32), gold);
@@ -818,10 +830,13 @@ const G = {
       spoke.rotation.z = a;
       group.add(spoke);
     }
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.5),
-      new THREE.MeshBasicMaterial({ map: neonSignTexture('VAULT', '#ffd23f'), transparent: true }));
-    sign.position.set(cx, 7, cz - 9.5);
-    group.add(sign);
+    // r11: NO VAULT sign plane — the lit VAULT sign sat at the top-centre of
+    // the frame exactly under the DOM WANTED stars + IN SIGHT banner, a
+    // text-on-text collision (the stars hid the "VAULT" letters, the banner
+    // covered its lower half). The big gold door + ring + spokes, the
+    // "Tower Vault — press E to rob" prompt and the VAULT CRACKED toast
+    // carry the vault read; the stars now sit over plain wall + the door's
+    // gold rim, with no text behind them.
     R.scene.add(group);
     return group;
   },

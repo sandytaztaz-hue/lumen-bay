@@ -1,15 +1,19 @@
-// LUMEN BAY r10 — the entry program (Node 22, standard library only).
-// r10 rebuilds all four screenshots as FOUR DIFFERENT situations — golden-hour
-// sunset chase (18:45), night pier shootout (23:20), vault interior (21:40),
-// dawn marina escape (06:10) — each with its own weather, time of day and
-// camera angle, like the top entries; gameplay/missions unchanged. Dossier:
-// run it twice, the two dossier.json outputs must be byte-identical. r10 is
-// built on r9c (557a19e) for Sand to choose from — only one variant can ever
+// LUMEN BAY r11 — the entry program (Node 22, standard library only).
+// r11 fixes r10's four defects (Sand's "Benerin bro" order): the dawn shot's
+// hero car is big and close with the boat moored close to shore and a
+// smaller warmer sun; the vault walls hide the HOTEL LUMEN sign and the
+// rooftop cruiser, with more loot and figures; the night shot's car is fully
+// in frame with bigger muzzle flashes and a wetter street; the sunset shot's
+// heli rotor is thin and translucent and the chase cruiser shows beside the
+// hero. Times / weather / camera angles are unchanged from r10 — the same
+// four different situations. Dossier:
+// run it twice, the two dossier.json outputs must be byte-identical. r11 is
+// built on r10 (d5889f0) for Sand to choose from — only one variant can ever
 // be sealed + submitted.
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's
-// starter does. No build step, no network, no install. (r10 — four-situations variant.)
+// starter does. No build step, no network, no install. (r11 — defect-fix variant on r10.)
 //
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 // Run it twice: the two dossier.json outputs must be byte-identical.

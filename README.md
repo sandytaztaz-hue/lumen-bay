@@ -1,4 +1,4 @@
-# LUMEN BAY r10 — Four Situations: golden-hour sunset chase, night pier shootout, vault interior, dawn marina escape — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in Puerto Lumen
+# LUMEN BAY r11 — Four Situations, defects fixed: dawn hero car big + boat close, vault walls hide the sign, night car in frame + wet street, thin heli rotor + visible chase cruiser — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in Puerto Lumen
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
@@ -37,19 +37,22 @@ pink-red Comet RS — a real low-slung GT with a long hood, grille,
 mirrors, door lines, wheel arches and a visible driver — BIG in frame (~30%
 of frame width) on a close LOW rear chase camera, NOS burning, dust behind the
 wheels, three black-and-white police cruisers with "POLICE" door markings and
-flashing red/blue light bars spread close behind it, the helicopter overhead
-with a visible searchlight cone, a roadblock ahead, the ferris wheel
+flashing red/blue light bars spread close behind it — the chase cruiser
+peeking out beside the hero's flank — the helicopter overhead with a visible
+searchlight cone and a thin translucent rotor, a roadblock ahead, the ferris wheel
 and umbrellas on the beach. Shot 2 is the same city at NIGHT (23:20): a low
 ground-level side view of Mara on foot at the marina pier, firing from behind
-the hero car's door at a police cordon, muzzle flashes, cash flying, the
-heli's spotlight cone over the wet street, neon signs and lamp glows in the
+the hero car's door — the whole car in frame — at a police cordon, BIG muzzle
+flashes, cash flying, the heli's spotlight cone over the wet street with
+visible puddles and reflections, neon signs and lamp glows in the
 dark. Shot 3 goes INSIDE the Torre Lumen vault (21:40): a high wide camera
-looking down into the vault — gold bars and cash piles, guards down, Mara and
-an ally under warm vault light with dust in the beams, the round gold vault
-door blown open. Shot 4 is DAWN on the south beach (06:10): a high wide
-establishing shot — the hero car parked on the sand at the water's edge, the
-speedboat moored just off it, the crew standing by the car, mist over the
-water and a pink-orange sunrise over the sea, MISSION PASSED. (The escape
+looking down into the vault — gold bars and cash piles filling the floor,
+guards down, Mara and two allies under warm vault light with dust in the
+beams, the round gold vault door blown open, the tall vault walls hiding the
+city outside. Shot 4 is DAWN on the south beach (06:10): a high wide
+establishing shot — the hero car BIG on the sand at the water's edge, the
+speedboat moored close off it, the crew standing by the car, mist over the
+water and a small warm sunrise over the sea, MISSION PASSED. (The escape
 is the marina boat job; it stages on the south sand because the west
 marina's buildings fill any west-looking frame — see the build notes.) The streets are alive: crowds where every person
 looks different — striped, checked and printed shirts, hats, backpacks, tall,
@@ -139,14 +142,17 @@ three.js is vendored under `game/vendor/three/` under its own MIT License.
 Four real headless-Chrome renders live in `screenshots/` — four DIFFERENT
 situations, like the top entries: the GOLDEN-HOUR sunset chase cover (18:45,
 low orange sun, warm haze, long shadows, hero ~30% of the frame on a low rear
-chase camera), the NIGHT pier shootout (23:20, low ground-level side view,
-Mara firing from behind the hero car's door, police cordon ahead, heli
-spotlight cone overhead, muzzle flashes, cash flying, wet street, $21,700),
+chase camera, chase cruiser visible beside it, thin translucent heli rotor),
+the NIGHT pier shootout (23:20, low ground-level side view, Mara firing from
+behind the hero car's door — car fully in frame — police cordon ahead, heli
+spotlight cone overhead, BIG muzzle flashes, cash flying, wet street with
+visible puddles, $21,700),
 the VAULT INTERIOR heist (21:40, high wide camera looking down into the
-Torre Lumen vault — gold bars, cash piles, guards down, $48,500) and the DAWN
-marina escape (06:10, high wide establishing shot — MISSION PASSED, hero car
-parked on the south sand at the water's edge, speedboat moored off it, mist
-over the water, sunrise).
+Torre Lumen vault — gold bars, cash piles filling the floor, guards down,
+Mara and two allies, $48,500) and the DAWN marina escape (06:10, high wide
+establishing shot — MISSION PASSED, hero car BIG on the south sand at the
+water's edge, speedboat moored close off it, mist over the water, small warm
+sunrise).
 All with full dense HUD and a per-shot clock. Dialogue boxes show drawn
 character portraits (Mara, Tio Reyes, Lena Cruz), not letter circles. Shot 4
 doubles as the feed's story-progress thumbnail (MISSION PASSED +$8,000 ·

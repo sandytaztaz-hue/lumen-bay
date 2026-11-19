@@ -1,12 +1,14 @@
-// LUMEN BAY r10 — the screenshot scenes behind ?shot=1..4. r10: every shot
-// is a DIFFERENT situation — different time, different weather, different
-// camera angle — like the top entries. Shot 1 is the GOLDEN-HOUR sunset
-// chase (18:45, warm haze, low orange sun ahead, LOW rear 3/4 chase cam).
-// Shot 2 is the NIGHT pier shootout (23:20, wet street, neon + lamp glow,
-// LOW ground-level side view over Mara's shoulder). Shot 3 is the VAULT
-// INTERIOR heist (21:40, warm vault light, dust in the beams, HIGH wide
-// camera looking down into the room). Shot 4 is the DAWN marina escape
-// (06:10, mist over the water, sunrise, HIGH wide establishing shot).
+// LUMEN BAY r11 — the screenshot scenes behind ?shot=1..4. r11 fixes the
+// four r10 defects Sand called out ("Benerin bro koreksi msh ada waktu kan"):
+// shot 4's hero car is BIG and close now (camera 26 out, not 40; car on a
+// palm-gap axis at x=-157), the boat is bigger and closer to shore, the dawn
+// sun is smaller and warmer; shot 3's vault walls are 13 high so the HOTEL
+// LUMEN sign and the rooftop cruiser are hidden behind them, with more loot
+// and figures filling the floor; shot 2's hero car is fully in frame (wider
+// camera, car nudged west), muzzle flashes are bigger, puddles read as wet;
+// shot 1's heli rotor is thin translucent crossed blades and the chase
+// cruiser peeks out beside the hero. Times / weather / camera angles are
+// UNCHANGED from r10 — same four different situations.
 // All dialogue boxes show drawn character portraits (see hud.js), never
 // letter circles. Lighting per shot comes from config.js LIGHTING_PRESETS
 // via G.setLighting(), which also stamps the HUD clock to that shot's time.
@@ -90,11 +92,14 @@ export function stageShot2(G) {
   G.setLighting('night'); // 23:20 — also stamps the HUD clock
   G.startPlay();
   G.enterCar(G.parked[0]); // hot pink-red Comet RS, the hero car
-  G.warpTo(-176, -144); // marina road, facing south toward the beach
+  G.warpTo(-177.5, -144); // r11: was -176 — the car cropped off the left
+  // edge; 1.5 west + the wider camera below pull it fully in frame
   G.player.car.heading = 0;
   G.exitCar(); // Mara steps out 3 units east of the car, behind its door
-  G.warpTo(-181, -144); // 5 WEST of the car, on the road's west edge — in
-  // front of the car from the west-side camera, firing south past it
+  G.warpTo(-183, -144); // r11: was -181 — at 3.5 from the car the "Press E to
+  // enter" prompt showed (interact range is 4.5); at 5.5 it stays off, so
+  // the frame has no prompt bar. Mara is still west of the car, in front
+  // of it from the west-side camera, firing south past it
   G.player.heading = 0;
   G.player.mesh.group.rotation.y = 0;
   G.player.weapon = 'smg';
@@ -103,10 +108,13 @@ export function stageShot2(G) {
   G.spawnEnemiesAt(-174, -134, 2, 'police');
   G.spawnEnemiesAt(-180, -132, 2, 'police');
   // Muzzle flashes: Mara's gun + the cordon's guns, persistent in the still.
-  G.addMuzzleFlash(-180.5, 1.4, -142.5);
-  G.addMuzzleFlash(-177, 1.4, -135.5);
-  G.addMuzzleFlash(-174.5, 1.4, -133.5);
-  G.addMuzzleFlash(-179.5, 1.4, -131.5);
+  // r11: scale 3.6–4.0 (was 2.2) — the r10 flashes were too small to read
+  // at night; Mara's is the biggest, right at her gun on the camera side.
+  G.addMuzzleFlash(-180.5, 1.4, -142.5, 4.0);
+  G.addMuzzleFlash(-177, 1.4, -135.5, 3.6);
+  G.addMuzzleFlash(-174.5, 1.4, -133.5, 3.6);
+  G.addMuzzleFlash(-179.5, 1.4, -131.5, 3.6);
+  G.addMuzzleFlash(-175.5, 1.4, -134.5, 3.2);
   // Cash flying in the air around the shootout + a spill by the car door.
   G.spawnCashBurst(-178, -138);
   G.spawnLootPile(-179, -146);
@@ -118,12 +126,20 @@ export function stageShot2(G) {
   // at the real lamp posts), a warm pool of light over Mara so she reads
   // against the dark road, rain puddles on the road catching the light,
   // dockworkers scattering further down the pier.
+  // r11: puddles BIGGER and MORE, with a long wet strip down the road under
+  // the heli cone — the r10 puddles (3x1.5, faint) read as subtle dark
+  // patches, not a wet street. Emissive is brighter too (see main.js).
   G.addLampGlow(-180, -113);
   G.addLampGlow(-180, -53);
-  G.addPointLight(-177, 5, -141, 0xffb347, 200, 18);
-  G.spawnPuddle(-178, -132, 3, 1.5);
-  G.spawnPuddle(-174, -128, 3, 1.5);
-  G.spawnPuddle(-182, -136, 2.5, 1.5);
+  G.addPointLight(-177, 5, -141, 0xffb347, 150, 18); // r11: was 200 — the
+  // pool light washed the road tan and drowned the puddles; 150 keeps Mara
+  // readable while the wet dark + puddle reflections read.
+  G.spawnPuddle(-178, -132, 6, 3);
+  G.spawnPuddle(-174, -128, 6, 3);
+  G.spawnPuddle(-182, -136, 5, 3);
+  G.spawnPuddle(-179, -140, 5, 2.5);
+  G.spawnPuddle(-176, -124, 6, 3);
+  G.spawnPuddle(-177, -138, 4, 10); // long wet strip down the road
   G.spawnPedsNear(-170, -126, 6); // dockworkers scattering
   G.clearTrafficNear(-181, -144, 22); // no stray car may cross the duel
   G.missions.startMission(14); // El Puerto Es Nuestro finale
@@ -139,24 +155,19 @@ export function stageShot2(G) {
   G.state.health = 82;
   G.state.armour = 45;
   // LOW ground-level SIDE view: camera NORTH-WEST of Mara on the ROAD
-  // (camYaw 0.5), 9 out, 1.2 high — a low 3/4 over her shoulder: Mara's
-  // profile fills the foreground, the hero car reads SIDE-ON behind her,
-  // the cordon + heli cone ahead-south. (First take used due-west: the
-  // camera sat over the sand strip, so a bright tan expanse filled the
-  // bottom 2/3 and the heli fell out of frame. The 0.3 take fixed the
-  // foreground but cropped the car off the left edge and left an empty
-  // road — 0.5 is the framing that works, and Mara + car have moved 2 EAST
-  // so this camera now sits on the dark asphalt instead of the pale
-  // sidewalk, with the warm pool light dimmed to 200/18.)
-  G.camYaw = 0.5;
-  G.setCamDist(9);
+  // (camYaw 0.6), 10.5 out, 1.6 high — r11: was 0.5 / 9.0, which cropped the
+  // hero car off the left edge; the wider, slightly swung camera pulls the
+  // whole car in frame with Mara, the cordon and the heli cone.
+  G.camYaw = 0.6;
+  G.setCamDist(10.5);
   G.setCamHeight(1.6);
   G.camPitch = -0.1;
 }
 // r10 — VAULT INTERIOR heist at Torre Lumen (21:40, warm vault light,
 // dust in the beams, NO weather, NO sky). INSIDE the vault: gold bars +
 // cash piles, guards down, Mara + an ally inside, the round gold vault
-// door blown open on the north wall with a lit VAULT sign above it. This
+// door blown open on the north wall (r11: the lit VAULT sign above it is
+// gone — it collided with the DOM WANTED stars). This
 // brings in r9a's best idea, but as a real interior set — not a street
 // scene, not the festival. The sky dome is HIDDEN for this shot (preset
 // 'interior'); the room is a staged set in the world with its south side
@@ -179,15 +190,20 @@ export function stageShot3(G) {
   G.missions.startMission(14); // El Puerto Es Nuestro finale
   G.clearEnemies(); // the tower squad stays OUT of the vault still
   G.setWanted(5); // finale heat, pinned AFTER startMission
-  // The loot: three gold/cash piles + cash frozen mid-air over the floor.
+  // The loot: FIVE gold/cash piles now (was three) + cash frozen mid-air
+  // over the floor — r11: the big empty brown floor read as dead space.
   G.spawnLootPile(55, -148);
   G.spawnLootPile(65, -152);
   G.spawnLootPile(60, -145.5);
+  G.spawnLootPile(57, -151);
+  G.spawnLootPile(63, -149.5);
   G.spawnCashBurst(60, -148);
-  // Guards down on the vault floor + an ally covering the door.
+  // Guards down on the vault floor + TWO allies covering the door (was one).
   G.spawnDowned(54, -147, 'shark');
   G.spawnDowned(66, -153, 'shark');
+  G.spawnDowned(62, -150, 'shark');
   G.spawnAlly(64, -147, Math.PI);
+  G.spawnAlly(57, -150.5, Math.PI * 0.75);
   // Muzzle flashes: Mara's gun + the ally's, persistent in the still.
   G.addMuzzleFlash(58.5, 1.4, -146);
   G.addMuzzleFlash(63.5, 1.4, -145.5);
@@ -207,13 +223,16 @@ export function stageShot3(G) {
   G.state.cash = 48500;
   G.state.health = 82;
   G.state.armour = 45;
-  // HIGH wide looking down into the room: camera south of Mara, 13 out,
-  // ~17 high — the whole 26x20 vault floor in frame, door + VAULT sign on
-  // the far (north) wall, tower looming behind it.
+  // HIGH wide looking down into the room: camera south of Mara, 11 out,
+  // ~13 high — r11: was 13 / 16; the closer camera makes the figures and
+  // loot bigger so the floor reads full, not empty. The 13-high walls (see
+  // main.js spawnVaultRoom) now hide the HOTEL LUMEN sign and the rooftop
+  // cruiser that showed over the old 8-high walls, and the VAULT sign plane
+  // is gone — it sat under the DOM WANTED stars, a text-on-text collision.
   G.camYaw = Math.PI;
-  G.setCamDist(13);
-  G.setCamHeight(16);
-  G.camPitch = 0.2;
+  G.setCamDist(11);
+  G.setCamHeight(13);
+  G.camPitch = 0.25;
 }
 // r10 — DAWN MARINA ESCAPE / MISSION PASSED on the south beach (06:10,
 // morning mist over the water, pink-orange sunrise low over the sea). The
@@ -238,11 +257,24 @@ export function stageShot4(G) {
   G.spawnSandPatch(); // the dawn beach, deterministically tan (see main.js)
   G.startPlay();
   G.enterCar(G.parked[0]);
-  G.warpTo(-157, 222); // on the south sand at the water's edge, facing the
-  // sea (south) — 32 south of the palm row (z=190) and clear of the
-  // umbrella lines (x=-164/-150), so nothing stands between the camera
-  // and the car; the camera sits on the sand north of the umbrellas
-  G.player.car.heading = 0;
+  // r11 — THE FIX. r10 parked the car at (-157, 222) with the camera 40 out:
+  // the hero was ~60 px and the z=190 palm row put a palm at (-158, 190)
+  // dead on the camera-car axis, its fronds covering the car. Now the car
+  // sits at (-157, 228) on the PALM-GAP axis (palms at z=190 stand at
+  // x=-158/-143, so x=-157 threads between them; both palm rows are BEHIND
+  // the new closer camera) and the camera is 26 out, 10 high — the hero
+  // fills ~25–30% of the frame, big and close, mid-ground. Umbrella columns
+  // at z=224 stand at x=-164/-150, flanking the car, never on its axis.
+  // r11 take 2 — SIDE-ON and TIGHTER. Take 1 (camera 26 out, car facing
+  // south) still left the hero ~45 px: from directly behind, only the car's
+  // 2.8-unit width faces the lens. Now the car faces WEST (nose toward the
+  // boat) and the camera sits 15 out at a 0.3 yaw — the 6.6-unit flank faces
+  // the lens and fills ~25% of the frame. The umbrella row at z=224
+  // flanks the axis (columns -164/-150, axis threads -159), framing rather
+  // than covering the car.
+  G.warpTo(-157, 228); // on the south sand at the water's edge — on the
+  // palm-gap axis, clear of the umbrella lines
+  G.player.car.heading = -Math.PI / 2; // nose WEST, toward the boat
   G.player.car.speed = 0;
   G.holdStill = true;
   for (let i = 0; i < 12; i += 1) G.turf.owners[i] = 'crew';
@@ -250,24 +282,25 @@ export function stageShot4(G) {
   G.missions.missionIdx = 15;
   G.missions.active = false;
   G.missions.objective = 'Story complete — Puerto Lumen is yours. Free roam!';
-  // The getaway boat, moored just off the beach 40 WEST of the car — off
-  // the frame's centre, so the MISSION PASSED banner never covers it —
-  // + morning mist over the sea, kept SMALL and OFF the boat (the first
-  // takes' radius-70–110 mist blobs sat on the boat and washed it out —
-  // the boat is inside any mist sphere whose centre is within its radius).
-  // The boat is moored SIDE-ON (heading PI/2, bow east) at 2× scale: the
-  // live-camera probe put the 1.5× boat at screen x 777–856, y 321 — a
-  // 79×15px white sliver on the green sea that read as a road marking.
-  // At 2× and 59 units it spans ~220px and reads as a real boat.
-  G.spawnBoat(-175, 244, Math.PI / 2, 2.0);
+  // The getaway boat, moored just off the beach WEST of the car (screen
+  // right when facing south, clear of the MISSION PASSED banner) — r11:
+  // was (-175, 244) at 2.0×, a sliver at the horizon; now (-172, 242) at
+  // 2.2×, ~14 units off the shore, big enough to read as the escape boat.
+  // Morning mist over the sea, kept SMALL and OFF the boat (the first
+  // takes' radius-70–110 mist blobs sat on the boat and washed it out).
+  // take 5: (-166, 242) (was -172) — the 1.8× boat fit in frame but its
+  // stern hid behind the right toast stack; 6 east puts ~260 px of hull
+  // clear of the toasts, still just off the shore by the car.
+  G.spawnBoat(-166, 242, Math.PI / 2, 1.8);
   G.spawnMist(-230, 258, 35);
   G.spawnMist(-120, 260, 35);
-  G.spawnMist(-150, 278, 30);
+  G.spawnMist(-140, 278, 30);
   // The crew standing by the car, facing the boat and the sunrise.
-  G.spawnAlly(-154, 218, 0);
-  G.spawnAlly(-160, 218, 0);
-  G.spawnPedsNear(-170, 200, 6); // beachgoers at dawn
-  G.clearTrafficNear(-157, 222, 30); // no stray car may overlap the hero
+  G.spawnAlly(-154, 231, -Math.PI / 2);
+  G.spawnAlly(-160, 231, -Math.PI / 2);
+  G.spawnPedsNear(-168, 214, 6); // beachgoers at dawn (r11: moved south of
+  // the new closer camera so nobody spawns on the lens)
+  G.clearTrafficNear(-157, 228, 30); // no stray car may overlap the hero
   G.setDialogue('TIO REYES', 'Dawn breaks over the marina, Mara. The boat\'s waiting — Puerto Lumen is ours.');
   G.hud.showBanner('MISSION PASSED', '+$8,000  ·  +500 REP  ·  UNLOCKED: PIER SAFEHOUSE', 600000);
   G.hud.notify('MISSION PASSED', 'El Puerto Es Nuestro  +$8,000', 'good', true);
@@ -275,22 +308,23 @@ export function stageShot4(G) {
   G.hud.notify('STORY 15/15 — SAVE SLOT 1', '100% COMPLETE — Puerto Lumen is yours', 'good', true);
   G.hud.log('MISSION PASSED: El Puerto Es Nuestro — +$8,000  ·  +500 REP');
   G.hud.log('STORY 15/15 — SAVE SLOT 1  100% COMPLETE.');
-  // HIGH wide establishing: camera north of the car on the beach, 40 out,
-  // ~14 high — a shallow wide angle with the horizon + sunrise in frame
-  // (steepness ~17°, vs the vault's ~45° down-shot: a different angle, not
-  // a repeat of shot 3's high wide). camYaw 0 = camera NORTH of the car
-  // (tz = pz − dist), looking south at the car, the boat and the sunrise.
-  // (First take used PI by mistake: the camera sat in the sea SOUTH of the
-  // car looking north — city in frame, sun behind the camera, boat unseen.
-  // The 34-out take rendered the beach GREEN: the sand plane sits only
-  // 0.01 above the grass base, so at that camera's grazing angle the two
-  // z-fight and the grass wins — 40 out / 14 high is the position that
-  // rendered tan sand in two takes.)
-  G.camYaw = 0;
-  G.setCamDist(40);
-  G.setCamHeight(14);
-  G.camPitch = 0.2;
-  G.anchor = [-157, 222];
+  // HIGH wide establishing: camera north of the car on the beach, 18 out,
+  // ~11 high — r11 take 3: take 2 (15 out / 6 high) made the hero big but
+  // the LOW camera put the near umbrella row (z=224, 10 away, tops above the
+  // boat in frame) over the boat and hid the sea. At 11 high the sightline
+  // to the boat (20° down) clears the umbrella tops (27° down), so the boat
+  // reads above them and the sea + sunrise stay in frame. The hero's flank
+  // is still ~20% of the frame — big, close, mid-ground. The palm rows
+  // (z=170/190) are BEHIND the camera (z≈211), and the camera threads the
+  // palm gap at x=-157, so no frond can cover the car.
+  // take 4: camYaw 0.2 (was 0.3) — swings the frame ~6° west so the boat
+  // centres better and the distant road strip at the far-left horizon
+  // mostly leaves the frame.
+  G.camYaw = 0.2;
+  G.setCamDist(18);
+  G.setCamHeight(11);
+  G.camPitch = 0.1;
+  G.anchor = [-157, 228];
 }
 /** Stage shot N (1..4) on the live game; any other value stages shot 1. */
 export function stageShot(n, G) {
@@ -333,13 +367,15 @@ export function shotAutopilot(G, dt) {
         c.mesh.group.rotation.y = c.heading;
       });
     }
-    // r9c TIGHTER chase: the cruiser sits closer behind the hero (back 1.8,
-    // lat -3.0 instead of 2.5/-3.5) to match the pulled-in camera — police
-    // inches off the bumper, hero ~30% of the frame.
+    // r11 TIGHTER chase: the cruiser sits closer behind the hero (back 2.2,
+    // lat -4.8 instead of 1.8/-3.0) — pushed to the CAMERA side so it peeks
+    // out beside the hero instead of hiding directly astern behind it.
+    // (r10's 1.8/-3.0 put it dead astern: the hero's body covered it and
+    // only the LCPD list said a cruiser was 3 m back.)
     const chase = (G.police || []).filter((c) => c.kind === 'chase');
     chase.forEach((c) => {
-      c.x = G.player.x - fx * 1.8 + rx * -3.0;
-      c.z = G.player.z - fz * 1.8 + rz * -3.0;
+      c.x = G.player.x - fx * 2.2 + rx * -4.8;
+      c.z = G.player.z - fz * 2.2 + rz * -4.8;
       c.heading = G.player.car.heading;
       c.speed = 34;
       c.mesh.group.position.set(c.x, 0, c.z);

@@ -504,7 +504,11 @@ export function updatePolice(car, dt, px, pz, colliders) {
   return dist2([car.x, car.z], [px, pz]);
 }
 /** The police helicopter: circles above the player, spotlight cone below.
- r8b: 1.35x bigger body + stronger cone/pool so it reads in the still. */
+ r8b: 1.35x bigger body + stronger cone/pool so it reads in the still.
+ r11: the rotor is TWO thin translucent crossed blades + a faint blur disc,
+ NOT one solid dark bar — the old 12x0.8 dark box read as a black bar across
+ the sky in the sunset shot. updateHelicopter still spins heli.rotor (now a
+ group), so the blades stay a spinning blur in the still. */
 export function makeHelicopter(scene) {
   const group = new THREE.Group();
   group.scale.setScalar(1.35);
@@ -515,8 +519,24 @@ export function makeHelicopter(scene) {
     new THREE.MeshStandardMaterial({ color: 0x1c4ed8, roughness: 0.4 }));
   tail.position.set(0, 0.4, -6);
   group.add(tail);
-  const rotor = new THREE.Mesh(new THREE.BoxGeometry(12, 0.12, 0.8),
-    new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 }));
+  // r11 rotor: thin (0.35 wide, 0.06 thick), pale, semi-transparent crossed
+  // blades over a faint spinning-blur disc — reads as a rotor, never a bar.
+  const rotor = new THREE.Group();
+  const bladeMat = new THREE.MeshBasicMaterial({
+    color: 0xd8e2f0, transparent: true, opacity: 0.55, depthWrite: false,
+  });
+  for (const a of [0, Math.PI / 2]) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(12, 0.06, 0.35), bladeMat);
+    blade.rotation.y = a;
+    rotor.add(blade);
+  }
+  const blur = new THREE.Mesh(new THREE.CircleGeometry(6, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.08,
+      side: THREE.DoubleSide, depthWrite: false,
+    }));
+  blur.rotation.x = -Math.PI / 2;
+  rotor.add(blur);
   rotor.position.y = 1.2;
   group.add(rotor);
   const light = new THREE.SpotLight(0xfff2b0, 900, 90, 0.35, 0.5, 1.2);
@@ -554,7 +574,9 @@ export function updateHelicopter(heli, dt, px, pz) {
   heli.angle += dt * 0.5;
   heli.group.position.set(px + Math.cos(heli.angle) * 22, heli.hover || 34, pz + Math.sin(heli.angle) * 22);
   heli.group.lookAt(px, 0, pz);
-  heli.rotor.rotation.y += dt * 18;
+  heli.rotor.rotation.y += dt * 18; // r11: rotor is a group (crossed blades
+  // + blur disc) — spinning the group keeps the blur; a single dark blade
+  // frozen mid-spin was the old solid-bar read.
   // The light pool sits ON the ground under the heli, whatever the hover is.
   // Group is scaled 1.35 (r8b), so divide the hover by the scale.
   if (heli.pool) heli.pool.position.y = -(heli.hover || 34) / 1.35 + 0.12;

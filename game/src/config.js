@@ -32,7 +32,9 @@ export const DAYLIGHT = {
   rimColour: 0x9fc8ff, skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, fog: 0xa8cfe0,
 };
 // r10 — PER-SHOT lighting presets. One preset per screenshot; nothing is
-// shared between shots except the city itself. Fields:
+// shared between shots except the city itself. r11: the dawn preset's sun
+// disc is smaller and deeper orange (0.55, 0xff7a1a) — the r10 disc (0.9,
+// pale 0xffb36b) read moon-like in the dawn shot. Fields:
 //  sky: which dome texture ('day'|'sunset'|'night'|'dawn'|null = dome hidden)
 //  sunPos: absolute world position of the sun/moon disc (the disc + glow +
 //    streaks all sit here) — place it where THAT shot's camera actually
@@ -98,8 +100,8 @@ export const LIGHTING_PRESETS = {
   // Mist = close pale-pink fog. The dawn sky is deliberately paler than the
   // sunset sky — morning, not dusk.
   dawn: {
-    sky: 'dawn', sunPos: [-150, 45, 420], sunDisc: [0xffb36b, 0.9, true], // the first take's 1.4-scale disc filled the frame like a moon — 0.9 reads as a sunrise sun
-    glow: [0xffb38a, 0.6, 300], streakOpacity: 0.45,
+    sky: 'dawn', sunPos: [-150, 30, 480], sunDisc: [0xff7a1a, 0.55, true], // r11 take 5: was [-150, 45, 420] — the disc centre projected to y=-5, half-clipped by the top edge; lower + further out puts its centre at ~y=60, fully in frame
+    glow: [0xff8c2a, 0.5, 220], streakOpacity: 0.3,
     sunLight: [0xffb38a, 2.4, -150, 50, 320],
     rim: [0xffc4a0, 0.8], rearFill: 0.4, hemi: [0xd8a0b8, 0x5a6a7a, 0.9],
     fill: 0.35, fog: [0xe8b8a8, 80, 450], bg: 0xd89ab0,
