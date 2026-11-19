@@ -1,4 +1,4 @@
-# LUMEN BAY r9b — Drift Chase: Daylight Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in bright midday Puerto Lumen
+# LUMEN BAY r9c — Pier Shootout: Daylight Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in bright midday Puerto Lumen
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
@@ -117,12 +117,12 @@ three.js is vendored under `game/vendor/three/` under its own MIT License.
 ## Screenshots
 
 Four real headless-Chrome renders live in `screenshots/`: the bright midday
-beach-avenue police chase cover re-shot from a LOWER FLANK angle (the hero
-reads pinker and bigger), the **NOS DRIFT CHASE** through Festival Square
-(shot 2 — hero car drifting past the crowd, NOS burning, police cruiser
-inches behind, heli low overhead, $15,800), the Festival Square robbery and
-the MISSION PASSED beach finale — all bright daylight, full HUD. Dialogue
-boxes show drawn character portraits (Mara, Tio Reyes, Lena Cruz), not
-letter circles. Shot 4 doubles as the feed's story-progress thumbnail
-(MISSION PASSED +$8,000 · +500 REP · UNLOCKED: PIER SAFEHOUSE · STORY 15/15 ·
-SAVE SLOT 1).
+beach-avenue police chase cover re-shot TIGHTER (camera pulled in, police
+cruiser closer behind, hero ~30% of the frame), the **PIER SHOOTOUT** at the
+marina (shot 2 — Mara firing from behind the hero car's door, police cordon
+ahead, heli spotlight cone overhead, muzzle flashes, cash flying in the air,
+$21,700), the Festival Square robbery and the MISSION PASSED beach finale —
+all bright daylight, full HUD. Dialogue boxes show drawn character portraits
+(Mara, Tio Reyes, Lena Cruz), not letter circles. Shot 4 doubles as the
+feed's story-progress thumbnail (MISSION PASSED +$8,000 · +500 REP ·
+UNLOCKED: PIER SAFEHOUSE · STORY 15/15 · SAVE SLOT 1).
