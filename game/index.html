@@ -112,9 +112,12 @@
     width: 540px; display: none; align-items: center; gap: 12px;
     background: rgba(10,14,24,0.78); border: 1px solid rgba(255,255,255,0.25);
     border-radius: 10px; padding: 10px 14px; }
+  /* r9: the avatar circle holds a drawn character portrait (SVG), not a
+     letter — flat background, SVG fills the circle, nothing overflows. */
   #hud-dialogue-avatar { width: 44px; height: 44px; min-width: 44px; border-radius: 50%;
-    background: #ff7a1a; color: #fff; font-size: 22px; font-weight: 900;
+    background: #222; overflow: hidden; border: 2px solid rgba(255,255,255,0.35);
     display: flex; align-items: center; justify-content: center; }
+  #hud-dialogue-avatar svg { width: 44px; height: 44px; display: block; }
   #hud-dialogue-name { font-size: 13px; font-weight: 900; color: #ffd23f; letter-spacing: 1px; }
   #hud-dialogue-text { font-size: 14px; font-weight: 600; line-height: 1.4; }
   /* Bottom-right: big speed + gear + vehicle + condition + radio. */
@@ -209,7 +212,7 @@
   <canvas id="hud-minimap" width="240" height="240"></canvas>
   <div id="hud-turf">TURF 1/12</div>
   <div id="hud-dialogue">
-    <div id="hud-dialogue-avatar">T</div>
+    <div id="hud-dialogue-avatar" aria-label="speaker portrait"></div>
     <div><div id="hud-dialogue-name">TIO REYES</div><div id="hud-dialogue-text"></div></div>
   </div>
   <div id="hud-speed-panel">

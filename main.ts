@@ -1,8 +1,10 @@
-// LUMEN BAY r8c — the entry program (Node 22, standard library only).
-// r8c rebuilds the lighting for bright daytime (clear blue sky, high white
-// sun) on top of the r8b hero/police/crowd/neon build; gameplay/missions
+// LUMEN BAY r9a (V1) — the entry program (Node 22, standard library only).
+// r9a keeps the r8c bright-daylight build and replaces shot 2 with the VAULT
+// BREACH at Torre Lumen (gold + cash spill, guards down) and swaps the
+// dialogue letter-circles for drawn character portraits; gameplay/missions
 // unchanged. Dossier: run it twice, the two dossier.json outputs must be
-// byte-identical.
+// byte-identical. r9a is one of three variants (r9a/r9b/r9c) built for Sand
+// to choose from — only one can ever be sealed + submitted.
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's

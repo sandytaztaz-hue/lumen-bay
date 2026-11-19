@@ -96,6 +96,55 @@ export function createHud() {
     hideGarage() { el.garage.style.display = 'none'; },
   };
 }
+/** r9 — drawn character portraits for the dialogue box (Sand's order:
+ the orange letter-circle becomes a real character logo). Flat-style SVG
+ drawn in code, no image files: Mara (dark hair, orange jacket), Tio Reyes
+ (cap + sunglasses), Lena Cruz (pink cap). Each reads as a face at 44 px. */
+function portraitSVG(name) {
+  const n = (name || '').toUpperCase();
+  if (n.includes('LENA')) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
+      + '<rect width="44" height="44" fill="#7a1040"/>'
+      + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#ff2a5e"/>'
+      + '<path d="M22 29 L22 44" stroke="#ffd23f" stroke-width="1.6"/>'
+      + '<rect x="19" y="25" width="6" height="6" fill="#e8b88a"/>'
+      + '<circle cx="22" cy="16" r="9.5" fill="#e8c25a"/>'
+      + '<circle cx="22" cy="19.5" r="8.5" fill="#f2c9a0"/>'
+      + '<path d="M12.5 19 A9.5 9.5 0 0 1 31.5 19 L31.5 15.5 A9.5 9.5 0 0 0 12.5 15.5 Z" fill="#ff2a5e"/>'
+      + '<rect x="11" y="17.5" width="22" height="3.4" rx="1.7" fill="#ff2a5e"/>'
+      + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
+      + '<path d="M19 24.5 Q22 27 25 24.5" stroke="#8a3a50" stroke-width="1.4" fill="none" stroke-linecap="round"/>'
+      + '<circle cx="13.5" cy="24" r="1.1" fill="#ffd23f"/><circle cx="30.5" cy="24" r="1.1" fill="#ffd23f"/></svg>';
+  }
+  if (n.includes('TIO')) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
+      + '<rect width="44" height="44" fill="#12324a"/>'
+      + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#1c2a4a"/>'
+      + '<path d="M18 29 L20 35 L24 35 L26 29 Z" fill="#9fd4ff"/>'
+      + '<rect x="19" y="25" width="6" height="6" fill="#b57a45"/>'
+      + '<circle cx="22" cy="19.5" r="8.5" fill="#c98d5a"/>'
+      + '<path d="M13 19 A9 9 0 0 1 31 19 L31 14.5 A9 9 0 0 0 13 14.5 Z" fill="#1e3a5f"/>'
+      + '<rect x="11" y="16.5" width="22" height="3.2" rx="1.6" fill="#16283e"/>'
+      + '<rect x="14.5" y="18" width="7" height="4.4" rx="2" fill="#0d0d0d"/>'
+      + '<rect x="22.5" y="18" width="7" height="4.4" rx="2" fill="#0d0d0d"/>'
+      + '<rect x="21" y="19.6" width="2.4" height="1.2" fill="#0d0d0d"/>'
+      + '<circle cx="16.5" cy="19.2" r="1" fill="#fff"/><circle cx="24.5" cy="19.2" r="1" fill="#fff"/>'
+      + '<path d="M18.5 25.5 Q22 24 25.5 25.5" stroke="#3a2410" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+      + '<path d="M19.5 28 Q22 29.5 24.5 28" stroke="#5a3018" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>';
+  }
+  // MARA (default): dark hair, orange jacket — the crew's getaway driver.
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
+    + '<rect width="44" height="44" fill="#8a3c00"/>'
+    + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#ff7a1a"/>'
+    + '<path d="M22 29 L22 44" stroke="#ffe9d0" stroke-width="1.8"/>'
+    + '<rect x="19" y="25" width="6" height="6" fill="#d9a066"/>'
+    + '<circle cx="22" cy="16.5" r="9.5" fill="#1a1210"/>'
+    + '<circle cx="22" cy="19.5" r="8.5" fill="#e8b07a"/>'
+    + '<rect x="12.8" y="17" width="3.2" height="12" rx="1.6" fill="#1a1210"/>'
+    + '<rect x="28" y="17" width="3.2" height="12" rx="1.6" fill="#1a1210"/>'
+    + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
+    + '<path d="M19 24.5 Q22 27 25 24.5" stroke="#7a3a10" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>';
+}
 /** Per-frame HUD refresh from the live game state. */
 export function updateHud(hud, s) {
   const el = hud.el;
@@ -178,10 +227,14 @@ export function updateHud(hud, s) {
       el.roadblockBanner.style.display = s.roadblockAhead ? 'block' : 'none';
     }
   }
-  // Dialogue box.
+  // Dialogue box — r9: a drawn character portrait, not a letter. Rebuilt
+  // only when the speaker changes (the box refreshes every frame).
   if (s.dialogue) {
     el.dialogue.style.display = 'flex';
-    el.dialogueAvatar.textContent = s.dialogue.initial || '?';
+    if (hud._dlgName !== s.dialogue.name) {
+      hud._dlgName = s.dialogue.name;
+      el.dialogueAvatar.innerHTML = portraitSVG(s.dialogue.name);
+    }
     el.dialogueName.textContent = s.dialogue.name || '';
     el.dialogueText.textContent = s.dialogue.text || '';
   } else {

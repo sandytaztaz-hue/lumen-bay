@@ -1,4 +1,8 @@
-// LUMEN BAY r8c — the screenshot scenes behind ?shot=1..4. Each one stages a
+// LUMEN BAY r9a (V1) — the screenshot scenes behind ?shot=1..4. Shot 1 is
+// the r8c cover (bright midday chase). Shot 2 is NEW: VAULT BREACH at Torre
+// Lumen — gold + cash spilling, guards down, live squad firing. Shots 3–4
+// are the r8c festival robbery + MISSION PASSED frames. All dialogue boxes
+// now show drawn character portraits (see hud.js), never letter circles.
 // real gameplay state (not a mock): the world runs its normal loop from there,
 // the autopilot just holds the pose, and main.js sets window.__shotReady once
 // the scene has rendered. Shot 1 is the cover: BRIGHT MIDDAY beach-avenue chase
@@ -49,34 +53,45 @@ export function stageShot1(G) {
   // framing drifts. The anchor snaps it back every frame (staging hold).
   G.anchor = [-150, 180];
 }
-// On-foot shootout at Torre Lumen: BRIGHT MIDDAY, guards, muzzle flash, kill
-// feed, dialogue, wanted 2, sunlit facades behind.
+// r9a V1 — VAULT BREACH at Torre Lumen: the vault door blown, gold bars +
+// cash stacks spilling across the foreground, two sharks DOWN in front of
+// the lens, a live squad still firing ahead, Mara + a crew ally at the door,
+// muzzle flashes, 5 stars, heli overhead. Foreground FILLED — no empty road.
 export function stageShot2(G) {
   G.startPlay();
-  G.warpTo(60, -120);
+  G.warpTo(60, -118);
   G.player.heading = Math.PI;
   G.player.mesh.group.rotation.y = Math.PI;
   G.player.weapon = 'smg';
-  // r8b: enemies CLOSE — 4–6 m ahead, a tight squad filling the frame, not
-  // a distant line down an empty road. Player faces -z (heading PI).
-  G.spawnEnemiesAt(60, -124.5, 3, 'shark');
-  G.spawnEnemiesAt(63, -127.5, 3, 'shark');
-  // r8b: a persistent muzzle flash at the lead guard's gun + one at Mara's
-  // muzzle, so the firefight reads in the still (live flashes last 60 ms).
+  // Crew at the vault: the player (Mara) centre + an orange-jacket ally at
+  // the door, both facing the tower (-z).
+  G.spawnAlly(57.5, -122, Math.PI);
+  // Guards DOWN in the near foreground (between the lens at z≈-110 and the
+  // player) — the breach reads as won at a glance.
+  G.spawnDowned(58.5, -114.5, 'shark');
+  G.spawnDowned(62, -115.5, 'shark');
+  // Gold + cash spilling out of the vault, centre frame + foreground.
+  G.spawnLootPile(60, -120.5);
+  G.spawnLootPile(63.5, -117.5);
+  // Live squad still up ahead, tight and close, firing back.
+  G.spawnEnemiesAt(60, -126, 3, 'shark');
+  G.spawnEnemiesAt(64, -129, 2, 'shark');
   G.addMuzzleFlash(60, 1.5, -125.5);
-  G.addMuzzleFlash(60, 1.4, -121.5);
+  G.addMuzzleFlash(63.5, 1.4, -128);
+  G.addMuzzleFlash(58, 1.4, -119.5);
   G.spawnPedsNear(60, -138, 6);
   G.missions.startMission(14); // El Puerto Es Nuestro finale
-  G.setWanted(5); // finale heat: the mission def sets wanted 5 — keep it
-  // (the top-3 references all show 5 stars on their big jobs) and pin it
-  // here, AFTER startMission, so the staging order can't clobber it.
-  G.setDialogue('MARA', 'El puerto es nuestro. The tower vault is ours — now we run!');
-  G.hud.log('MARA: "El puerto es nuestro."');
+  G.setWanted(5); // finale heat, pinned AFTER startMission
+  G.heli.active = true;
+  G.heli.hover = 14;
+  G.setDialogue('MARA', "Vault's open — gold on the floor, sharks down. Grab it all and run!");
+  G.hud.log('MARA: "Vault\'s open — gold on the floor, sharks down."');
+  G.hud.feed('Mara cracked the Torre Lumen vault — $48,500');
   G.hud.feed('Mara downed a Tiburones shark');
-  G.hud.feed('Mara downed a Tiburones shark');
+  G.hud.notify('VAULT CRACKED', 'Torre Lumen — $48,500 in gold + cash', 'good', true);
   G.hud.notify('WANTED LEVEL UP', '5 stars — the whole LCPD is on you', 'danger', true);
   G.hud.notify('SMG READY', '30/120 — hold click to spray', 'good', true);
-  G.state.cash = 12300;
+  G.state.cash = 48500;
   G.state.health = 82;
   G.state.armour = 45;
   G.camYaw = Math.PI;
@@ -99,6 +114,9 @@ export function stageShot3(G) {
   // (140,40) keeps everyone ≥10 units from the lens even after wandering.
   G.spawnPedsNear(140, 40, 10);
   G.spawnPedsNear(180, 0, 14);
+  // r9: the (140,40) cluster's ±35 spread can drop a ped right on the lens
+  // (camera ≈ (144,35) for this camYaw) — clear a 12-unit bubble around it.
+  G.clearPedsNear(144, 35, 12);
   G.missions.startMission(12); // Festival de las Luces
   G.missions.hudTimerText = '3:12';
   G.turf.startRobbery(ROB_TARGETS.find((t) => t.id === 'stash-fest'));

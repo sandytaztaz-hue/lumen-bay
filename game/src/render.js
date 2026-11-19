@@ -1,7 +1,9 @@
-// LUMEN BAY r8c — the renderer: three.js scene, BRIGHT DAYTIME 12:30
+// LUMEN BAY r9 — the renderer: three.js scene, BRIGHT DAYTIME 12:30
 // lighting, close low chase camera, muzzle flashes, tracers, damage numbers,
-// mission beacon. The sky is a real gradient dome (deep blue zenith → pale
-// horizon) with a HIGH white sun disc + light glare ahead-east, so the chase
+// mission beacon. r9 adds optional per-shot camera overrides (dist/height)
+// so a variant can pull the chase camera tighter or lower for a bigger,
+// pinker hero read without touching the normal camera. The sky is a real
+// gradient dome (deep blue zenith → pale horizon) with a HIGH white sun disc + light glare ahead-east, so the chase
 // camera looks up into a bright airy sky. A PMREM environment map baked from
 // that sky makes the hero car's clearcoat paint pick up real daylight
 // reflections, and a cool sky-blue rim light gives the bright edge glow.
@@ -126,9 +128,10 @@ export function resizeRenderer(r, w, h) {
  so the two together land it near ~30% of frame width like the HALCYON
  reference. NOS kick is small now (76, not 82) so the burn doesn't shrink
  the hero back down. */
-export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, speed, nosBurning, dt) {
-  const dist = inCar ? 9.5 : 8;
-  const height = inCar ? 3.2 : 3.0;
+export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, speed, nosBurning, dt, shotCam) {
+  // r9: a staged shot may override distance / height (null fields = normal).
+  const dist = shotCam && shotCam.dist != null ? shotCam.dist : (inCar ? 9.5 : 8);
+  const height = shotCam && shotCam.height != null ? shotCam.height : (inCar ? 3.2 : 3.0);
   const yaw = camYaw;
   const tx = px - Math.sin(yaw) * dist;
   const tz = pz - Math.cos(yaw) * dist;

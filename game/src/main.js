@@ -110,6 +110,10 @@ const state = {
 };
 let camYaw = 0;
 let camPitch = 0.2;
+// r9 shot staging: optional per-shot camera overrides (null = the normal
+// close chase camera). Set from shots.js only; the playtest never sets them.
+let camDistOverride = null;
+let camHeightOverride = null;
 let nosBurning = false;
 let lastGunPos = null;
 let enteredCarEvent = null;
@@ -519,6 +523,11 @@ const G = {
   set nosBurning(v) { nosBurning = v; },
   get camYaw() { return camYaw; },
   set camYaw(v) { camYaw = v; },
+  // r9: staging may lower the camera (camPitch) and pull it closer / lower
+  // (camDist / camHeight) for a tighter, pinker hero read.
+  set camPitch(v) { camPitch = v; },
+  setCamDist(v) { camDistOverride = v; },
+  setCamHeight(v) { camHeightOverride = v; },
   get dialogue() { return dialogue; },
   player, state, missions, hud, turf, garage, parked, traffic, peds, heli, police, roadblocks,
   setDialogue,
@@ -542,6 +551,17 @@ const G = {
       }
     }
   },
+  /** r9 shot staging: pull every pedestrian out of a radius around the
+   lens, so no wanderer spawns as a giant next to the camera (shot 3's
+   pink-hat ped sat on the lens in the first r9a takes). */
+  clearPedsNear(x, z, r) {
+    for (let i = peds.length - 1; i >= 0; i -= 1) {
+      if (dist2([peds[i].x, peds[i].z], [x, z]) < r) {
+        R.scene.remove(peds[i].mesh);
+        peds.splice(i, 1);
+      }
+    }
+  },
   /** r8b shot staging: a PERSISTENT muzzle-flash glow at a gun position, so
    shot 2's firefight reads in a still (the live 60 ms flash never lands
    in a screenshot). */
@@ -557,6 +577,66 @@ const G = {
     core.position.set(x, y, z);
     R.scene.add(core);
     return flash;
+  },
+  /** r9 shot staging: a vault spill on the ground — gold bars + cash stacks
+   piled where the vault door blew, so the foreground is full of loot. */
+  spawnLootPile(x, z) {
+    const gold = new THREE.MeshStandardMaterial({ color: 0xffd23f, metalness: 0.9, roughness: 0.25 });
+    const cash = new THREE.MeshStandardMaterial({ color: 0x2fae5f, roughness: 0.8 });
+    const band = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.7 });
+    const spots = [[0, 0], [0.9, 0.3], [-0.8, 0.5], [0.3, -0.9], [-0.5, -0.8], [1.3, -0.6], [-1.3, -0.2]];
+    spots.forEach(([dx, dz], i) => {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 0.45), gold);
+      bar.position.set(x + dx, 0.11 + (i % 2) * 0.22, z + dz);
+      bar.rotation.y = (i * 0.7) % 1.4;
+      R.scene.add(bar);
+      const stack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.45), cash);
+      stack.position.set(x + dx * 0.6, 0.32 + (i % 2) * 0.22, z + dz * 0.6 + 0.9);
+      stack.rotation.y = (i * 0.9) % 1.2;
+      R.scene.add(stack);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.05, 0.16), band);
+      strap.position.set(stack.position.x, stack.position.y + 0.11, stack.position.z);
+      strap.rotation.y = stack.rotation.y;
+      R.scene.add(strap);
+    });
+  },
+  /** r9 shot staging: cash stacks frozen mid-air — money flying in a
+   shootout still, readable at thumbnail size. */
+  spawnCashBurst(x, z) {
+    const cash = new THREE.MeshStandardMaterial({ color: 0x2fae5f, roughness: 0.8 });
+    const band = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.7 });
+    const spots = [[-2, -1, 2.2], [1.5, -2, 3.4], [2.5, 1, 2.6], [-1, 2, 4.2], [0.5, 0.5, 1.6], [-3, 0.5, 3.0], [3, -1.5, 4.5], [-0.5, -3, 2.8]];
+    spots.forEach(([dx, dz, h], i) => {
+      const stack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.45), cash);
+      stack.position.set(x + dx, h, z + dz);
+      stack.rotation.set(0.4 + i * 0.2, i * 0.8, 0.3);
+      R.scene.add(stack);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.05, 0.16), band);
+      strap.position.copy(stack.position);
+      strap.rotation.copy(stack.rotation);
+      strap.translateY(0.11);
+      R.scene.add(strap);
+    });
+  },
+  /** r9 shot staging: a guard already DOWN — spawned then laid flat on the
+   ground, so a breached vault reads as won, not mid-fight. Not in the
+   enemies list: it never moves, shoots, or counts as a kill. */
+  spawnDowned(x, z, kind) {
+    const e = spawnEnemy(R.scene, x, z, kind || 'shark');
+    e.alive = false;
+    e.mesh.rotation.y = Math.random() * Math.PI * 2;
+    e.mesh.rotateX(-Math.PI / 2);
+    e.mesh.position.y = 0.3;
+    return e;
+  },
+  /** r9 shot staging: a second orange-jacket crew figure standing with the
+   player at the vault — static, never moves or shoots. */
+  spawnAlly(x, z, heading) {
+    const a = makePlayerMesh(R.scene);
+    a.group.position.set(x, 0, z);
+    a.group.rotation.y = heading || 0;
+    a.gun.visible = true;
+    return a;
   },
   warpTo(x, z) {
     player.x = x; player.z = z;
@@ -854,7 +934,7 @@ function frame(now) {
     R.camera.lookAt(-60, 0, -60);
   }
   if (state.screen !== 'title') {
-    updateCamera(R.camera, player.x, player.z, player.heading, camYaw, camPitch, player.inCar, state.speed, nosBurning, dtMs / 1000);
+    updateCamera(R.camera, player.x, player.z, player.heading, camYaw, camPitch, player.inCar, state.speed, nosBurning, dtMs / 1000, { dist: camDistOverride, height: camHeightOverride });
   }
   R.renderer.render(R.scene, R.camera);
   frames += 1;
