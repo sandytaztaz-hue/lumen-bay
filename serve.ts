@@ -1,13 +1,14 @@
-// LUMEN BAY r9c (V3) — a tiny static server for game/ (Node 22, standard library
+// LUMEN BAY r10 — a tiny static server for game/ (Node 22, standard library
 // only), so the entry can be played locally without a build step:
-// `node serve.ts` serves game/ on http://localhost:8080. Bright daytime build
-// (12:30); shot 1 is the tighter chase, shot 2 the pier shootout,
-// dialogue avatars are drawn character portraits. It sends the MIME types a
-// browser game needs, refuses any path
-// outside game/, and otherwise does nothing clever.
+// `node serve.ts` serves game/ on http://localhost:8080. Per-shot lighting
+// build (golden hour / night / vault interior / dawn — see shots.js);
+// shot 1 is the golden-hour sunset chase, shot 2 the night pier shootout,
+// shot 3 the vault interior, shot 4 the dawn marina escape; dialogue avatars
+// are drawn character portraits. It sends the MIME types a browser game
+// needs, refuses any path outside game/, and otherwise does nothing clever.
 // `node serve.ts` serves game/ on http://localhost:8080. It sends the MIME
 // types a browser game needs, refuses any path outside game/, and otherwise
-// does nothing clever. (r9c — pier-shootout variant.)
+// does nothing clever. (r10 — four-situations variant, per-shot lighting.)
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';

@@ -1,14 +1,16 @@
-// LUMEN BAY r8c — boot and the one loop. Third-person on foot and by car in
-// bright daytime Puerto Lumen (12:30): 15 story missions, turf war, garage
-// upgrades, NOS, robberies, properties, street races, wanted police with
-// roadblocks and line-of-sight chases, a helicopter with a visible searchlight,
-// combat, radio, saves. ?shot=1..4 stages a fixed scene and sets
-// window.__shotReady for screenshots. Gameplay is the r6 game; r8c rebuilds
-// only the LOOK (daylight, metallic hero car, police chase, busy streets, dense
-// HUD with notification toasts, weapon slots, IN SIGHT banner, RESPECT bar,
-// search-zone minimap) — the top-3 layout, with our city/story/missions.
+// LUMEN BAY r10 — boot and the one loop. Third-person on foot and by car in
+// Puerto Lumen: 15 story missions, turf war, garage upgrades, NOS, robberies,
+// properties, street races, wanted police with roadblocks and line-of-sight
+// chases, a helicopter with a visible searchlight, combat, radio, saves.
+// ?shot=1..4 stages a fixed scene and sets window.__shotReady for
+// screenshots. r10: every shot gets its OWN weather + time + camera angle —
+// golden-hour sunset chase (18:45), night pier shootout in the rain-wet
+// streets (23:20), vault-interior heist (21:40), dawn marina escape (06:10).
+// Gameplay is the r6 game; r10 rebuilds only the LOOK per shot (per-shot
+// lighting presets in config.js/render.js, staged sets in shots.js) — the
+// top-3 layout, with our city/story/missions.
 import * as THREE from 'three';
-import { WORLD, STEP, SAVE_KEY, DISTRICTS, ROB_TARGETS, PROPERTIES, WEAPONS, CARS, LANDMARKS, POLICE_ROSTER, freshSave, clamp, dist2, streetNameAt, districtAt } from './config.js';
+import { WORLD, STEP, SAVE_KEY, CLOCK, DISTRICTS, ROB_TARGETS, PROPERTIES, WEAPONS, CARS, LANDMARKS, POLICE_ROSTER, freshSave, clamp, dist2, streetNameAt, districtAt } from './config.js';
 import { createRandom } from './random.js';
 import { createCity, hasLineOfSight, resolveCollisions } from './city.js';
 import { buildCarMesh, makeCar, driveCar, spawnTraffic, spawnTrafficNear, updateTraffic, spawnPolice, updatePolice, makeHelicopter, updateHelicopter, makeRoadblock, updateRoadblock, makeDustTrail } from './vehicles.js';
@@ -20,7 +22,7 @@ import { Race } from './race.js';
 import { AudioEngine, safeFreq } from './audio.js';
 import { createHud, updateHud } from './hud.js';
 import { createRenderer3D, resizeRenderer, updateCamera, makeBeacon, setBeacon, spawnTracer, spawnMuzzle, spawnDamageNumber } from './render.js';
-import { sunGlowTexture } from './textures.js';
+import { sunGlowTexture, neonSignTexture, sandTexture } from './textures.js';
 import { createInput, moveVector, driveVector, ACTION_CONFIRM, ACTION_PAUSE, ACTION_MISSION, ACTION_INTERACT, ACTION_WEAPON1, ACTION_WEAPON2, ACTION_WEAPON3, ACTION_RADIO } from './input.js';
 import { stageShot, shotAutopilot } from './shots.js';
 
@@ -110,10 +112,18 @@ const state = {
 };
 let camYaw = 0;
 let camPitch = 0.2;
+// r9: staging may lower the camera (camPitch) and pull it closer / lower
+// (camDist / camHeight) for a tighter, pinker hero read.
+// r10: per-shot staging state — the HUD clock string for this shot (the
+// boot log line uses it), whether the shot holds the car still (dawn
+// marina: parked at the pier, not cruising), and whether the objective
+// beacon pillar is suppressed (vault interior: the pillar would poke
+// through the room's north wall like a stray artefact).
 // r9 shot staging: optional per-shot camera overrides (null = the normal
 // close chase camera). Set from shots.js only; the playtest never sets them.
 let camDistOverride = null;
 let camHeightOverride = null;
+let shotClock = null;
 let nosBurning = false;
 let lastGunPos = null;
 let enteredCarEvent = null;
@@ -519,6 +529,11 @@ function garageKey(action) {
 // ---- the game object the shot stager and probes drive ---------------------------
 const G = {
   shotMode,
+  get shotClock() { return shotClock; },
+  // r10: a staged shot may hold the hero car parked (shot 4, dawn marina).
+  holdStill: false,
+  // r10: a staged shot may hide the objective beacon pillar (shot 3, vault).
+  noBeacon: false,
   get nosBurning() { return nosBurning; },
   set nosBurning(v) { nosBurning = v; },
   get camYaw() { return camYaw; },
@@ -528,6 +543,17 @@ const G = {
   set camPitch(v) { camPitch = v; },
   setCamDist(v) { camDistOverride = v; },
   setCamHeight(v) { camHeightOverride = v; },
+  /** r10: apply a per-shot lighting preset (render.js) and stamp the HUD
+   clock to that shot's time. Returns the preset's clock string. */
+  setLighting(name) {
+    const clock = R.setLighting(name);
+    this.setClock(clock);
+    return clock;
+  },
+  setClock(t) {
+    shotClock = t;
+    hud.setClock(t);
+  },
   get dialogue() { return dialogue; },
   player, state, missions, hud, turf, garage, parked, traffic, peds, heli, police, roadblocks,
   setDialogue,
@@ -570,7 +596,7 @@ const G = {
       map: sunGlowTexture(), color: 0xffe9a0, transparent: true, opacity: 0.95, depthWrite: false,
     }));
     flash.position.set(x, y, z);
-    flash.scale.set(3.2, 3.2, 1);
+    flash.scale.set(2.2, 2.2, 1); // bright but not a blinding orb at 8–10 units — the first take's 3.2 scale read as two huge white balls
     R.scene.add(flash);
     const core = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
@@ -637,6 +663,174 @@ const G = {
     a.group.rotation.y = heading || 0;
     a.gun.visible = true;
     return a;
+  },
+  /** r10: a warm point light at a position — street lamps at night, gold
+   glow inside the vault. THREE r150+ physical lights need a big intensity
+   (the heli spotlight uses 900); decay 1.5 keeps the falloff soft. */
+  addPointLight(x, y, z, colour, intensity, dist) {
+    const light = new THREE.PointLight(colour, intensity || 300, dist || 40, 1.5);
+    light.position.set(x, y, z);
+    R.scene.add(light);
+    return light;
+  },
+  /** r10: a LIT street lamp at night — warm point light + a visible glow
+   halo at the lamp head (y≈7), so the night street reads as lamp-lit, not
+   just dark. The city's own lamp heads are unlit meshes; this is the light. */
+  addLampGlow(x, z) {
+    this.addPointLight(x, 6.5, z, 0xffb347, 350, 38);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: sunGlowTexture(), color: 0xffb347, transparent: true, opacity: 0.8, depthWrite: false,
+    }));
+    halo.position.set(x, 7, z);
+    halo.scale.set(7, 7, 1);
+    R.scene.add(halo);
+    return halo;
+  },
+  /** r10: a sand patch for the dawn shot — the world's south-beach sand
+   plane sits only 0.01 above the grass base, so at this shot's grazing
+   camera angle the two z-fight and the beach renders GREEN (grass) in
+   some takes and TAN (sand) in others. This staging prop is the same
+   sand texture, laid at y=0.06 over the beach (z 180–240) so the dawn
+   beach is deterministically TAN. Shot-4 only; it never touches the
+   world, the colliders or gameplay — the car/peds/umbrellas sit on it
+   exactly as they sit on the world's sand (0.06 is sub-pixel at this
+   range, and the patch covers only the road's beach-side edge). */
+  spawnSandPatch() {
+    const tex = sandTexture(createRandom(20261119));
+    const patch = new THREE.Mesh(new THREE.PlaneGeometry(480, 60),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set(0, 0.06, 210);
+    patch.receiveShadow = true;
+    R.scene.add(patch);
+    return patch;
+  },
+  /** r10: a rain puddle — a flat, near-mirror plane on the road that
+   catches the heli spotlight + lamp glows as bright streaks, so the night
+   street reads WET (recent rain), not just dark. A faint blue emissive
+   keeps the patch readable as water even where no light falls on it —
+   without it the puddles vanished into the dark asphalt on the first take. */
+  spawnPuddle(x, z, w, d) {
+    const puddle = new THREE.Mesh(new THREE.PlaneGeometry(w || 6, d || 3),
+      new THREE.MeshStandardMaterial({ color: 0x0a1a2e, roughness: 0.08, metalness: 0.9, emissive: 0x0e2233, emissiveIntensity: 0.15 }));
+    puddle.rotation.x = -Math.PI / 2;
+    puddle.position.set(x, 0.05, z);
+    R.scene.add(puddle);
+    return puddle;
+  },
+  /** r10: dust motes hanging in the vault's light beams — a few small warm
+   additive sprites scattered through a box over the loot, so the interior
+   air reads dusty and lit, not flat. Static: they only need to read in
+   the still. */
+  spawnDustMotes(x, z, n) {
+    const motes = [];
+    for (let i = 0; i < (n || 8); i += 1) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: sunGlowTexture(), color: 0xffd9a0, transparent: true,
+        opacity: 0.25 + (i % 3) * 0.12, depthWrite: false,
+      }));
+      s.position.set(x + (rng() - 0.5) * 16, 1.5 + rng() * 5, z + (rng() - 0.5) * 12);
+      s.scale.set(1.2 + (i % 3) * 0.7, 1.2 + (i % 3) * 0.7, 1);
+      R.scene.add(s);
+      motes.push(s);
+    }
+    return motes;
+  },
+  /** r10: a bank of morning mist over the water — one big soft pink-white
+   sprite lying low over the sea, so the dawn shot reads MISTY, not just
+   pink. */
+  spawnMist(x, z, w) {
+    const mist = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: sunGlowTexture(), color: 0xffd9c0, transparent: true, opacity: 0.28, depthWrite: false,
+    }));
+    mist.position.set(x, 2.5, z);
+    mist.scale.set(w || 90, 16, 1);
+    R.scene.add(mist);
+    return mist;
+  },
+  /** r10: a moored speedboat for the dawn marina escape — white hull with
+   a red stripe, open cockpit, windshield, outboard motor. Built from
+   boxes (no image files); it floats on the west sea at y≈-0.2. */
+  spawnBoat(x, z, heading, s) {
+    const group = new THREE.Group();
+    group.scale.setScalar(s || 1); // r10: the dawn boat is shot from ~60 units — 2× so its side profile reads at thumbnail size (the 1.5× boat was a 79px sliver)
+    const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.2 });
+    const red = new THREE.MeshStandardMaterial({ color: 0xe8124a, roughness: 0.4, metalness: 0.3 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x9fd0e8, roughness: 0.1, metalness: 0.6 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.6 });
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 9), white);
+    hull.position.y = 0.3; group.add(hull);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.25, 9.1), red);
+    stripe.position.y = 0.55; group.add(stripe);
+    const bow = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 2.2), white);
+    bow.position.set(0, 0.45, 5.2); bow.rotation.y = Math.PI / 4; group.add(bow);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 5.5), red);
+    deck.position.set(0, 0.85, -0.8); group.add(deck);
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.25), glass);
+    shield.position.set(0, 1.4, 1.2); shield.rotation.x = -0.3; group.add(shield);
+    for (const s of [-0.7, 0.7]) {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 1.0), dark);
+      seat.position.set(s, 1.1, -1.2); group.add(seat);
+    }
+    const motor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.7), dark);
+    motor.position.set(0, 0.4, -4.8); group.add(motor);
+    group.position.set(x, -0.2, z);
+    group.rotation.y = heading || 0;
+    R.scene.add(group);
+    return group;
+  },
+  /** r10: the Torre Lumen VAULT as a staged interior set — dark marble
+   floor with a gold border, three walls (the south side stays OPEN as a
+   cutaway so the high camera looks straight down into the room), a big
+   round gold vault door with spokes + a lit VAULT neon sign on the north
+   wall. No ceiling: the high-wide camera shoots over the walls. The room
+   is a set in the world, not a building — the sky dome is hidden for
+   this shot, so the world outside the walls reads as dark warm void. */
+  spawnVaultRoom(cx, cz) {
+    const group = new THREE.Group();
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 20),
+      new THREE.MeshStandardMaterial({ color: 0x2a2438, roughness: 0.4, metalness: 0.3 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(cx, 0.03, cz);
+    group.add(floor);
+    const gold = new THREE.MeshStandardMaterial({ color: 0xffd23f, metalness: 0.9, roughness: 0.25 });
+    for (const [w, d, x, z] of [[26, 0.4, cx, cz - 9.8], [26, 0.4, cx, cz + 9.8], [0.4, 20, cx - 12.8, cz], [0.4, 20, cx + 12.8, cz]]) {
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, d), gold);
+      trim.position.set(x, 0.1, z);
+      group.add(trim);
+    }
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a2a3a, roughness: 0.8 });
+    const north = new THREE.Mesh(new THREE.BoxGeometry(26, 8, 0.8), wallMat);
+    north.position.set(cx, 4, cz - 10); group.add(north);
+    const west = new THREE.Mesh(new THREE.BoxGeometry(0.8, 8, 20), wallMat);
+    west.position.set(cx - 13, 4, cz); group.add(west);
+    const east = new THREE.Mesh(new THREE.BoxGeometry(0.8, 8, 20), wallMat);
+    east.position.set(cx + 13, 4, cz); group.add(east);
+    // Round vault door: gold disc + ring + spokes + handle, on the north
+    // wall's inside face, with the lit VAULT sign above it.
+    const door = new THREE.Mesh(new THREE.CircleGeometry(3.5, 24), gold);
+    door.position.set(cx, 3.5, cz - 9.5); group.add(door);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.3, 8, 32), gold);
+    ring.position.set(cx, 3.5, cz - 9.5); group.add(ring);
+    for (const a of [0, Math.PI / 3, (2 * Math.PI) / 3]) {
+      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.35, 7, 0.15), gold);
+      spoke.position.set(cx, 3.5, cz - 9.4);
+      spoke.rotation.z = a;
+      group.add(spoke);
+    }
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.5),
+      new THREE.MeshBasicMaterial({ map: neonSignTexture('VAULT', '#ffd23f'), transparent: true }));
+    sign.position.set(cx, 7, cz - 9.5);
+    group.add(sign);
+    R.scene.add(group);
+    return group;
+  },
+  /** r10: remove every live enemy from the scene, silently, with NO kill
+   credit — the vault shot stages its own downed guards, and the mission's
+   tower squad must not walk in shooting while the still is taken. */
+  clearEnemies() {
+    for (const e of enemies) R.scene.remove(e.mesh);
+    enemies.length = 0;
   },
   warpTo(x, z) {
     player.x = x; player.z = z;
@@ -893,8 +1087,9 @@ function update(dt) {
     searchZone: state.wanted > 0,
     alerts, weapons, respect: rep, respectRank,
   });
-  // Mission beacon.
-  setBeacon(beacon, missions.stageTarget() || (race.active ? race.nextCheckpoint() : null));
+  // Mission beacon. r10: a staged shot may suppress it (vault interior —
+  // the 60-unit pillar would poke through the room's north wall).
+  if (!G.noBeacon) setBeacon(beacon, missions.stageTarget() || (race.active ? race.nextCheckpoint() : null));
   // Periodic save.
   state.saveT += dt;
   if (state.saveT > 15) { state.saveT = 0; saveGame(); }
@@ -1057,5 +1252,5 @@ if (shotMode) {
   missions.missionIdx = save.mission;
   missions.refreshObjective();
 }
-hud.log('LUMEN BAY — Puerto Lumen, 12:30. Press M to start the story.');
+hud.log(`LUMEN BAY — Puerto Lumen, ${shotClock || CLOCK}. Press M to start the story.`);
 requestAnimationFrame(frame);

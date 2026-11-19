@@ -23,9 +23,88 @@ export const SEARCH_ZONE_RADIUS = 68;
 // sky, but still inside the chase camera's view (a disc at 49° elevation
 // sat above the frame entirely — the r8c first pass proved it). High sun =
 // short shadows straight down, bright and airy, no long dusk shadows.
+// r10: DAYLIGHT is only the DEFAULT (plain play, no ?shot). Each staged
+// shot now picks its own preset from LIGHTING_PRESETS below — golden hour,
+// night, vault interior, dawn — so the four screenshots read as four
+// different times / weathers / moods, like the top entries.
 export const DAYLIGHT = {
   sunPos: [420, 210, 175], sunColour: 0xfff6e0, sunIntensity: 3.2,
   rimColour: 0x9fc8ff, skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, fog: 0xa8cfe0,
+};
+// r10 — PER-SHOT lighting presets. One preset per screenshot; nothing is
+// shared between shots except the city itself. Fields:
+//  sky: which dome texture ('day'|'sunset'|'night'|'dawn'|null = dome hidden)
+//  sunPos: absolute world position of the sun/moon disc (the disc + glow +
+//    streaks all sit here) — place it where THAT shot's camera actually
+//    looks, or it will sit behind a building or above the frame (r8 lesson).
+//  sunDisc: [colour, scale, visible] — the disc is a 30-unit circle mesh.
+//  glow: [colour, opacity, scale] — the halo sprite around the disc.
+//  streakOpacity: the horizontal anamorphic glare across the disc.
+//  sunLight: [colour, intensity, x, y, z] — the shadow-casting directional.
+//  rim/fill/hemi: the secondary lights, retinted per mood.
+//  fog: [colour, near, far] — the WEATHER: warm haze / night murk / mist.
+//  bg: scene background colour (only visible when the dome is hidden).
+//  exposure / envIntensity: tone mapping + env-map strength per mood.
+//  clock: the HUD clock string for this shot — each shot its own time.
+export const LIGHTING_PRESETS = {
+  day: {
+    sky: 'day', sunPos: [420, 210, 175], sunDisc: [0xffffff, 1.0, true],
+    glow: [0xffffff, 0.5, 220], streakOpacity: 0.35,
+    sunLight: [0xfff6e0, 3.2, 320, 260, 170],
+    rim: [0x9fc8ff, 0.9], rearFill: 0.9, hemi: [0x9fd4ff, 0x5da244, 1.25],
+    fill: 0.5, fog: [0xa8cfe0, 400, 1100], bg: 0x87bfe8,
+    exposure: 1.1, envIntensity: 1.0, clock: '12:30',
+  },
+  // Shot 1 — GOLDEN HOUR, CLEAR + warm haze, long shadows. Low orange sun
+  // ahead-east down Playa Drive (the chase looks east), big disc melting
+  // into the amber horizon band. Long shadows need a LOW light: y=60 at
+  // ~570 units out ≈ 6° — shadows stretch west, three times the car.
+  sunset: {
+    sky: 'sunset', sunPos: [420, 55, 165], sunDisc: [0xff8c2a, 1.6, true],
+    glow: [0xff9a3c, 0.75, 340], streakOpacity: 0.6,
+    sunLight: [0xffb36b, 2.6, 320, 60, 170],
+    rim: [0xff9a6b, 1.1], rearFill: 0.5, hemi: [0xffc49a, 0x7a5a3a, 0.9],
+    fill: 0.35, fog: [0xe8a06a, 200, 800], bg: 0xc96a4a,
+    exposure: 1.15, envIntensity: 0.8, clock: '18:45',
+  },
+  // Shot 2 — NIGHT, recent rain, wet street. No sun disc at all (a white
+  // disc at night reads as the old moon-like artefact — never again). Dark
+  // blue sky with baked stars, cool dim moonlight, fog close and dark so
+  // the neon + heli cone + muzzle flashes carry the frame.
+  night: {
+    sky: 'night', sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
+    glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
+    sunLight: [0x8fb4ff, 0.55, -100, 300, -100],
+    rim: [0x4d6fff, 0.5], rearFill: 0.25, hemi: [0x2a3f66, 0x0e1a24, 0.55],
+    fill: 0.2, fog: [0x0a1428, 120, 550], bg: 0x060d24,
+    exposure: 1.05, envIntensity: 0.25, clock: '23:20',
+  },
+  // Shot 3 — VAULT INTERIOR: no sky, no weather, no sun. The dome is
+  // hidden, the background is dark warm brown, fog is tight and warm so
+  // the room feels enclosed; the real light comes from the in-room point
+  // lights shots.js places (gold glow + dust in the beams).
+  interior: {
+    sky: null, sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
+    glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
+    sunLight: [0xffc46b, 0.5, 60, 120, -150],
+    rim: [0xff9a3c, 0.4], rearFill: 0.2, hemi: [0x8a6a4a, 0x1a120a, 0.5],
+    fill: 0.15, fog: [0x1a120a, 30, 180], bg: 0x17100a,
+    exposure: 1.1, envIntensity: 0.3, clock: '21:40',
+  },
+  // Shot 4 — DAWN, morning mist over the water. Pale pink-orange sunrise
+  // LOW over the SOUTH sea — the south beach is the one open horizon (the
+  // west marina's buildings fill any west-looking frame, so the dawn escape
+  // stages on Playa Dorada's sand with the boat at the water's edge).
+  // Mist = close pale-pink fog. The dawn sky is deliberately paler than the
+  // sunset sky — morning, not dusk.
+  dawn: {
+    sky: 'dawn', sunPos: [-150, 45, 420], sunDisc: [0xffb36b, 0.9, true], // the first take's 1.4-scale disc filled the frame like a moon — 0.9 reads as a sunrise sun
+    glow: [0xffb38a, 0.6, 300], streakOpacity: 0.45,
+    sunLight: [0xffb38a, 2.4, -150, 50, 320],
+    rim: [0xffc4a0, 0.8], rearFill: 0.4, hemi: [0xd8a0b8, 0x5a6a7a, 0.9],
+    fill: 0.35, fog: [0xe8b8a8, 80, 450], bg: 0xd89ab0,
+    exposure: 1.15, envIntensity: 0.7, clock: '06:10',
+  },
 };
 export const DISTRICTS = [
   { id: 'marina', name: 'Marina', rect: [-240, -240, -120, -80], owner: 'shark', colour: '#e5484d' },

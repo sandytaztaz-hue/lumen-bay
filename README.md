@@ -1,4 +1,4 @@
-# LUMEN BAY r9c — Pier Shootout: Daylight Getaway — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in bright midday Puerto Lumen
+# LUMEN BAY r10 — Four Situations: golden-hour sunset chase, night pier shootout, vault interior, dawn marina escape — 15 story missions, turf war, garage upgrades, NOS, robberies & properties in Puerto Lumen
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
@@ -12,27 +12,46 @@ this entry in a single recorded session.
 
 ## The game
 
-Puerto Lumen is a sun-soaked island city in BRIGHT DAYLIGHT (12:30): a high
-white sun in a clear blue sky, white clouds, bright turquoise sea, sunlit
-facades with reflective glass windows and neon signs glowing softer in the
-midday sun, a ferris wheel over Playa Dorada, palm-lined Ocean Boulevard,
-beach umbrellas and food carts. You are
+Puerto Lumen is a sun-soaked island city — bright midday in plain play
+(12:30): a high white sun in a clear blue sky, white clouds, bright
+turquoise sea, sunlit facades with reflective glass windows and neon signs
+glowing softer in the midday sun, a ferris wheel over Playa Dorada,
+palm-lined Ocean Boulevard, beach umbrellas and food carts. The four
+screenshots each show the city at a DIFFERENT time and in different
+weather, like the top entries: a golden-hour sunset chase (18:45, warm
+haze, long shadows), a night pier shootout in the rain-wet streets (23:20,
+neon and lamp glow, wet reflections), a vault-interior heist (21:40, warm
+gold light, dust in the beams) and a dawn marina escape (06:10, mist over
+the water, sunrise). You are
 **Mara Solis**, getaway driver for a small crew — fixer **Tio Reyes**, hacker
 **Lena Cruz**, wheelman **Big Dario**. The rival crew **Los Tiburones**, led by
 El Tiburon, holds all 12 districts of the city. Take it back, one district at
 a time — in a big hot pink-red **Veloz Comet RS** convertible with real metallic
 clearcoat paint, down streets packed with traffic, crowds and police.
 
-## The look — rebuilt for bright daylight
+## The look — four different situations, four different cameras
 
-The cover shot is a bright midday beach-avenue chase under a high white sun:
-the hot pink-red Comet RS — a real low-slung GT with a long hood, grille,
+The cover shot is a GOLDEN-HOUR sunset chase down the beach avenue (18:45):
+a low orange sun ahead over the road, warm haze, long shadows, the hot
+pink-red Comet RS — a real low-slung GT with a long hood, grille,
 mirrors, door lines, wheel arches and a visible driver — BIG in frame (~30%
-of frame width) on a close low chase camera, NOS burning, dust behind the
+of frame width) on a close LOW rear chase camera, NOS burning, dust behind the
 wheels, three black-and-white police cruisers with "POLICE" door markings and
 flashing red/blue light bars spread close behind it, the helicopter overhead
 with a visible searchlight cone, a roadblock ahead, the ferris wheel
-and umbrellas on the beach. The streets are alive: crowds where every person
+and umbrellas on the beach. Shot 2 is the same city at NIGHT (23:20): a low
+ground-level side view of Mara on foot at the marina pier, firing from behind
+the hero car's door at a police cordon, muzzle flashes, cash flying, the
+heli's spotlight cone over the wet street, neon signs and lamp glows in the
+dark. Shot 3 goes INSIDE the Torre Lumen vault (21:40): a high wide camera
+looking down into the vault — gold bars and cash piles, guards down, Mara and
+an ally under warm vault light with dust in the beams, the round gold vault
+door blown open. Shot 4 is DAWN on the south beach (06:10): a high wide
+establishing shot — the hero car parked on the sand at the water's edge, the
+speedboat moored just off it, the crew standing by the car, mist over the
+water and a pink-orange sunrise over the sea, MISSION PASSED. (The escape
+is the marina boat job; it stages on the south sand because the west
+marina's buildings fill any west-looking frame — see the build notes.) The streets are alive: crowds where every person
 looks different — striped, checked and printed shirts, hats, backpacks, tall,
 short, stocky and thin — and neon signs (CASH IN HAND, TACOS, BAR
 LUNA) over sunlit shopfronts. The HUD is dense and readable at a glance: a
@@ -45,7 +64,8 @@ SPOTLIGHT / ROADBLOCK); notification toasts (WANTED LEVEL UP / ROADBLOCK AHEAD
 RESPECT bar; a detailed round minimap with street names, district labels, a
 search-zone ring, police blips, roadblocks and the heli; a dialogue box with
 the crew talking; and a big speedo with gear, vehicle name, condition and
-radio.
+radio. Every shot's HUD clock shows its own time of day (18:45 / 23:20 /
+21:40 / 06:10).
 
 ## The hook — turf war
 
@@ -111,18 +131,23 @@ no external assets, no network requests at runtime.
 
 ## License
 
-LUMEN BAY: Daylight Getaway is released under the MIT License (see LICENSE).
+LUMEN BAY: Four Situations is released under the MIT License (see LICENSE).
 three.js is vendored under `game/vendor/three/` under its own MIT License.
 
 ## Screenshots
 
-Four real headless-Chrome renders live in `screenshots/`: the bright midday
-beach-avenue police chase cover re-shot TIGHTER (camera pulled in, police
-cruiser closer behind, hero ~30% of the frame), the **PIER SHOOTOUT** at the
-marina (shot 2 — Mara firing from behind the hero car's door, police cordon
-ahead, heli spotlight cone overhead, muzzle flashes, cash flying in the air,
-$21,700), the Festival Square robbery and the MISSION PASSED beach finale —
-all bright daylight, full HUD. Dialogue boxes show drawn character portraits
-(Mara, Tio Reyes, Lena Cruz), not letter circles. Shot 4 doubles as the
-feed's story-progress thumbnail (MISSION PASSED +$8,000 · +500 REP ·
-UNLOCKED: PIER SAFEHOUSE · STORY 15/15 · SAVE SLOT 1).
+Four real headless-Chrome renders live in `screenshots/` — four DIFFERENT
+situations, like the top entries: the GOLDEN-HOUR sunset chase cover (18:45,
+low orange sun, warm haze, long shadows, hero ~30% of the frame on a low rear
+chase camera), the NIGHT pier shootout (23:20, low ground-level side view,
+Mara firing from behind the hero car's door, police cordon ahead, heli
+spotlight cone overhead, muzzle flashes, cash flying, wet street, $21,700),
+the VAULT INTERIOR heist (21:40, high wide camera looking down into the
+Torre Lumen vault — gold bars, cash piles, guards down, $48,500) and the DAWN
+marina escape (06:10, high wide establishing shot — MISSION PASSED, hero car
+parked on the south sand at the water's edge, speedboat moored off it, mist
+over the water, sunrise).
+All with full dense HUD and a per-shot clock. Dialogue boxes show drawn
+character portraits (Mara, Tio Reyes, Lena Cruz), not letter circles. Shot 4
+doubles as the feed's story-progress thumbnail (MISSION PASSED +$8,000 ·
++500 REP · UNLOCKED: PIER SAFEHOUSE · STORY 15/15 · SAVE SLOT 1).

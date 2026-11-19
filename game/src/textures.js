@@ -197,6 +197,67 @@ export function daySkyTexture() {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+/** r10 — GOLDEN HOUR sunset sky: deep violet-purple zenith → magenta →
+ orange → a hot amber band at the horizon, for the shot-1 chase. The warm
+ band sits low so the low sun disc melts into it instead of floating on blue. */
+export function sunsetSkyTexture() {
+  const c = makeCanvas(64, 512);
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0.0, '#2a1a4e');
+  grad.addColorStop(0.3, '#5b2a6e');
+  grad.addColorStop(0.55, '#a83a6e');
+  grad.addColorStop(0.75, '#e85a3c');
+  grad.addColorStop(0.9, '#ff9a3c');
+  grad.addColorStop(1.0, '#ffc46b');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+/** r10 — NIGHT sky: near-black blue zenith → dark navy → a faint teal
+ horizon glow over the city, with painted stars. The stars are baked into
+ the dome texture so the night shot reads as night even where no lamp is lit. */
+export function nightSkyTexture() {
+  const c = makeCanvas(64, 512);
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0.0, '#02040a');
+  grad.addColorStop(0.4, '#060d24');
+  grad.addColorStop(0.7, '#0e1e42');
+  grad.addColorStop(0.9, '#16305a');
+  grad.addColorStop(1.0, '#1d4066');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 512);
+  // Stars: only in the upper 60% (the sky), never near the horizon band.
+  let s = 1234567;
+  const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
+  for (let i = 0; i < 90; i += 1) {
+    const x = rnd() * 64, y = rnd() * 300, r = 0.6 + rnd() * 1.4;
+    g.fillStyle = `rgba(255,255,255,${0.35 + rnd() * 0.6})`;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+/** r10 — DAWN sky: soft lavender zenith → pink → a bright peach-orange
+ sunrise band at the horizon, paler than the sunset sky (morning, not dusk)
+ so shot 4 reads as a different time of day from shot 1 at a glance. */
+export function dawnSkyTexture() {
+  const c = makeCanvas(64, 512);
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0.0, '#6e7fb8');
+  grad.addColorStop(0.3, '#9a8fc0');
+  grad.addColorStop(0.55, '#d89ab0');
+  grad.addColorStop(0.75, '#f2a988');
+  grad.addColorStop(0.9, '#ffb37a');
+  grad.addColorStop(1.0, '#ffd9a0');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 /** Soft radial glow reused for dust puffs (same cool-white falloff as the
  midday sun). */
 export function dustTexture() {

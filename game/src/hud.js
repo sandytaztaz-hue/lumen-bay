@@ -44,6 +44,9 @@ export function createHud() {
     _weaponsCache: '',
     _alertsCache: '',
     _respectCache: '',
+    /** r10: per-shot HUD clock — each screenshot shows its own time of day
+     (18:45 / 23:20 / 21:40 / 06:10), never the shared 12:30. */
+    setClock(t) { if (t) el.clock.textContent = t; },
     log(msg) {
       const div = document.createElement('div');
       div.textContent = msg;
@@ -94,6 +97,8 @@ export function createHud() {
       el.garage.style.display = 'block';
     },
     hideGarage() { el.garage.style.display = 'none'; },
+    // r10: the HUD clock is set once from CLOCK at boot, then restamped per
+    // shot by shots.js via setClock() — see the setClock method above.
   };
 }
 /** r9 — drawn character portraits for the dialogue box (Sand's order:

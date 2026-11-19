@@ -1,16 +1,18 @@
-// LUMEN BAY r9 — the renderer: three.js scene, BRIGHT DAYTIME 12:30
-// lighting, close low chase camera, muzzle flashes, tracers, damage numbers,
-// mission beacon. r9 adds optional per-shot camera overrides (dist/height)
-// so a variant can pull the chase camera tighter or lower for a bigger,
-// pinker hero read without touching the normal camera. The sky is a real
-// gradient dome (deep blue zenith → pale horizon) with a HIGH white sun disc + light glare ahead-east, so the chase
-// camera looks up into a bright airy sky. A PMREM environment map baked from
-// that sky makes the hero car's clearcoat paint pick up real daylight
-// reflections, and a cool sky-blue rim light gives the bright edge glow.
-// Short crisp shadows, pale blue haze fog.
+// LUMEN BAY r10 — the renderer: three.js scene, PER-SHOT lighting
+// (r10: golden hour / night / vault interior / dawn — one preset per
+// screenshot, applied by shots.js before the first frame), close low chase
+// camera, muzzle flashes, tracers, damage numbers, mission beacon. r9 adds
+// optional per-shot camera overrides (dist/height) so a variant can pull the
+// chase camera tighter or lower for a bigger, pinker hero read without
+// touching the normal camera. The sky is a real gradient dome (deep blue
+// zenith → pale horizon) with a HIGH white sun disc + light glare ahead-east,
+// so the chase cam (looking east down Playa Drive) catches a bright airy sky.
+// A PMREM environment map baked from that sky makes the hero car's clearcoat
+// paint pick up real daylight reflections, and a cool sky-blue rim light
+// gives the bright edge glow. Short crisp shadows, pale blue haze fog.
 import * as THREE from 'three';
-import { WORLD, PALETTE, DAYLIGHT } from './config.js';
-import { daySkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
+import { WORLD, PALETTE, DAYLIGHT, LIGHTING_PRESETS } from './config.js';
+import { daySkyTexture, sunsetSkyTexture, nightSkyTexture, dawnSkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
 
 export function createRenderer3D(canvas, opts) {
   const o = opts || {};
@@ -24,7 +26,11 @@ export function createRenderer3D(canvas, opts) {
   scene.background = new THREE.Color(0x87bfe8);
   scene.fog = new THREE.Fog(DAYLIGHT.fog, 400, 1100);
   // --- bright daytime sky dome: gradient texture on the inside of a big sphere.
+  // r10: all four sky gradients are painted once at boot; setLighting() swaps
+  // the dome's map per shot (sunset / night / dawn) or hides the dome
+  // entirely for the vault interior.
   const skyTex = daySkyTexture();
+  const skyTexes = { day: skyTex, sunset: sunsetSkyTexture(), night: nightSkyTexture(), dawn: dawnSkyTexture() };
   const skyDome = new THREE.Mesh(
     new THREE.SphereGeometry(950, 24, 16),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }),
@@ -115,7 +121,60 @@ export function createRenderer3D(canvas, opts) {
   scene.add(camera);
   // Debug probe (like window.__game): sun disc + glow + camera for CDP checks.
   window.__r8sun = { disc: sunDisc, glow, camera, streaks };
-  return { renderer, scene, camera, sun, skyDome };
+  // ---- r10: per-shot lighting -------------------------------------------
+  // setLighting('sunset'|'night'|'interior'|'dawn'|'day') re-tints the whole
+  // scene from LIGHTING_PRESETS (config.js): sky dome texture (or hidden),
+  // sun disc position/colour/size, halo + streaks, the shadow sun, rim/rear/
+  // hemi/fill lights, fog (the weather), background, exposure and env-map
+  // strength. Called once by shots.js before the first frame; plain play
+  // never calls it and stays on the day default above. The disc + streaks
+  // are re-aimed at the origin after every move so the disc face stays
+  // toward the city (a disc left facing its old direction reads edge-on).
+  function setLighting(name) {
+    const p = LIGHTING_PRESETS[name] || LIGHTING_PRESETS.day;
+    if (p.sky) {
+      skyDome.visible = true;
+      skyDome.material.map = skyTexes[p.sky] || skyTex;
+      skyDome.material.needsUpdate = true;
+    } else {
+      skyDome.visible = false;
+    }
+    const [dx, dy, dz] = p.sunPos;
+    sunDisc.visible = p.sunDisc[2];
+    sunDisc.position.set(dx, dy, dz);
+    sunDisc.material.color.setHex(p.sunDisc[0]);
+    sunDisc.scale.set(p.sunDisc[1], p.sunDisc[1], 1);
+    sunDisc.lookAt(0, 0, 0);
+    glow.visible = p.glow[1] > 0;
+    glow.position.set(dx, dy, dz);
+    glow.material.color.setHex(p.glow[0]);
+    glow.material.opacity = p.glow[1];
+    glow.scale.set(p.glow[2], p.glow[2], 1);
+    for (const s of streaks) {
+      s.visible = p.streakOpacity > 0;
+      s.position.set(dx, dy, dz);
+      s.material.opacity = p.streakOpacity;
+      s.lookAt(0, 0, 0);
+    }
+    sun.color.setHex(p.sunLight[0]);
+    sun.intensity = p.sunLight[1];
+    sun.position.set(p.sunLight[2], p.sunLight[3], p.sunLight[4]);
+    rim.color.setHex(p.rim[0]);
+    rim.intensity = p.rim[1];
+    rearFill.intensity = p.rearFill;
+    hemi.color.setHex(p.hemi[0]);
+    hemi.groundColor.setHex(p.hemi[1]);
+    hemi.intensity = p.hemi[2];
+    fill.intensity = p.fill;
+    scene.fog.color.setHex(p.fog[0]);
+    scene.fog.near = p.fog[1];
+    scene.fog.far = p.fog[2];
+    scene.background.setHex(p.bg);
+    renderer.toneMappingExposure = p.exposure;
+    if ('environmentIntensity' in scene) scene.environmentIntensity = p.envIntensity;
+    return p.clock;
+  }
+  return { renderer, scene, camera, sun, skyDome, setLighting };
 }
 export function resizeRenderer(r, w, h) {
   r.renderer.setSize(w, h, false);

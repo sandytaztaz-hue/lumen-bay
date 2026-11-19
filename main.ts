@@ -1,15 +1,15 @@
-// LUMEN BAY r9c (V3) — the entry program (Node 22, standard library only).
-// r9c keeps the r8c bright-daylight build, re-shoots shot 1 TIGHTER (camera
-// pulled in, police closer, hero ~30% of frame), replaces shot 2 with the
-// PIER SHOOTOUT at the marina, and swaps the dialogue letter-circles for
-// drawn character portraits; gameplay/missions unchanged. Dossier: run it
-// twice, the two dossier.json outputs must be byte-identical. r9c is one of
-// three variants (r9a/r9b/r9c) built for Sand to choose from — only one can
-// ever be sealed + submitted.
+// LUMEN BAY r10 — the entry program (Node 22, standard library only).
+// r10 rebuilds all four screenshots as FOUR DIFFERENT situations — golden-hour
+// sunset chase (18:45), night pier shootout (23:20), vault interior (21:40),
+// dawn marina escape (06:10) — each with its own weather, time of day and
+// camera angle, like the top entries; gameplay/missions unchanged. Dossier:
+// run it twice, the two dossier.json outputs must be byte-identical. r10 is
+// built on r9c (557a19e) for Sand to choose from — only one variant can ever
+// be sealed + submitted.
 // It hands the game in: copies game/ and screenshots/ from beside this file to
 // /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the kit's
-// starter does. No build step, no network, no install. (r9c — pier-shootout variant.)
+// starter does. No build step, no network, no install. (r10 — four-situations variant.)
 //
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 // Run it twice: the two dossier.json outputs must be byte-identical.
