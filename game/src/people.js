@@ -15,6 +15,30 @@ import { clamp, dist2, PED_COUNT } from './config.js';
 import { resolveCollisions } from './city.js';
 import { shirtTexture } from './textures.js';
 
+/** A REAL pistol (top-1/3 benchmark: the gun must read as a pistol at a
+ glance): short slide + barrel + a vertical grip, ~0.4 m long total — NOT
+ the old 0.7 m black slab that read as an SMG. Origin at the grip so
+ poseAim() can seat it in the hands; barrel points +z (local forward). */
+export function makePistol() {
+  const gun = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.35, metalness: 0.8 });
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.34), steel);
+  slide.position.set(0, 0.06, 0.1);
+  gun.add(slide);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 8), steel);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.set(0, 0.06, 0.32);
+  gun.add(barrel);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.22, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.8 }));
+  grip.position.set(0, -0.06, -0.02);
+  grip.rotation.x = 0.25;
+  gun.add(grip);
+  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.06), steel);
+  sight.position.set(0, 0.13, -0.04);
+  gun.add(sight);
+  return gun;
+}
 const SHIRT_COLOURS = ['#ff2a5e', '#19b8c4', '#ffd23f', '#37c978', '#ff7a1a', '#c78bff', '#ffffff', '#3fa7ff', '#ff9a56', '#58c93c', '#e8124a', '#00c2a8'];
 const SKIN_COLOURS = [0xd9a066, 0x8a5a34, 0xf2c9a0, 0x6b4226, 0xe8b88a, 0x5a3018];
 const PANTS_COLOURS = [0x2a3040, 0xffffff, 0xffd23f, 0x19b8c4, 0x333333, 0x8a6f4d, 0x7a2a3a, 0x2a6b3a, 0xc78bff];
@@ -32,16 +56,20 @@ export function poseAim(group) {
   if (!group || !group.userData || !group.userData.parts) return false;
   const p = group.userData.parts;
   // Right (gun) arm: straight forward, slightly down.
-  if (p.armR) { p.armR.rotation.set(-1.45, 0, 0); p.armR.position.set(0.44, 1.32, 0.18); }
-  if (p.handR) p.handR.position.set(0.44, 1.32, 0.55);
+  if (p.armR) { p.armR.rotation.set(-1.45, 0, 0); p.armR.position.set(0.35, 1.32, 0.18); }
+  if (p.handR) p.handR.position.set(0.3, 1.32, 0.55);
   // Left arm: forward + angled across the chest to the grip.
-  if (p.armL) { p.armL.rotation.set(-1.25, 0, 0.45); p.armL.position.set(0.12, 1.3, 0.28); }
-  if (p.handL) p.handL.position.set(0.3, 1.3, 0.58);
-  // Pistol out in front, past the right hand, barrel forward (+z local).
+  if (p.armL) { p.armL.rotation.set(-1.25, 0, 0.45); p.armL.position.set(0.05, 1.3, 0.28); }
+  if (p.handL) p.handL.position.set(0.0, 1.3, 0.58);
+  // Pistol CENTRED in front of the chest (a real two-handed stance), so
+  // it reads in profile from EITHER camera side — the old x=0.44 seat hid
+  // the gun behind the body from the south camera. Scaled 1.4x: the
+  // 1:1 pistol vanished at 7 m.
   if (p.gun) {
     p.gun.visible = true;
-    p.gun.position.set(0.44, 1.32, 0.78);
+    p.gun.position.set(0.15, 1.32, 0.82);
     p.gun.rotation.set(0, 0, 0);
+    p.gun.scale.setScalar(1.4);
   }
   return true;
 }
@@ -58,11 +86,15 @@ function makePersonMesh(shirt, pants, skin, rng) {
   });
   const pantsMat = new THREE.MeshStandardMaterial({ color: pants, roughness: 0.9 });
   const skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 });
+  // Capsule legs (two, not one slab): a figure reads as a person when the
+  // legs separate. Shorts = skin capsules + a shorts block on top.
   const shorts = r() < 0.3;
-  const legH = shorts ? 0.45 : 0.8;
-  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.5, legH, 0.3), shorts ? skinMat : pantsMat);
-  legs.position.y = legH / 2;
-  group.add(legs);
+  const legGeo = new THREE.CapsuleGeometry(0.13, shorts ? 0.2 : 0.55, 4, 8);
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(legGeo, shorts ? skinMat : pantsMat);
+    leg.position.set(s * 0.14, shorts ? 0.23 : 0.4, 0);
+    group.add(leg);
+  }
   if (shorts) {
     const shortsBox = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 0.34), pantsMat);
     shortsBox.position.y = 0.62;
@@ -74,7 +106,7 @@ function makePersonMesh(shirt, pants, skin, rng) {
   const armMat = shirtMat;
   let armL = null; let armR = null; let handL = null; let handR = null;
   for (const s of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.18), armMat);
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.45, 4, 8), armMat);
     arm.position.set(s * 0.44, 1.18, 0);
     if (s === 1 && r() < 0.18) { arm.position.set(0.44, 1.45, 0.15); arm.rotation.x = -0.9; }
     group.add(arm);
@@ -124,8 +156,7 @@ function makePersonMesh(shirt, pants, skin, rng) {
   else if (build < 0.5) group.scale.set(1.08, 0.92, 1.05);
   else if (build < 0.75) group.scale.set(0.9, 0.9, 0.9);
   else group.scale.set(1.05, 1.02, 1.0);
-  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.7),
-    new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.6 }));
+  const gun = makePistol();
   gun.position.set(0.42, 1.3, 0.35);
   gun.visible = false;
   group.add(gun);
@@ -198,9 +229,12 @@ export function updatePedestrians(peds, dt, gunPos, colliders) {
     p.mesh.position.y = Math.abs(Math.sin(performance.now() * 0.008 + p.x)) * 0.05;
   }
 }
-/** An armed enemy: police officer or Tiburones shark, vest + cap/band. */
+/** An armed enemy: police officer or Tiburones shark, vest + cap/band.
+ Police wear WHITE shirts + dark vests (like the white/black cruisers),
+ so the cordon reads as police at a glance against the sand instead of
+ a blue blob. */
 export function spawnEnemy(scene, x, z, kind) {
-  const shirt = kind === 'police' ? '#1c4ed8' : '#222226';
+  const shirt = kind === 'police' ? '#e8ecf2' : '#222226';
   const m = makePersonMesh(shirt, kind === 'police' ? 0x1c2a4a : 0x333333, 0xd9a066);
   m.gun.visible = true;
   const vest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.55, 0.44),
@@ -255,9 +289,12 @@ export function makePlayerMesh(scene) {
   const jacket = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.85 });
   const jeans = new THREE.MeshStandardMaterial({ color: 0x2a3040, roughness: 0.9 });
   const skin = new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 });
-  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.85, 0.32), jeans);
-  legs.position.y = 0.42;
-  group.add(legs);
+  // Capsule legs, two — Mara reads as a person, not a peg.
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.55, 4, 8), jeans);
+    leg.position.set(s * 0.15, 0.42, 0);
+    group.add(leg);
+  }
   for (const s of [-1, 1]) {
     const boot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.4),
       new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.7 }));
@@ -281,7 +318,7 @@ export function makePlayerMesh(scene) {
   group.add(belt);
   let armL = null; let armR = null; let handL = null; let handR = null;
   for (const s of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.66, 0.2), jacket);
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.5, 4, 8), jacket);
     arm.position.set(s * 0.47, 1.22, 0);
     group.add(arm);
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.17, 0.17), skin);
@@ -292,16 +329,28 @@ export function makePlayerMesh(scene) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), skin);
   head.position.y = 1.92; head.castShadow = true;
   group.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  // A nose, so Mara reads as a person in profile — the old featureless
+  // sphere head read as "back of head" from every side angle.
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.14), skin);
+  nose.position.set(0, 1.9, 0.3);
+  group.add(nose);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.42),
     new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
   hair.position.y = 1.95;
   group.add(hair);
+  // Eyes, so Mara's face reads in profile — the old full hair cap + bare
+  // sphere read as "back of head" from every side angle.
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.6 });
+  for (const s of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), eyeMat);
+    eye.position.set(s * 0.11, 1.95, 0.27);
+    group.add(eye);
+  }
   const backHair = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.62, 0.14),
     new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
   backHair.position.set(0, 1.55, -0.24);
   group.add(backHair);
-  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.7),
-    new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.6 }));
+  const gun = makePistol();
   gun.position.set(0.42, 1.3, 0.35); gun.visible = false;
   group.add(gun);
   group.userData.parts = { armL, armR, handL, handR, gun };

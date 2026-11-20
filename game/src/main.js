@@ -28,7 +28,7 @@ import { Race } from './race.js';
 import { AudioEngine, safeFreq } from './audio.js';
 import { createHud, updateHud } from './hud.js';
 import { createRenderer3D, resizeRenderer, updateCamera, makeBeacon, setBeacon, spawnTracer, spawnMuzzle, spawnDamageNumber } from './render.js';
-import { sunGlowTexture, neonSignTexture, sandTexture } from './textures.js';
+import { sunGlowTexture, neonSignTexture, sandTexture, palmTexture } from './textures.js';
 import { createInput, moveVector, driveVector, ACTION_CONFIRM, ACTION_PAUSE, ACTION_MISSION, ACTION_INTERACT, ACTION_WEAPON1, ACTION_WEAPON2, ACTION_WEAPON3, ACTION_RADIO } from './input.js';
 import { stageShot, shotAutopilot } from './shots.js';
 
@@ -594,19 +594,36 @@ const G = {
     }
   },
   /** A PERSISTENT muzzle-flash glow at a gun position, so a shootout reads
-   in a still (the live 60 ms flash never lands in a screenshot). */
+   in a still (the live 60 ms flash never lands in a screenshot). Now a
+   STAR, not a soft blob: two crossed emissive blades + a hot core + a
+   real point light, so the flash reads as a gunshot at a glance. */
   addMuzzleFlash(x, y, z, scale) {
     const s = scale || 2.2;
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({
       map: sunGlowTexture(), color: 0xffe9a0, transparent: true, opacity: 0.95, depthWrite: false,
     }));
     flash.position.set(x, y, z);
-    flash.scale.set(s, s, 1);
+    flash.scale.set(s * 0.25, s * 0.25, 1);
     R.scene.add(flash);
     const core = new THREE.Mesh(new THREE.SphereGeometry(0.4 * (s / 2.2), 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
     core.position.set(x, y, z);
     R.scene.add(core);
+    const starMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+    // A 3D star: blades facing both axes, so the flash reads from any
+    // camera side (shot 2's camera sits west of the duel looking east).
+    for (const ry of [0, Math.PI / 2]) {
+      for (const a of [0, Math.PI / 2]) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(s * 0.7, s * 0.14, 0.05), starMat);
+        blade.position.set(x, y, z);
+        blade.rotation.y = ry;
+        blade.rotation.z = a;
+        R.scene.add(blade);
+      }
+    }
+    const light = new THREE.PointLight(0xffc21a, 50, 14, 1.5);
+    light.position.set(x, y, z);
+    R.scene.add(light);
     return flash;
   },
   /** A vault spill on the ground — gold bars + cash stacks piled where the
@@ -635,7 +652,7 @@ const G = {
   spawnCashBurst(x, z) {
     const cash = new THREE.MeshStandardMaterial({ color: 0x2fae5f, roughness: 0.8 });
     const band = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.7 });
-    const spots = [[-2, -1, 2.2], [1.5, -2, 3.4], [2.5, 1, 2.6], [-1, 2, 4.2], [0.5, 0.5, 1.6], [-3, 0.5, 3.0], [3, -1.5, 4.5], [-0.5, -3, 2.8]];
+    const spots = [[-2, -1, 1.6], [1.5, -2, 2.2], [2.5, 1, 1.8], [-1, 2, 2.6], [0.5, 0.5, 1.4]];
     spots.forEach(([dx, dz, h], i) => {
       const stack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.45), cash);
       stack.position.set(x + dx, h, z + dz);
@@ -710,6 +727,63 @@ const G = {
     R.scene.add(patch);
     return patch;
   },
+  /** A BEACHFRONT ROAD for the sunset chase (top-1 Karimbu / top-2
+   Tangerine Mile layout): an asphalt strip with a double-yellow centre
+   line + white edge dashes + sidewalks, running east-west along the sand
+   so the chase sits IN a world — road, palms, beach, sea — never on an
+   empty beige plane. The old cover had no road at all. */
+  spawnBeachRoad(x0, x1, z) {
+    const len = x1 - x0;
+    const cx = (x0 + x1) / 2;
+    const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(len, 14),
+      new THREE.MeshStandardMaterial({ color: 0x2e2f33, roughness: 0.95 }));
+    asphalt.rotation.x = -Math.PI / 2;
+    asphalt.position.set(cx, 0.07, z);
+    asphalt.receiveShadow = true;
+    R.scene.add(asphalt);
+    const yellow = new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.7 });
+    for (const dz of [-0.35, 0.35]) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(len, 0.03, 0.18), yellow);
+      line.position.set(cx, 0.09, z + dz);
+      R.scene.add(line);
+    }
+    const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.7 });
+    for (let x = x0 + 4; x < x1; x += 8) {
+      for (const dz of [-5.5, 5.5]) {
+        const dash = new THREE.Mesh(new THREE.BoxGeometry(3, 0.03, 0.15), white);
+        dash.position.set(x, 0.09, z + dz);
+        R.scene.add(dash);
+      }
+    }
+    const walkMat = new THREE.MeshStandardMaterial({ color: 0xb8a88e, roughness: 1 });
+    for (const dz of [-8.5, 8.5]) {
+      const walk = new THREE.Mesh(new THREE.PlaneGeometry(len, 3), walkMat);
+      walk.rotation.x = -Math.PI / 2;
+      walk.position.set(cx, 0.065, z + dz);
+      R.scene.add(walk);
+    }
+    return asphalt;
+  },
+  /** A palm row along the beachfront road (top-1/2: palms line the road).
+   Same trunk + frond construction as the city palms. */
+  spawnPalmRow(x0, x1, z, step) {
+    const palmTex = palmTexture(rng);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8a6f4d, roughness: 1 });
+    const frondMat = new THREE.MeshBasicMaterial({ map: palmTex, transparent: true, side: THREE.DoubleSide });
+    const palms = [];
+    for (let x = x0; x <= x1; x += (step || 24)) {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 9, 8), trunkMat);
+      trunk.position.set(x, 4.5, z);
+      trunk.rotation.z = (rng() - 0.5) * 0.12;
+      R.scene.add(trunk);
+      const fronds = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), frondMat);
+      fronds.position.set(x, 9.5, z);
+      fronds.rotation.x = -Math.PI / 2;
+      R.scene.add(fronds);
+      palms.push(trunk);
+    }
+    return palms;
+  },
   /** A rain puddle — a flat, near-mirror plane on the road that catches the
    heli spotlight + lamp glows as bright streaks, so the night street reads
    WET (recent rain), not just dark. */
@@ -748,32 +822,53 @@ const G = {
     R.scene.add(mist);
     return mist;
   },
-  /** A moored speedboat for the dawn marina escape — white hull with a red
-   stripe, open cockpit, windshield, outboard motor. Built from boxes; it
-   floats on the sea at y≈-0.2. */
+  /** A moored speedboat for the dawn marina escape — TAPERED-BOW hull
+   (the old box hull + rotated-box bow read as a flat red platform), white
+   hull with a red stripe, open cockpit, windshield, outboard motor. The
+   bow taper is real geometry: the hull's front vertices pinch toward the
+   centreline, so the boat reads as a BOAT from the side and the front.
+   It floats on the sea at y≈-0.2. */
   spawnBoat(x, z, heading, s) {
     const group = new THREE.Group();
     group.scale.setScalar(s || 1);
     const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.2 });
     const red = new THREE.MeshStandardMaterial({ color: 0xe8124a, roughness: 0.4, metalness: 0.3 });
-    const glass = new THREE.MeshStandardMaterial({ color: 0x9fd0e8, roughness: 0.1, metalness: 0.6 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0xd8ecf5, roughness: 0.2, metalness: 0.2 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.6 });
-    const hull = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 9), white);
+    const hullGeo = new THREE.BoxGeometry(3.2, 1.0, 9);
+    const pos = hullGeo.attributes.position;
+    for (let i = 0; i < pos.count; i += 1) {
+      const vz = pos.getZ(i);
+      if (vz > 0) {
+        const f = 1 - (vz / 4.5) * 0.62; // pinch the bow toward a point
+        pos.setX(i, pos.getX(i) * f);
+        if (vz > 3.5) pos.setY(i, pos.getY(i) * 0.7); // bow rakes down
+      }
+    }
+    hullGeo.computeVertexNormals();
+    const hull = new THREE.Mesh(hullGeo, white);
     hull.position.y = 0.3; group.add(hull);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.25, 9.1), red);
+    const stripeGeo = new THREE.BoxGeometry(3.3, 0.25, 9.1);
+    const spos = stripeGeo.attributes.position;
+    for (let i = 0; i < spos.count; i += 1) {
+      const vz = spos.getZ(i);
+      if (vz > 0) spos.setX(i, spos.getX(i) * (1 - (vz / 4.55) * 0.62));
+    }
+    stripeGeo.computeVertexNormals();
+    const stripe = new THREE.Mesh(stripeGeo, red);
     stripe.position.y = 0.55; group.add(stripe);
-    const bow = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 2.2), white);
-    bow.position.set(0, 0.45, 5.2); bow.rotation.y = Math.PI / 4; group.add(bow);
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 5.5), red);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 5.5), white);
     deck.position.set(0, 0.85, -0.8); group.add(deck);
     const shield = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.25), glass);
     shield.position.set(0, 1.4, 1.2); shield.rotation.x = -0.3; group.add(shield);
     for (const sx of [-0.7, 0.7]) {
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 1.0), dark);
-      seat.position.set(sx, 1.1, -1.2); group.add(seat);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.8 }));
+      seat.position.set(sx, 1.0, -1.2); group.add(seat);
     }
-    const motor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.7), dark);
-    motor.position.set(0, 0.4, -4.8); group.add(motor);
+    const motor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x333336, roughness: 0.6 }));
+    motor.position.set(0, 0.1, -4.8); group.add(motor);
     group.position.set(x, -0.2, z);
     group.rotation.y = heading || 0;
     R.scene.add(group);

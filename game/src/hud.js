@@ -93,10 +93,11 @@ export function createHud() {
       while (el.notifications.children.length > 3) el.notifications.removeChild(el.notifications.lastChild);
       if (!sticky) setTimeout(() => { if (div.parentNode) div.remove(); }, 5000);
     },
-    showBanner(title, sub, ms) {
+    showBanner(title, sub, ms, top) {
       el.bannerTitle.textContent = title;
       el.bannerSub.textContent = sub || '';
       el.banner.style.display = 'block';
+      if (top) el.banner.style.top = top; // shot 4: lift the banner clear of the boat
       setTimeout(() => { el.banner.style.display = 'none'; }, ms || 3500);
     },
     setPrompt(text) {
