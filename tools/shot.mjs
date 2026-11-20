@@ -58,6 +58,49 @@ async function waitFrames(shotN, target) {
   throw new Error(`shot ${shotN} stuck below ${target} frames`);
 }
 
+// The HUD (mission panel, cash, stars, police list) is written by
+// updateHud() inside the fixed-step update, which only starts once the game
+// finishes its slow SwiftShader init — the staged 3D scene renders from
+// frame 1, but the HUD can still show the STATIC-HTML defaults (JOB 1 /
+// $1,200 / empty stars) at frame 14. A capture then looks broken even
+// though the scene is right. So after the frame wait, also wait for the
+// mission title to flip away from the static default before capturing.
+// The staged title is never JOB 1 (shot 1: JOB 12, shots 2-3: JOB 15,
+// shot 4: STORY COMPLETE). Timeout falls through so a stuck HUD still
+// yields a shot instead of failing the run.
+async function waitHud(shotN) {
+  const list = await (await fetch('http://127.0.0.1:9223/json/list')).json();
+  const page = list.find((t) => t.type === 'page' && t.url.includes(`shot=${shotN}`));
+  if (!page) throw new Error(`shot ${shotN} page gone before HUD wait`);
+  const ws = new WebSocket(page.webSocketDebuggerUrl);
+  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+  let mid = 0;
+  const pending = new Map();
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.id && pending.has(msg.id)) {
+      const { res } = pending.get(msg.id);
+      pending.delete(msg.id);
+      res(msg.result);
+    }
+  };
+  const send = (method, params) => new Promise((res) => {
+    const id = ++mid;
+    pending.set(id, { res });
+    ws.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+  await send('Runtime.enable');
+  for (let i = 0; i < 240; i++) {
+    const r = await send('Runtime.evaluate', { expression: `document.getElementById('hud-mission-title')?.textContent || ''`, returnByValue: true });
+    const title = r.result ? r.result.value : '';
+    if (title && title !== 'JOB 1: FIRST KEYS') { ws.close(); return title; }
+    await sleep(500);
+  }
+  ws.close();
+  console.log(`shot ${shotN}: WARNING — HUD never flipped off JOB 1, capturing anyway`);
+  return '';
+}
+
 async function capture(shotN, outPath) {
   const list = await (await fetch('http://127.0.0.1:9223/json/list')).json();
   const page = list.find((t) => t.type === 'page' && t.url.includes(`shot=${shotN}`));
@@ -159,7 +202,9 @@ try {
       if (!ok) throw new Error(`shot ${n} page never appeared`);
       await sleep(3000);
       const frames = await waitFrames(n, 14);
-      console.log(`shot ${n}: ${frames} frames rendered, capturing`);
+      console.log(`shot ${n}: ${frames} frames rendered, waiting for live HUD`);
+      const title = await waitHud(n);
+      if (title) console.log(`shot ${n}: HUD live (${title}), capturing`);
       const out = join(shots, NAMES[n]);
       const res = await capture(n, out);
       console.log(JSON.stringify({ shot: n, frames: res.frames, size: statSync(out).size, hud: res.hud, errors: res.errors }));

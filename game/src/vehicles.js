@@ -7,6 +7,10 @@
 // full-width red taillight strip, rear spoiler and splitter. Police light
 // bars FLASH red/blue (emissive + glow sprites); the helicopter carries a
 // visible additive searchlight cone; dust puffs trail the wheels at speed.
+// r12 shot-1/2/4 revision: the hero's headlights get glow sprites too (the
+// front-three-quarter chase camera lives on the headlights + grille), and
+// the heli gets a white side stripe so its dark-navy body reads against a
+// bright sunset sky instead of vanishing into a silhouette.
 import * as THREE from 'three';
 import { CARS, TRAFFIC_COUNT } from './config.js';
 import { clamp, dist2 } from './config.js';
@@ -29,31 +33,34 @@ function paintMaterial(colour, opts) {
 /** A detailed wheel: dark tyre, 5-spoke dark-alloy hub, chrome ring, red caliper. */
 function makeWheel() {
   const group = new THREE.Group();
-  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.44, 16),
+  // r12 revision: the old 1.24 m tyre on a 4.6 m car was monster-truck
+  // proportions (3.7 wheels long) and the single biggest "toy" read in the
+  // chase shot. A 0.84 m tyre is 5.5 wheels long — a real sports-car stance.
+  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.36, 16),
     new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 }));
   tyre.rotation.z = Math.PI / 2;
   tyre.castShadow = true;
   group.add(tyre);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.46, 12),
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.38, 12),
     new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.3, metalness: 0.9 }));
   hub.rotation.z = Math.PI / 2;
   group.add(hub);
   const spokeMat = new THREE.MeshStandardMaterial({ color: 0x3a3d44, roughness: 0.25, metalness: 0.9 });
   for (let i = 0; i < 5; i += 1) {
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.7, 0.5), spokeMat);
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.48, 0.34), spokeMat);
     spoke.rotation.x = (i / 5) * Math.PI * 2;
     group.add(spoke);
   }
   const ringMat = new THREE.MeshStandardMaterial({ color: 0xd8dce2, roughness: 0.15, metalness: 1.0 });
-  for (const x of [0.22, -0.22]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.035, 8, 20), ringMat);
+  for (const x of [0.19, -0.19]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.03, 8, 20), ringMat);
     ring.rotation.y = Math.PI / 2;
     ring.position.x = x;
     group.add(ring);
   }
-  const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.2),
+  const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.16),
     new THREE.MeshBasicMaterial({ color: 0xd90429 }));
-  caliper.position.set(0, 0.18, 0.1);
+  caliper.position.set(0, 0.12, 0.08);
   group.add(caliper);
   return group;
 }
@@ -96,6 +103,15 @@ export function buildCarMesh(type, opts) {
         new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
       led.position.set(x, 0.82, 2.48);
       group.add(led);
+      // Headlight glow sprites: the front-three-quarter chase camera lives
+      // on the headlights — the bare LED boxes read flat, the halos read
+      // as lights ON. Same treatment the cruisers already get.
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: sunGlowTexture(), color: 0xfff6c8, transparent: true, opacity: 0.9, depthWrite: false,
+      }));
+      glow.position.set(x, 0.82, 2.6);
+      glow.scale.set(2.2, 2.2, 1);
+      group.add(glow);
     }
     const bumpMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 });
     const bumpF = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 0.25), bumpMat);
@@ -149,17 +165,20 @@ export function buildCarMesh(type, opts) {
       group.add(line);
     }
     // Visible driver: dark hair + orange jacket, hands on the wheel.
+    // r12 revision: the head sat 0.3 m ABOVE the glass roof (head y 1.5 vs
+    // cabin top 1.425) and read as a brown blob on the roof in the chase
+    // shot. Lowered so the whole driver stays inside the cabin.
     const driverMat = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.9 });
     const driver = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.3), driverMat);
-    driver.position.set(-0.35, 1.15, -0.2);
+    driver.position.set(-0.35, 0.95, -0.2);
     group.add(driver);
     const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10),
       new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 }));
-    dHead.position.set(-0.35, 1.5, -0.2);
+    dHead.position.set(-0.35, 1.18, -0.2);
     group.add(dHead);
     const dHair = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
       new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
-    dHair.position.set(-0.35, 1.53, -0.2);
+    dHair.position.set(-0.35, 1.2, -0.2);
     group.add(dHair);
   } else {
     // Generic cars: glass cabin, headlights, taillights, bumpers.
@@ -238,7 +257,7 @@ export function buildCarMesh(type, opts) {
   const wheels = [];
   for (const [x, z] of [[-1.0, 1.45], [1.0, 1.45], [-1.0, -1.45], [1.0, -1.45]]) {
     const w = makeWheel();
-    w.position.set(x, 0.62, z);
+    w.position.set(x, 0.42, z);
     group.add(w);
     wheels.push(w);
   }
@@ -392,6 +411,18 @@ export function makeHelicopter(scene) {
   const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.0, 6.5), bodyMat);
   body.position.y = 0;
   group.add(body);
+  // White side stripe: the dark-navy body vanishes against a bright sunset
+  // sky, so a pale stripe + bright nose keep the heli a visible 3D model
+  // instead of a dark blob (the top-3 helis all read by silhouette + stripe).
+  const stripeMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.3 });
+  for (const s of [-1, 1]) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 5.6), stripeMat);
+    stripe.position.set(s * 1.62, 0.1, 0);
+    group.add(stripe);
+  }
+  const noseStripe = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 0.1), stripeMat);
+  noseStripe.position.set(0, 0.1, 3.28);
+  group.add(noseStripe);
   const glass = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.2, 2.0),
     new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.1 }));
   glass.position.set(0, 0.2, 2.4);

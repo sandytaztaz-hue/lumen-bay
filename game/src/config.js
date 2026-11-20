@@ -2,11 +2,11 @@
 // and price in one place. Puerto Lumen is a 480 x 480 island city: roads
 // every 60, turquoise sea west + south. Plain play is BRIGHT MIDDAY (12:30);
 // the four screenshots each take their own time and weather, like the top
-// entries — and r12's cover is a NIGHT boulevard chase (22:40), not a
-// sunset: neon, wet asphalt, many cruisers and the heli. Positions are
-// [x, z] on the ground plane; y is up. Nothing here comes from any
-// commercial game.
-export const WORLD = { size: 480, half: 240, roadGap: 60, seaLevel: -0.4 };
+// entries — and r12's cover is a SUNSET beach-front chase (18:45), not a
+// night chase: warm golden-hour light, car fronts + police fronts to the
+// lens, the heli visible overhead. Positions are [x, z] on the ground plane;
+// y is up. Nothing here comes from any commercial game.
+export const WORLD = { size: 480, half: 240, roadGap: 60, seaLevel: 0.05 };
 export const STEP = 1 / 60;
 export const SAVE_KEY = 'lumenbay.r6.save.v1';
 export const CLOCK = '12:30';
@@ -19,11 +19,13 @@ export const DAYLIGHT = {
   rimColour: 0x9fc8ff, skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, fog: 0xa8cfe0,
 };
 // r12 — PER-SHOT lighting presets. One preset per screenshot; nothing is
-// shared between shots except the city itself. Shot 1 is NEW in r12: a
-// NIGHT chase ('nightchase', 22:40) — dark blue starry sky, cool moonlight,
-// neon and lamp glow, the heli cone and the cruisers' light bars carrying
-// the frame. Shot 2 keeps the wet-night pier shootout (23:20). Shot 3 is
-// the FULL CITY MAP (21:40). Shot 4 is dawn mist (06:10).
+// shared between shots except the city itself. Shot 1 is the SUNSET beach
+// chase ('sunset', 18:45) — warm low sun, orange/pink sky, long shadows,
+// the light the top-3 entries all use: it makes the blocky shapes read as
+// stylized-real instead of flat toy. Shot 2 is the same golden hour on the
+// beach shootout (18:45). Shot 3 is the FULL CITY MAP (21:40). Shot 4 is
+// dawn mist (06:10), with the sun disc + glow strengthened so the sunrise
+// reads over the water.
 // Fields: sky ('day'|'sunset'|'night'|'dawn'|null = dome hidden),
 // sunPos (sun/moon disc world position), sunDisc [colour, scale, visible],
 // glow [colour, opacity, scale], streakOpacity, sunLight [colour, intensity,
@@ -41,18 +43,18 @@ export const LIGHTING_PRESETS = {
   sunset: {
     sky: 'sunset', sunPos: [420, 55, 165], sunDisc: [0xff8c2a, 1.6, true],
     glow: [0xff9a3c, 0.75, 340], streakOpacity: 0.6,
-    sunLight: [0xffb36b, 2.6, 320, 60, 170],
+    sunLight: [0xffb36b, 2.9, 320, 60, 170],
     rim: [0xff9a6b, 1.1], rearFill: 0.5, hemi: [0xffc49a, 0x7a5a3a, 0.9],
     fill: 0.35, fog: [0xe8a06a, 200, 800], bg: 0xc96a4a,
-    exposure: 1.15, envIntensity: 0.8, clock: '18:45',
+    exposure: 1.2, envIntensity: 0.8, clock: '18:45',
   },
-  // Shot 1 — NIGHT CHASE, clear night, neon boulevard. No sun disc at all
-  // (a white disc at night reads as a moon artefact). Dark blue starry sky,
-  // cool dim moonlight, fog close and dark so the neon, the heli cone, the
-  // muzzle flashes and the cruisers' red/blue light bars carry the frame.
-  // r12 revision: BRIGHTENED (BRISA BAY: the chase must read CLEAR, not
-  // muddy) — moonlight 0.7→1.5, hemi 0.7→1.1, fill 0.25→0.45, exposure
-  // 1.1→1.25, env 0.3→0.55, fog pushed out so the cars and road read.
+  // Shot 1 (old) — NIGHT CHASE, clear night, neon boulevard. Kept for
+  // reference; shots 1-2 moved to the sunset preset (Sand: the night
+  // shots read too cartoony/blocky, and the top 1-10 all shoot golden
+  // hour). No sun disc at all (a white disc at night reads as a moon
+  // artefact). Dark blue starry sky, cool dim moonlight, fog close and
+  // dark so the neon, the heli cone, the muzzle flashes and the cruisers'
+  // red/blue light bars carry the frame.
   nightchase: {
     sky: 'night', sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
     glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
@@ -61,10 +63,8 @@ export const LIGHTING_PRESETS = {
     fill: 0.45, fog: [0x0e1c33, 160, 800], bg: 0x0a1830,
     exposure: 1.25, envIntensity: 0.55, clock: '22:40',
   },
-  // Shot 2 — NIGHT, recent rain, wet street. Same night family as shot 1
-  // but wetter and darker: the pier shootout, lamp glows, puddles.
-  // r12 revision: BRIGHTENED like shot 1 so Mara, the cordon and the cash
-  // read clearly instead of sinking into the dark road.
+  // Shot 2 (old) — NIGHT, recent rain, wet street. Kept for reference;
+  // the pier shootout moved to the sunset beach (same reason as shot 1).
   night: {
     sky: 'night', sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
     glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
@@ -88,13 +88,17 @@ export const LIGHTING_PRESETS = {
   },
   // Shot 4 — DAWN, morning mist over the water. Pale pink-orange sunrise
   // LOW over the SOUTH sea (the south beach is the one open horizon).
+  // r12 shot-1/2/4 revision: the sun reads too washed-out and small in the
+  // take, so the disc is bigger (0.55→0.9), the halo stronger and wider
+  // (0.5→0.65, 220→300), the sun light hotter (2.4→3.0) — the sunrise
+  // must glow over the water, not sit there as a pale coin.
   dawn: {
-    sky: 'dawn', sunPos: [-150, 30, 480], sunDisc: [0xff7a1a, 0.55, true],
-    glow: [0xff8c2a, 0.5, 220], streakOpacity: 0.3,
-    sunLight: [0xffb38a, 2.4, -150, 50, 320],
+    sky: 'dawn', sunPos: [-150, 30, 480], sunDisc: [0xff7a1a, 0.9, true],
+    glow: [0xff8c2a, 0.65, 300], streakOpacity: 0.5,
+    sunLight: [0xffb38a, 3.0, -150, 50, 320],
     rim: [0xffc4a0, 0.8], rearFill: 0.4, hemi: [0xd8a0b8, 0x5a6a7a, 0.9],
     fill: 0.35, fog: [0xe8b8a8, 80, 450], bg: 0xd89ab0,
-    exposure: 1.15, envIntensity: 0.7, clock: '06:10',
+    exposure: 1.2, envIntensity: 0.7, clock: '06:10',
   },
 };
 export const DISTRICTS = [

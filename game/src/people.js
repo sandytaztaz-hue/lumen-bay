@@ -4,6 +4,12 @@
 // half strolling the Playa Dorada front, plus festival crowds at Festival
 // Square. Every figure looks different — striped, checked and printed
 // shirts, hats, backpacks, tall, short, stocky and thin.
+// r12 shot-1/2/4 revision: a shootout must READ — the old figures hung
+// their arms and hid the gun at their side, so from any camera the "pistol"
+// was invisible. makePersonMesh / makePlayerMesh now expose their arm +
+// hand + gun meshes on group.userData.parts, and poseAim() puts a figure
+// into a two-handed aiming stance: both arms forward, pistol out in front
+// at chest height, so the gun + shooting pose read at a glance.
 import * as THREE from 'three';
 import { clamp, dist2, PED_COUNT } from './config.js';
 import { resolveCollisions } from './city.js';
@@ -14,6 +20,31 @@ const SKIN_COLOURS = [0xd9a066, 0x8a5a34, 0xf2c9a0, 0x6b4226, 0xe8b88a, 0x5a3018
 const PANTS_COLOURS = [0x2a3040, 0xffffff, 0xffd23f, 0x19b8c4, 0x333333, 0x8a6f4d, 0x7a2a3a, 0x2a6b3a, 0xc78bff];
 const HAIR_COLOURS = [0x1a1210, 0x3a2410, 0x6b4a1a, 0xd8b25e, 0x8a8a8a, 0x7a1a1a];
 const HAT_COLOURS = [0xff2a5e, 0xffd23f, 0x19b8c4, 0xffffff, 0x222226, 0x37c978, 0xff7a1a];
+/** Two-handed aiming stance: both arms forward, pistol out in front at
+ chest height. The arms are boxes pivoted at their centre, so each arm is
+ rotated forward (-x) and its hand + the gun are re-seated at the arm's
+ forward end; the left arm angles across to support the grip. The pose is
+ LOCAL (group space, forward = +z), so it survives the group's world
+ rotation — an officer posed once keeps aiming at Mara while updateEnemy
+ turns him to face her. Call it on a staged figure's group only; plain
+ play never poses anyone. */
+export function poseAim(group) {
+  if (!group || !group.userData || !group.userData.parts) return false;
+  const p = group.userData.parts;
+  // Right (gun) arm: straight forward, slightly down.
+  if (p.armR) { p.armR.rotation.set(-1.45, 0, 0); p.armR.position.set(0.44, 1.32, 0.18); }
+  if (p.handR) p.handR.position.set(0.44, 1.32, 0.55);
+  // Left arm: forward + angled across the chest to the grip.
+  if (p.armL) { p.armL.rotation.set(-1.25, 0, 0.45); p.armL.position.set(0.12, 1.3, 0.28); }
+  if (p.handL) p.handL.position.set(0.3, 1.3, 0.58);
+  // Pistol out in front, past the right hand, barrel forward (+z local).
+  if (p.gun) {
+    p.gun.visible = true;
+    p.gun.position.set(0.44, 1.32, 0.78);
+    p.gun.rotation.set(0, 0, 0);
+  }
+  return true;
+}
 /** One fully varied pedestrian: patterned shirt, coloured pants or shorts,
  varied skin, hair, a cap/hat on ~1 in 3, a backpack on ~1 in 5, and a build
  that is tall, short, stocky or thin. `rng` is the seeded stream; when
@@ -41,6 +72,7 @@ function makePersonMesh(shirt, pants, skin, rng) {
   torso.position.y = 1.2; torso.castShadow = true;
   group.add(torso);
   const armMat = shirtMat;
+  let armL = null; let armR = null; let handL = null; let handR = null;
   for (const s of [-1, 1]) {
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.18), armMat);
     arm.position.set(s * 0.44, 1.18, 0);
@@ -49,6 +81,7 @@ function makePersonMesh(shirt, pants, skin, rng) {
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.16, 0.16), skinMat);
     hand.position.set(arm.position.x, arm.position.y - 0.36, arm.position.z);
     group.add(hand);
+    if (s === 1) { armR = arm; handR = hand; } else { armL = arm; handL = hand; }
   }
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 10), skinMat);
   head.position.y = 1.85; head.castShadow = true;
@@ -96,6 +129,7 @@ function makePersonMesh(shirt, pants, skin, rng) {
   gun.position.set(0.42, 1.3, 0.35);
   gun.visible = false;
   group.add(gun);
+  group.userData.parts = { armL, armR, handL, handR, gun };
   return { group, gun };
 }
 export function spawnPedestrians(scene, rng) {
@@ -245,10 +279,15 @@ export function makePlayerMesh(scene) {
     new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.8 }));
   belt.position.set(0, 0.86, 0);
   group.add(belt);
+  let armL = null; let armR = null; let handL = null; let handR = null;
   for (const s of [-1, 1]) {
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.66, 0.2), jacket);
     arm.position.set(s * 0.47, 1.22, 0);
     group.add(arm);
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.17, 0.17), skin);
+    hand.position.set(s * 0.47, 0.86, 0);
+    group.add(hand);
+    if (s === 1) { armR = arm; handR = hand; } else { armL = arm; handL = hand; }
   }
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), skin);
   head.position.y = 1.92; head.castShadow = true;
@@ -265,6 +304,7 @@ export function makePlayerMesh(scene) {
     new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.6 }));
   gun.position.set(0.42, 1.3, 0.35); gun.visible = false;
   group.add(gun);
+  group.userData.parts = { armL, armR, handL, handR, gun };
   scene.add(group);
   return { group, gun };
 }

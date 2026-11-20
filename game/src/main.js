@@ -4,14 +4,16 @@
 // chases, a helicopter with a visible searchlight, combat, radio, saves.
 // ?shot=1..4 stages a fixed scene and sets window.__shotReady for
 // screenshots. r12: every shot gets its OWN weather + time + camera angle —
-// the COVER is now a NIGHT boulevard chase (22:40, six cruisers + heli),
-// shot 2 the night pier shootout (23:20), shot 3 the vault interior (21:40),
-// shot 4 the dawn marina escape (06:10) with the boat finally clear of the
-// title and the toasts. Gameplay is the proven r11 game; r12 rebuilds the
-// LOOK per shot (per-shot lighting presets in config.js/render.js, staged
-// sets in shots.js) toward the top-3 layout, with our city/story/missions.
+// the COVER is now a SUNSET beach-front chase (18:45, eight cruisers + heli,
+// camera ahead so the FRONTS of the cars face the lens), shot 2 the sunset
+// beach shootout (18:45, Mara + cordon in a two-handed aiming stance),
+// shot 3 the FULL CITY MAP (21:40), shot 4 the dawn marina escape (06:10)
+// with the boat big in the water, clear of the title and the toasts.
+// Gameplay is the proven r11 game; r12 rebuilds the LOOK per shot
+// (per-shot lighting presets in config.js/render.js, staged sets in
+// shots.js) toward the top-3 layout, with our city/story/missions.
 // r12 revision: shot 3 is now a FULL CITY MAP (not the vault), the cover
-// runs EIGHT cruisers, and both night shots are brighter with the heli
+// runs EIGHT cruisers, and both action shots are golden hour with the heli
 // visible in frame.
 import * as THREE from 'three';
 import { WORLD, STEP, SAVE_KEY, CLOCK, DISTRICTS, ROB_TARGETS, PROPERTIES, WEAPONS, CARS, LANDMARKS, POLICE_ROSTER, freshSave, clamp, dist2, streetNameAt, districtAt } from './config.js';
@@ -182,28 +184,28 @@ function spawnPoliceNear(count) {
   }
 }
 /** Stage cruisers for the shot-1 cover: an eight-cruiser pack around the hero.
- The chase camera sits ~4.5 units to the side of the hero, so any far-side
- cruiser further back than ~3 units sits past a 45-degree bearing and crops
- off the frame edge — the slots below were picked so every cruiser stays in
- frame: ONE tight chaser right behind the hero (back 2.5, lat -4.8, on the
- camera side so it peeks out beside the hero), THREE head-on cruisers AHEAD
- (13/16 m, lats -4.5/+4.5, plus a centre charger at 20 m, light bars facing
- the lens), THREE flank cruisers ahead at the hero's sides (8 m, lats ±7,
- plus a close one on the far side), and ONE second chaser behind on the
- far side (back 5, lat +4.5). */
+ The cover camera now sits AHEAD of the hero (front-three-quarter, Sand's
+ order), so every cruiser in the pack faces the SAME way as the hero —
+ east, toward the lens — at staggered depths behind him, and the autopilot
+ in shots.js re-pins them there every frame. Slots (back = metres behind
+ the hero, lat = lateral, + = north / camera side): one tight chaser
+ (3, -5), a second chaser (6, +5), three flankers (10, -8), (13, +8),
+ (18, -2), and three closers down the middle (9, -2.5), (15, +4),
+ (22, +1). No head-on cruisers any more: from a front camera a head-on
+ car shows its REAR to the lens. */
 function spawnPoliceBehind(count) {
   const heading = player.inCar && player.car ? player.car.heading : player.heading;
   const fx = Math.sin(heading), fz = Math.cos(heading);
   const rx = Math.cos(heading), rz = -Math.sin(heading);
   const slots = [
-    { kind: 'chase', back: 2.5, lat: -4.8, face: heading },
-    { kind: 'headon', back: -13, lat: -4.5, face: heading + Math.PI },
-    { kind: 'headon', back: -16, lat: 4.5, face: heading + Math.PI },
-    { kind: 'flank', back: -8, lat: -7, face: heading },
-    { kind: 'flank', back: -8, lat: 7, face: heading },
-    { kind: 'chase2', back: 5, lat: 4.5, face: heading },
-    { kind: 'headon', back: -20, lat: 0, face: heading + Math.PI },
-    { kind: 'flank', back: -2, lat: 8.5, face: heading },
+    { kind: 'chase', back: 7, lat: -6, face: heading },
+    { kind: 'chase2', back: 11, lat: 6, face: heading },
+    { kind: 'flank', back: 13, lat: -10, face: heading },
+    { kind: 'flank', back: 17, lat: 10, face: heading },
+    { kind: 'flank', back: 22, lat: -3, face: heading },
+    { kind: 'headon', back: 12, lat: -3, face: heading },
+    { kind: 'headon', back: 19, lat: 5, face: heading },
+    { kind: 'headon', back: 26, lat: 1, face: heading },
   ];
   for (let i = 0; i < count && i < slots.length; i += 1) {
     if (police.length >= 8) break;
@@ -212,7 +214,7 @@ function spawnPoliceBehind(count) {
       player.x - fx * s.back + rx * s.lat,
       player.z - fz * s.back + rz * s.lat,
       s.face, { kind: s.kind });
-    car.speed = s.kind === 'headon' ? 0 : 34;
+    car.speed = 34;
     car.unit = nextUnitName();
     R.scene.add(car.mesh.group);
     police.push(car);
@@ -344,11 +346,15 @@ function endRun(kind) {
 }
 // ---- enemies / pickups --------------------------------------------------------
 function spawnEnemiesAt(x, z, count, kind) {
+  const made = [];
   for (let i = 0; i < count; i += 1) {
     const ex = clamp(x + (rng() - 0.5) * 8, -230, 230);
     const ez = clamp(z + (rng() - 0.5) * 8, -230, 230);
-    enemies.push(spawnEnemy(R.scene, ex, ez, kind));
+    const e = spawnEnemy(R.scene, ex, ez, kind);
+    enemies.push(e);
+    made.push(e);
   }
+  return made; // shot staging poses the returned squad (aim stance)
 }
 function spawnPatrols(count) {
   for (let i = 0; i < count; i += 1) {
