@@ -622,14 +622,20 @@ const G = {
     const heading = player.inCar && player.car ? player.car.heading : player.heading;
     const fx = Math.sin(heading), fz = Math.cos(heading);
     const rx = Math.cos(heading), rz = -Math.sin(heading);
-    // ALONGSIDE the hero — BOTH on the south (screen-left) side: the
-    // north side of this front camera sits behind the right-hand toast
-    // panels, so a north-side bike is invisible no matter its slot (the
-    // (2,9) take proved it), and a trailing south-side bike hides behind
-    // the hero's cabin. Bike 1 rides beside the hero's nose, bike 2
-    // beside the hero's doors 2 m away — both in the open frame, both
-    // clear of the cruiser pack and the hero.
-    const slots = [[-1, -10], [0, -8]];
+    // ALONGSIDE the hero — ONE on EACH SIDE, both IN LANE (Sand
+    // 2026-11-21 ~06:20 WIT: "motor kanan kiri"): bike 1 rides the south
+    // lane beside the hero's nose (lat −4, back −1), bike 2 the north lane
+    // beside the hero's REAR HALF (lat +3, back +2) — in formation, in
+    // the road lanes next to the car, never both on one side. The north
+    // slot is tight because this front camera sits on the north side:
+    // back 0 looms in the near foreground, back +2.5 sits at the right
+    // frame edge half cut off, back +5 falls off the frame entirely
+    // (three takes proved it). At [2, 3] the north bike sits ~7.9 m from
+    // the lens — the hero's own distance — fully in frame, side profile
+    // with rider + white helmet, clear of the toasts. The old
+    // [[-1,-10],[0,-8]] put BOTH bikes on the south side, 8–10 m out
+    // (out of lane, both on the left).
+    const slots = [[-1, -4], [2, 3]];
     for (const [back, lat] of slots) {
       const b = makePoliceBike(
         player.x - fx * back + rx * lat,

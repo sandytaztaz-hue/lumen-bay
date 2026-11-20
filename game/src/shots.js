@@ -470,10 +470,13 @@ export function shotAutopilot(G, dt) {
       c.mesh.group.position.set(c.x, 0, c.z);
       c.mesh.group.rotation.y = c.heading;
     });
-    // Police bikes flanking the hero (Sand 02:12) + heli spotlight beam
+    // Police bikes flanking the hero (Sand 02:12 + 06:20) + heli spotlight beam
     // onto the car (Sand 02:12): pinned + aimed every frame, like the
-    // cruiser pack. Bikes sit a few metres back on both sides of the hero.
-    const bikeSlots = [[-1, -10], [0, -8]];
+    // cruiser pack. ONE bike in EACH lane beside the hero — south lane by
+    // the nose (back −1, lat −4), north lane by the REAR HALF (back +2,
+    // lat +3): the north slot is the only one that stays in frame at the
+    // hero's scale (back 0 looms, +2.5 hits the right edge, +5 falls off).
+    const bikeSlots = [[-1, -4], [2, 3]];
     (G.bikes || []).forEach((b, i) => {
       const [back, lat] = bikeSlots[i] || bikeSlots[0];
       b.x = G.player.x - fx * back + rx * lat;

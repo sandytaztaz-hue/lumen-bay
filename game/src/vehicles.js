@@ -101,132 +101,153 @@ export function buildCarMesh(type, opts) {
   group.add(body);
   let lightBar = null;
   if (type === 'comet') {
-    // The hero Comet RS — CLASSIC old-school sedan (Sand 2026-11-21
-    // ~02:08 WIT: "semua mobil ganti type classic kayak Corolla"). BOXY,
-    // upright, no modern wedge: tall flat-sided body, FLAT hood + FLAT
-    // trunk lids, upright cabin, chrome bumpers, ROUND headlights, a
-    // distinct grille with chrome bars. Same hot-pink paint, same poster
-    // scale — the silhouette is now a 70s/80s Corolla-type sedan, not a
-    // low-slung GT. The old sloped hood + tapered nose wedge are gone.
-    body.position.y = 0.8;
-    // Flat hood: a level lid over the engine bay, same height as the
-    // body top — the flat line is the classic read.
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.1, 1.4), paint);
-    hood.position.set(0, 1.2, 1.45);
+    // The hero Comet RS — LOW SLEEK FERRARI-STYLE SPORTS CAR (Sand
+    // 2026-11-21 ~06:20 WIT: "ganti jd mobil sport kya ferarri"). NOT a
+    // classic Corolla sedan any more: a long low nose sloping down to a
+    // front splitter, sculpted raked hood, LOW raked cabin set back, wide
+    // haunches, big wheels, rear spoiler + diffuser, metallic hot-pink/red
+    // paint with highlights, slim LED headlights. Copied from the top-1
+    // madsrepo red sports car (low wedge, sloped hood, dark raked
+    // windshield, big silver wheels, wide stance) and the afaba99
+    // sports-car take the coordinator rated GOOD — pushed LOWER + WIDER +
+    // LONGER here (body 0.72 tall, 5.1 long, roof 1.36). Police + traffic
+    // stay classic boxy sedans (the else branch below); ONLY the hero
+    // changes. Same hot-pink paint (0xe8124a), same poster scale.
+    body.scale.set(0.98, 0.72, 1.16);
+    body.position.y = 0.62;
+    // Long low nose: a tapered wedge under the sloped hood.
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.34, 0.7), paint);
+    nose.position.set(0, 0.58, 2.3);
+    group.add(nose);
+    // SLOPED hood (top-1 geometry): a long low panel raked down toward
+    // the nose — the rake is what makes the front read as a sports car
+    // instead of a box. Rake 0.26 (was 0.22 in afaba99): the front edge
+    // drops to ~0.68, the Ferrari wedge line.
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.08, 2.0), paint);
+    hood.position.set(0, 0.94, 1.3);
+    hood.rotation.x = 0.26;
     group.add(hood);
-    // Flat trunk lid, same treatment at the rear.
-    const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.1, 1.1), paint);
-    trunk.position.set(0, 1.2, -1.6);
-    group.add(trunk);
-    // Chrome side trim: a thin bright strip along each flank at
-    // mid-height — the classic waistline. (Was a pink band; chrome reads
-    // "classic sedan" at a glance.)
-    const flankMat = new THREE.MeshStandardMaterial({ color: 0xd8dce2, metalness: 1.0, roughness: 0.15 });
+    const noseWedge = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.3, 0.55), paint);
+    noseWedge.position.set(0, 0.52, 2.42);
+    noseWedge.rotation.x = 0.18;
+    group.add(noseWedge);
+    // Front splitter: a low dark lip under the nose — the aggressive
+    // Ferrari front. Dark, not chrome: a classic bumper would read sedan.
+    const splitter = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, 0.55),
+      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
+    splitter.position.set(0, 0.28, 2.55);
+    group.add(splitter);
+    // Bright flank highlight: a thin lighter band along each side at
+    // mid-height. The old flank was one blank pink slab; the band + the
+    // dark side skirt below it give the side a waistline like the top-1 car.
+    const flankMat = new THREE.MeshStandardMaterial({ color: 0xff6b9a, metalness: 0.8, roughness: 0.25 });
     for (const s of [-1, 1]) {
-      const band = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 3.6), flankMat);
-      band.position.set(s * 1.02, 0.95, 0);
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 3.4), flankMat);
+      band.position.set(s * 1.04, 0.78, 0);
       group.add(band);
       const skirtMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 });
-      const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 3.4), skirtMat);
-      skirt.position.set(s * 1.0, 0.32, 0);
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 3.4), skirtMat);
+      skirt.position.set(s * 1.02, 0.3, 0);
       group.add(skirt);
+      // Side air intake ahead of the rear wheel — the Ferrari side scoop.
+      const scoop = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 0.7),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+      scoop.position.set(s * 1.04, 0.72, -0.9);
+      group.add(scoop);
     }
-    // Distinct grille: dark slatted panel + 3 chrome bars, flush on the
-    // flat nose (no wedge in front of it any more).
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.1),
+    // Low dark grille + slim LED headlights on the sloped nose.
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.22, 0.08),
       new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
-    grille.position.set(0, 0.78, 2.22);
+    grille.position.set(0, 0.55, 2.66);
     group.add(grille);
     const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd8dce2, roughness: 0.15, metalness: 1.0 });
-    for (let i = -1; i <= 1; i += 1) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.03), chromeMat);
-      bar.position.set(0, 0.7 + i * 0.09, 2.28);
-      group.add(bar);
-    }
-    // ROUND headlights (the classic cue — a Corolla-type sedan wears
-    // round lamps, not LED slits): chrome ring + warm emissive lens +
-    // glow halo, so the front reads at a glance from the chase camera.
-    for (const x of [-0.72, 0.72]) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 8, 20), chromeMat);
-      ring.position.set(x, 0.88, 2.24);
-      group.add(ring);
-      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 16),
+    for (const x of [-0.75, 0.75]) {
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 0.06),
         new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
-      lamp.rotation.x = Math.PI / 2;
-      lamp.position.set(x, 0.88, 2.24);
-      group.add(lamp);
+      led.position.set(x, 0.72, 2.66);
+      group.add(led);
+      // Headlight glow sprites: the front-three-quarter chase camera lives
+      // on the headlights — the bare LED boxes read flat, the halos read
+      // as lights ON. Same treatment the cruisers already get.
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({
         map: sunGlowTexture(), color: 0xfff6c8, transparent: true, opacity: 0.9, depthWrite: false,
       }));
-      glow.position.set(x, 0.88, 2.36);
+      glow.position.set(x, 0.72, 2.78);
       glow.scale.set(2.2, 2.2, 1);
       group.add(glow);
     }
-    // Chrome bumpers front + rear (classic steel bumpers, not dark plastic).
-    const bumpMat = chromeMat;
-    const bumpF = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.24, 0.22), bumpMat);
-    bumpF.position.set(0, 0.42, 2.28);
-    group.add(bumpF);
-    const bumpR = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.24, 0.22), bumpMat);
-    bumpR.position.set(0, 0.42, -2.28);
-    group.add(bumpR);
+    // Rear: full-width red taillight strip + dark diffuser + twin pipes.
+    const tailStrip = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xff1a1a }));
+    tailStrip.position.set(0, 0.8, -2.56);
+    group.add(tailStrip);
+    const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.16, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
+    diffuser.position.set(0, 0.3, -2.55);
+    group.add(diffuser);
     for (const x of [-0.55, 0.55]) {
       const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.2, 10), chromeMat);
       pipe.rotation.x = Math.PI / 2;
-      pipe.position.set(x, 0.42, -2.45);
+      pipe.position.set(x, 0.4, -2.6);
       group.add(pipe);
     }
-    // Taillights: a red pair on the flat tail, not a full-width strip.
-    for (const x of [-0.65, 0.65]) {
-      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.16, 0.06),
-        new THREE.MeshBasicMaterial({ color: 0xff1a1a }));
-      tail.position.set(x, 0.88, -2.24);
-      group.add(tail);
-    }
-    // Cabin — UPRIGHT classic greenhouse, not a raked GT canopy: a tall
-    // glasshouse with a NEAR-VERTICAL windshield + rear glass and a flat
-    // paint roof slab on top, so the cabin reads as a boxy sedan cabin.
-    // No rear spoiler — a classic Corolla-type sedan has none.
+    // Cabin (top-1 geometry, pushed LOWER): a PAINT-COLOURED roof slab
+    // over a narrower glasshouse — the old single dark box was the "Lego
+    // cabin". Slanted windshield up front, slanted rear glass, dark side
+    // glass with a bright glare band, so the cabin reads as glass + roof,
+    // not a black brick. Roof 1.36 (was 1.44 in afaba99) — the low
+    // Ferrari roofline.
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.08, clearcoat: 1 });
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 1.7), paint);
-    roof.position.set(0, 1.85, -0.25);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.09, 1.4), paint);
+    roof.position.set(0, 1.36, -0.35);
     group.add(roof);
-    const glasshouse = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.8), glassMat);
-    glasshouse.position.set(0, 1.5, -0.25);
+    const glasshouse = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.42, 1.8), glassMat);
+    glasshouse.position.set(0, 1.1, -0.35);
     group.add(glasshouse);
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.62, 0.08), glassMat);
-    windshield.position.set(0, 1.52, 0.72);
-    windshield.rotation.x = -0.12;
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 0.08), glassMat);
+    windshield.position.set(0, 1.02, 0.68);
+    windshield.rotation.x = -0.6;
     group.add(windshield);
-    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 0.08), glassMat);
-    rearGlass.position.set(0, 1.52, -1.22);
-    rearGlass.rotation.x = 0.12;
+    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.08), glassMat);
+    rearGlass.position.set(0, 1.04, -1.32);
+    rearGlass.rotation.x = 0.5;
     group.add(rearGlass);
-    // Side mirrors + door lines.
+    const glare = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.1, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xbfe8ff }));
+    glare.position.set(0, 1.24, 0.62);
+    glare.rotation.x = -0.6;
+    group.add(glare);
+    // Rear spoiler on struts + side mirrors + door lines.
+    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.07, 0.42), paint);
+    spoiler.position.set(0, 1.12, -2.35);
+    group.add(spoiler);
+    const bumpMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 });
     for (const s of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.1), bumpMat);
+      strut.position.set(s * 0.7, 0.98, -2.35);
+      group.add(strut);
       const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.3), paint);
-      mirror.position.set(s * 1.05, 1.3, 0.75);
+      mirror.position.set(s * 1.06, 1.0, 0.7);
       group.add(mirror);
       const line = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 1.6),
         new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9 }));
-      line.position.set(s * 1.0, 0.8, 0.1);
+      line.position.set(s * 1.03, 0.7, 0.1);
       group.add(line);
     }
     // Visible driver: dark hair + orange jacket, hands on the wheel.
-    // r12 revision: the head sat 0.3 m ABOVE the glass roof (head y 1.5 vs
-    // cabin top 1.425) and read as a brown blob on the roof in the chase
-    // shot. Lowered so the whole driver stays inside the cabin.
+    // Lowered into the LOW cabin (roof 1.36): torso y 0.9, head 1.12 —
+    // the whole driver stays inside the glasshouse, never a blob on the roof.
     const driverMat = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.9 });
     const driver = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.3), driverMat);
-    driver.position.set(-0.35, 1.32, -0.2);
+    driver.position.set(-0.35, 0.9, -0.2);
     group.add(driver);
     const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10),
       new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 }));
-    dHead.position.set(-0.35, 1.62, -0.2);
+    dHead.position.set(-0.35, 1.12, -0.2);
     group.add(dHead);
     const dHair = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
       new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
-    dHair.position.set(-0.35, 1.64, -0.2);
+    dHair.position.set(-0.35, 1.14, -0.2);
     group.add(dHair);
   } else {
     // Generic cars (sedan / taxi / pickup / police): the SAME classic
@@ -369,10 +390,13 @@ export function buildCarMesh(type, opts) {
     }
   }
   // Wheels at the four corners + arches tying them to the body.
+  // The hero sports car wears BIGGER wheels (1.12x, y 0.42) — the
+  // Ferrari stance; police + traffic keep the standard wheels.
   const wheels = [];
   for (const [x, z] of [[-1.0, 1.45], [1.0, 1.45], [-1.0, -1.45], [1.0, -1.45]]) {
     const w = makeWheel();
-    w.position.set(x, 0.38, z);
+    if (type === 'comet') w.scale.setScalar(1.12);
+    w.position.set(type === 'comet' ? x * 1.02 : x, type === 'comet' ? 0.42 : 0.38, z);
     group.add(w);
     wheels.push(w);
   }
