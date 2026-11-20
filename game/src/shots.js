@@ -23,38 +23,32 @@
 import { ROB_TARGETS } from './config.js';
 import { poseAim } from './people.js';
 
-// Cover: SUNSET beach-front chase. Hot pink-red Comet RS LARGE in frame,
-// nose toward the lens, NOS burning, EIGHT cruisers behind it at staggered
-// depths with flashing light bars and headlights ON, heli overhead with a
-// visible body + searchlight cone, traffic + beachgoers down the beach,
-// palms, the ferris wheel on the horizon, full dense HUD: mission panel +
-// alerts, WANTED 5 stars, big green cash, police response list (eight units
-// + AIR-1, capped display + footer), notification toasts, weapon slots,
-// IN SIGHT banner, RESPECT bar, search-zone minimap, dispatch dialogue,
-// big speed. Warm golden-hour light, long shadows, wet-looking sand.
-// r12 round-2 re-shoot (Sand ~23:45: the 91f401a take still read as Lego
-// boxes): the chase now runs on a REAL BEACHFRONT ROAD (top-1 Karimbu /
-// top-2 Tangerine Mile layout — asphalt + double-yellow centre line +
-// white dashes + palms lining it, sea on one side), NOT bare sand; the
-// camera sits further round the front (camYaw -1.15) so the Comet's nose +
-// sloped hood + grille + headlights face the lens; the cruiser pack is
-// widened so its fronts flank the hero instead of hiding behind him.
-// The centre "1:47" timer is GONE — it overlapped the IN SIGHT banner.
+// 3D BOULEVARD REBUILD (Sand 2026-11-21 ~07:57 WIT, GAS before deadline):
+// top-1 Karimbu / top-2 Tangerine Mile layout, copied, not imagined — LOW
+// chase cam BEHIND-and-above the hero looking DOWN a long boulevard: the
+// road (asphalt + double-yellow + white dashes) runs 420 m east to the
+// horizon with the low sunset sun dead ahead, palms lining BOTH sides,
+// beach + sea on the south (right) side, city buildings framing the north
+// (left) side, police column + roadblock AHEAD down the road, heli ahead
+// over the beach with its spotlight beam slanting back onto the hero car.
+// The old front-three-quarter take hid the road behind the hero and left
+// the frame an empty sand plane; the chase cam makes the boulevard the star.
 export function stageShot1(G) {
   G.setLighting('sunset'); // 18:45 — also stamps the HUD clock
   G.spawnSandPatch(); // deterministic tan sand at a grazing camera angle
-  G.spawnBeachRoad(-40, 220, 215); // the beachfront road: asphalt + lines
-  G.spawnPalmRow(-30, 210, 206, 24); // palms lining the road, north side
+  G.spawnBeachRoad(-40, 380, 215); // the boulevard: 420 m east to the horizon
+  G.spawnPalmRow(-30, 360, 206, 26); // palms lining the road, north side
+  G.spawnPalmRow(-30, 360, 224, 30); // palms lining the road, beach side
   G.startPlay();
   G.enterCar(G.parked[0]);
   G.warpTo(90, 215); // south beach, heading east along the Playa front
-  G.player.car.heading = Math.PI / 2 - 0.2; // nose turned toward the lens
-  G.player.car.mesh.group.rotation.y = Math.PI / 2 - 0.2;
+  G.player.car.heading = Math.PI / 2; // nose straight down the boulevard
+  G.player.car.mesh.group.rotation.y = Math.PI / 2;
   G.player.car.speed = 34;
   G.garage.nos = 120;
   G.nosBurning = true;
   G.setWanted(5);
-  G.spawnPoliceBehind(8); // the eight-cruiser pack, all facing east
+  G.spawnPoliceBehind(8); // the eight-cruiser pack, re-pinned AHEAD by the autopilot
   G.spawnPoliceBikes(); // two police motorcycles flanking the hero (Sand 02:12)
   G.clearUmbrellasAll(); // Sand 02:08 — NO umbrella anywhere in shot 1
   G.heli.active = true;
@@ -70,10 +64,11 @@ export function stageShot1(G) {
   // belly to the car + a bright pool around the car (heli.beam, aimed by
   // the shot-1 autopilot every frame). NOT the old vertical cone above.
   G.aimSpotlight(90, 1.0, 215);
-  G.spawnTrafficNear(20, 215, 6); // traffic down the beach, in the background
+  G.spawnTrafficNear(150, 215, 6); // traffic down the boulevard ahead, in frame
   G.clearTrafficNear(90, 215, 30); // NO stray car may overlap the hero
   G.clearPedsNear(90, 215, 15); // clear the hero's foreground
-  G.spawnPedsNear(55, 205, 10); // beachgoers down the beach, in frame
+  G.spawnPedsNear(140, 206, 8); // pedestrians on the north sidewalk ahead
+  G.spawnPedsNear(170, 228, 5); // beachgoers on the sand ahead, south side
   // Warm bounce light over the hero so the pink-red paint + chrome glow.
   G.addPointLight(90, 6, 215, 0xffb347, 200, 26);
   G.missions.startMission(11); // Street King race is live: checkpoints on minimap
@@ -85,16 +80,16 @@ export function stageShot1(G) {
   G.hud.notify('AIR-1 OVERHEAD', 'Heli has the light — eight units closing', 'danger', true);
   G.hud.notify('NOS READY', 'Tank full — hold Shift to burn', 'good', true);
   G.addAlert('info', 'VEHICLE STOLEN: VELOZ COMET RS');
-  // FRONT-three-quarter chase cam (top-1 madsrepo angle, pushed further
-  // round the nose): the camera sits AHEAD-EAST of the hero (camYaw
-  // -1.15), LOW (height 2.7), looking back west at the hero's nose +
-  // sloped hood + grille + headlights. At dist 8 the hero reads ~30% of
-  // the frame, the cruiser pack stacks behind him down the beachfront
-  // road, and the sky opens up at the top of the frame for the heli.
-  G.camYaw = -0.8;
-  G.setCamDist(8.5);
-  G.setCamHeight(2.8);
-  G.camPitch = 0.1;
+  // LOW CHASE CAM behind-and-above the hero (top-1/top-2 angle): camera
+  // sits WEST of the hero (camYaw = heading, slightly offset so the hero
+  // sits a touch left of centre), LOW (height 3.4), looking EAST down the
+  // boulevard — road + lane markings vanishing to the sunset horizon,
+  // palms both sides, buildings left, sea right, heli ahead. At dist 9.5
+  // the hero reads ~30% of the frame with the whole pursuit column ahead.
+  G.camYaw = Math.PI / 2 - 0.12;
+  G.setCamDist(9.5);
+  G.setCamHeight(3.4);
+  G.camPitch = 0.06;
   G.state.cash = 18450;
   // Anchor: the chase autopilot holds speed 34, so without this the hero
   // drives hundreds of units during a slow SwiftShader settle and the
@@ -428,13 +423,13 @@ export function shotAutopilot(G, dt) {
   if (G.shotMode === 1) {
     // Cover chase: pin the speed high so the speedo reads big all the time,
     // keep the EIGHT cruisers pinned in their slots, and keep the helicopter
-    // ahead-south-west in frame, circling over the chase. Heli angle 2.4
-    // puts it SOUTH-WEST of the hero (over the beach, in the background the
-    // front camera looks at): the old 0.5 put it EAST, behind the lens.
-    // Body lands upper-left with its cone down onto the sand.
+    // ahead-east in frame, circling over the chase. Heli angle 0.45 puts it
+    // EAST of the hero (cos 0.9, sin 0.43 — ahead-right over the beach, in
+    // the frame the chase cam looks at): the old 2.4 put it WEST, behind
+    // the chase camera and out of frame.
     G.player.car.speed = 34;
     G.player.car.heading += Math.sin(performance.now() * 0.0004) * 0.05 * dt;
-    if (G.heli) { G.heli.angle = 2.4; }
+    if (G.heli) { G.heli.angle = 0.45; }
     const fx = Math.sin(G.player.car.heading), fz = Math.cos(G.player.car.heading);
     const rx = Math.cos(G.player.car.heading), rz = -Math.sin(G.player.car.heading);
     for (const rb of G.roadblocks || []) {
@@ -449,10 +444,11 @@ export function shotAutopilot(G, dt) {
     }
     // The eight-cruiser pack, pinned every frame to its staging slot.
     // Convention (same as spawnPoliceBehind): back = metres BEHIND the
-    // hero, lat = lateral (+ = north, camera side). Every cruiser faces
-    // the hero's heading, so the front camera sees eight grilles +
-    // light bars at staggered depths — a pursuit column, not a wall of
-    // tailgates.
+    // hero, lat = lateral (+ = north, camera side). 3D BOULEVARD REBUILD:
+    // the chase cam looks EAST down the road, so the pack is pinned AHEAD
+    // of the hero (NEGATIVE back) down the boulevard — like top-1/top-2,
+    // where the police column + roadblock sit down the road in front of
+    // the hero. Pinned behind, they would sit on top of the camera.
     const pin = (kind, back, lat, face, speed) => {
       for (const c of (G.police || []).filter((c) => c.kind === kind)) {
         c.x = G.player.x - fx * back + rx * lat;
@@ -463,11 +459,11 @@ export function shotAutopilot(G, dt) {
         c.mesh.group.rotation.y = c.heading;
       }
     };
-    pin('chase', 7, -6, G.player.car.heading, 34);
-    pin('chase2', 11, 6, G.player.car.heading, 34);
+    pin('chase', -14, -4, G.player.car.heading, 34);
+    pin('chase2', -20, 5, G.player.car.heading, 34);
     // Flank trio: staggered depths on both sides of the pursuit column.
     const flank = (G.police || []).filter((c) => c.kind === 'flank');
-    const flankSlots = [[13, -10], [17, 10], [22, -3]];
+    const flankSlots = [[-26, -9], [-32, 9], [-40, -3]];
     flank.forEach((c, i) => {
       const [back, lat] = flankSlots[i] || flankSlots[0];
       c.x = G.player.x - fx * back + rx * lat;
@@ -480,7 +476,7 @@ export function shotAutopilot(G, dt) {
     // Closers: three more cruisers down the middle of the column, so the
     // pursuit reads eight deep instead of five + three stragglers.
     const headon = (G.police || []).filter((c) => c.kind === 'headon');
-    const headonSlots = [[12, -3], [19, 5], [26, 1]];
+    const headonSlots = [[-18, -3], [-28, 5], [-36, 1]];
     headon.forEach((c, i) => {
       const [back, lat] = headonSlots[i] || headonSlots[0];
       c.x = G.player.x - fx * back + rx * lat;
