@@ -19,7 +19,7 @@ import * as THREE from 'three';
 import { WORLD, STEP, SAVE_KEY, CLOCK, DISTRICTS, ROB_TARGETS, PROPERTIES, WEAPONS, CARS, LANDMARKS, POLICE_ROSTER, freshSave, clamp, dist2, streetNameAt, districtAt } from './config.js';
 import { createRandom } from './random.js';
 import { createCity, hasLineOfSight, resolveCollisions } from './city.js';
-import { buildCarMesh, makeCar, driveCar, spawnTraffic, spawnTrafficNear, updateTraffic, spawnPolice, updatePolice, makeHelicopter, updateHelicopter, makeRoadblock, updateRoadblock, makeDustTrail } from './vehicles.js';
+import { buildCarMesh, makeCar, driveCar, spawnTraffic, spawnTrafficNear, updateTraffic, spawnPolice, updatePolice, makeHelicopter, updateHelicopter, makeRoadblock, updateRoadblock, makeDustTrail, makePoliceBike } from './vehicles.js';
 import { spawnPedestrians, spawnPedestriansNear, updatePedestrians, spawnEnemy, updateEnemy, makePlayerMesh, movePlayerOnFoot } from './people.js';
 import { MissionEngine } from './missions.js';
 import { Garage, GARAGE_MENU, REPAIR_PRICE } from './garage.js';
@@ -79,6 +79,7 @@ const traffic = spawnTraffic(R.scene, rng);
 const peds = spawnPedestrians(R.scene, rng);
 const enemies = [];
 const police = [];
+const bikes = []; // shot-1 police motorcycles (staged only, never in plain play)
 const roadblocks = [];
 const pickups = [];
 let enemiesKilled = 0;
@@ -565,7 +566,7 @@ const G = {
     hud.setClock(t);
   },
   get dialogue() { return dialogue; },
-  player, state, missions, hud, turf, garage, parked, traffic, peds, heli, police, roadblocks,
+  player, state, missions, hud, turf, garage, parked, traffic, peds, heli, police, bikes, roadblocks,
   setDialogue,
   spawnTrafficNear(x, z, n) {
     const extra = spawnTrafficNear(R.scene, rng, x, z, n);
@@ -604,6 +605,71 @@ const G = {
       }
     }
   },
+  /** Remove EVERY beach umbrella (shot staging only): Sand 2026-11-21
+   ~02:08 WIT — "payung ilangin", NO umbrella visible in shots 1, 2, 4.
+   The city keeps its umbrellas in gameplay; staging hides them all. */
+  clearUmbrellasAll() {
+    for (const u of (city.umbrellas || [])) {
+      for (const m of u.meshes) city.group.remove(m);
+    }
+    city.umbrellas.length = 0;
+  },
+  /** Spawn the two shot-1 police motorcycles flanking the hero car
+   (Sand 2026-11-21 ~02:12 WIT): one on the camera side, one on the far
+   side, a few metres back, facing the hero's heading. The shot-1
+   autopilot re-pins them there every frame, like the cruiser pack. */
+  spawnPoliceBikes() {
+    const heading = player.inCar && player.car ? player.car.heading : player.heading;
+    const fx = Math.sin(heading), fz = Math.cos(heading);
+    const rx = Math.cos(heading), rz = -Math.sin(heading);
+    // ALONGSIDE the hero — BOTH on the south (screen-left) side: the
+    // north side of this front camera sits behind the right-hand toast
+    // panels, so a north-side bike is invisible no matter its slot (the
+    // (2,9) take proved it), and a trailing south-side bike hides behind
+    // the hero's cabin. Bike 1 rides beside the hero's nose, bike 2
+    // beside the hero's doors 2 m away — both in the open frame, both
+    // clear of the cruiser pack and the hero.
+    const slots = [[-1, -10], [0, -8]];
+    for (const [back, lat] of slots) {
+      const b = makePoliceBike(
+        player.x - fx * back + rx * lat,
+        player.z - fz * back + rz * lat, heading);
+      R.scene.add(b.group);
+      bikes.push(b);
+    }
+    return bikes;
+  },
+  /** Aim the heli's spotlight beam (heli.beam + heli.beamPool, see
+   vehicles.js makeHelicopter) from the heli belly down onto (x, y, z) —
+   Sand 2026-11-21 ~02:12 WIT, shot 1: the beam must visibly REACH/TOUCH
+   the hero car. Unit cone scaled (R, L, R), +Y pointed from target to
+   source so the apex sits at the lamp and the wide base lands on the
+   car; the pool disc lands on the ground around the car. Called every
+   frame by the shot-1 autopilot (the heli + car both hold position, but
+   the aim must follow the live positions, not the staging snapshot). */
+  aimSpotlight(x, y, z) {
+    const beam = heli.beam, pool = heli.beamPool;
+    if (!beam) return;
+    const from = new THREE.Vector3(heli.group.position.x, heli.group.position.y - 1.2, heli.group.position.z);
+    const to = new THREE.Vector3(x, y, z);
+    const dir = new THREE.Vector3().subVectors(from, to);
+    const L = dir.length();
+    if (L < 1) return;
+    dir.normalize();
+    beam.visible = true;
+    beam.position.copy(from).add(to).multiplyScalar(0.5);
+    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    // NARROW shaft: base radius 8% of beam length (~2 m at 25 m) — the
+    // first take at 16% read as a giant white dome, not a beam.
+    const R = Math.max(1.0, L * 0.08);
+    beam.scale.set(R, L, R);
+    if (pool) {
+      pool.visible = true;
+      pool.position.set(x, 0.12, z);
+      const pr = Math.max(2.5, L * 0.08);
+      pool.scale.set(pr, pr, 1);
+    }
+  },
   /** A PERSISTENT muzzle-flash glow at a gun position, so a shootout reads
    in a still (the live 60 ms flash never lands in a screenshot). An
    8-POINT STARBURST, not a soft blob: two crossed emissive blade pairs
@@ -614,11 +680,18 @@ const G = {
    the light stronger. */
   addMuzzleFlash(x, y, z, scale) {
     const s = scale || 2.2;
+    // Shot-2 rebuild (Sand 2026-11-21 ~02:10 WIT: the whole scene was a
+    // white-out): the flash glow + point light are TONED DOWN — sprite
+    // opacity 0.75 (was 0.95), sprite scale s*0.2 (was s*0.25), light
+    // 12 (was 70, then 35) with distance 10 (was 16). Five flashes at
+    // full power + the sunset sun were bleaching the whole beach white,
+    // and even at 35 the foreground sand under the duel still washed
+    // pale. The starburst blades still read; the wash does not come back.
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: sunGlowTexture(), color: 0xffc21a, transparent: true, opacity: 0.95, depthWrite: false,
+      map: sunGlowTexture(), color: 0xffc21a, transparent: true, opacity: 0.75, depthWrite: false,
     }));
     flash.position.set(x, y, z);
-    flash.scale.set(s * 0.25, s * 0.25, 1);
+    flash.scale.set(s * 0.2, s * 0.2, 1);
     R.scene.add(flash);
     const core = new THREE.Mesh(new THREE.SphereGeometry(0.25 * (s / 2.2), 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
@@ -639,7 +712,7 @@ const G = {
         R.scene.add(blade);
       }
     }
-    const light = new THREE.PointLight(0xffc21a, 70, 16, 1.5);
+    const light = new THREE.PointLight(0xffc21a, 12, 10, 1.5);
     light.position.set(x, y, z);
     R.scene.add(light);
     return flash;
@@ -738,10 +811,17 @@ const G = {
    z-fight and the beach renders GREEN in some takes and TAN in others. This
    staging prop lays the same sand texture at y=0.06 over the beach so the
    dawn beach is deterministically TAN. */
-  spawnSandPatch() {
+  spawnSandPatch(tint) {
     const tex = sandTexture(createRandom(20261120));
     const patch = new THREE.Mesh(new THREE.PlaneGeometry(480, 60),
-      new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+      // envMapIntensity 0.25: the bright sunset sky reflected off the sand
+      // at a grazing camera angle was blowing the beach white (shot 2's
+      // wash-out). The patch keeps its tan texture; it just stops
+      // mirroring the sky. `tint` (shot 2 only) multiplies the light
+      // #f0d49a texture down to a solid tan — the pale-cream foreground
+      // survived the dusk preset + dimmed lights, so the texture itself
+      // needed darkening where the camera looks down the beach at it.
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 1, envMapIntensity: 0.25, color: tint || 0xffffff }));
     patch.rotation.x = -Math.PI / 2;
     patch.position.set(0, 0.06, 210);
     patch.receiveShadow = true;

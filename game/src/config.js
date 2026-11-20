@@ -48,6 +48,21 @@ export const LIGHTING_PRESETS = {
     fill: 0.35, fog: [0xe8a06a, 200, 800], bg: 0xc96a4a,
     exposure: 1.2, envIntensity: 0.8, clock: '18:45',
   },
+  // Shot 2 rebuild (Sand 2026-11-21 ~02:10 WIT: "semuanya terlalu terang
+  // dan ga jelas" — the sunset shootout was a blown-white beach, figures
+  // unreadable): the SAME golden-hour sky as sunset, but TONED DOWN —
+  // exposure 0.85 (was 1.2), sun 1.8 (was 2.9), hemi 0.6, dimmer glow +
+  // darker fog/bg, so the sand + sky stop blowing out to white and Mara,
+  // the pistol and the cordon read as people instead of pale blobs.
+  // Clock stays 18:45 — same golden hour, less wash.
+  dusk: {
+    sky: 'sunset', sunPos: [420, 55, 165], sunDisc: [0xff8c2a, 1.2, true],
+    glow: [0xff9a3c, 0.4, 280], streakOpacity: 0.3,
+    sunLight: [0xffb36b, 1.8, 320, 60, 170],
+    rim: [0xff9a6b, 0.8], rearFill: 0.35, hemi: [0xffc49a, 0x7a5a3a, 0.6],
+    fill: 0.25, fog: [0x9a6a55, 200, 800], bg: 0x8a4a3a,
+    exposure: 0.85, envIntensity: 0.5, clock: '18:45',
+  },
   // Shot 1 (old) — NIGHT CHASE, clear night, neon boulevard. Kept for
   // reference; shots 1-2 moved to the sunset preset (Sand: the night
   // shots read too cartoony/blocky, and the top 1-10 all shoot golden

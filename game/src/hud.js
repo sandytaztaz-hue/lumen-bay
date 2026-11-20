@@ -191,7 +191,9 @@ function portraitSVG(name) {
 export function updateHud(hud, s) {
   const el = hud.el;
   el.stars.textContent = '★'.repeat(s.wanted) + '☆'.repeat(5 - s.wanted);
-  el.stars.style.color = s.wanted >= 3 ? '#ff5252' : '#ffd23f';
+  // Sand 2026-11-21 ~02:08 WIT: WANTED stars are GOLD, always — the red
+  // stars read as damage/error. Rich gold #ffb700, never pale yellow.
+  el.stars.style.color = '#ffb700';
   el.wantedLabel.textContent = s.wanted > 0 ? 'WANTED' : 'NOT WANTED';
   el.wantedLabel.style.color = s.wanted >= 3 ? '#ff5252' : '#9fd4ff';
   el.cash.textContent = `$${Math.floor(s.cash).toLocaleString('en-US')}`;

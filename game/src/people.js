@@ -32,19 +32,22 @@ export function makePistol() {
   // dark officers and washed tan under the warm sunset + flash lights.
   const steel = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, roughness: 0.3, metalness: 0.85 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.7 });
-  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.4), steel);
-  slide.position.set(0, 0.06, 0.12);
+  // CHUNKIER still (Sand 2026-11-21: pistol must be BIG and readable):
+  // wider + taller slide, fatter barrel, taller grip — the silhouette
+  // survives at 5–7 m from the camera instead of collapsing into a nub.
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.45), steel);
+  slide.position.set(0, 0.08, 0.12);
   gun.add(slide);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.16, 8), steel);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 8), steel);
   barrel.rotation.x = Math.PI / 2;
-  barrel.position.set(0, 0.06, 0.4);
+  barrel.position.set(0, 0.08, 0.42);
   gun.add(barrel);
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.16), dark);
-  grip.position.set(0, -0.08, -0.02);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.38, 0.2), dark);
+  grip.position.set(0, -0.1, -0.02);
   grip.rotation.x = 0.25;
   gun.add(grip);
-  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.08), dark);
-  sight.position.set(0, 0.15, -0.04);
+  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 0.1), dark);
+  sight.position.set(0, 0.19, -0.04);
   gun.add(sight);
   return gun;
 }
@@ -72,9 +75,15 @@ export function poseAim(group) {
   if (p.handL) p.handL.position.set(0.0, 1.3, 0.58);
   // Pistol CENTRED in front of the chest (a real two-handed stance), so
   // it reads in profile from EITHER camera side — the old x=0.44 seat hid
-  // the gun behind the body from the south camera. Scaled 2.0x: the
-  // 1.4x pistol still vanished at 5–7 m (round-2 targeted pass); the
-  // flash sits 0.5 m PAST the muzzle now, so the full barrel shows.
+  // the gun behind the body from the south camera. Scaled 2.0x with the
+  // CHUNKIER pistol (Sand 2026-11-21: BIG and readable): the 2.3x take
+  // read as a silver CANNON, not a pistol — a 1.2 m pipe spanning the
+  // gap to the cordon. 2.0x + chunky slide is big and readable without
+  // becoming a bazooka. The flash sits 0.5 m PAST the muzzle tip, so the
+  // full barrel shows. Muzzle tip with the 2.0x chunkier pistol: gun-local
+  // z 0.82 + 0.52*2.0 = 1.86 — Mara (scale 1.4) tip 2.60 m out, officers
+  // (1.3) 2.42 m out, so shots.js stages Mara's flash at tip − 0.5 m and
+  // the cordon's at tip + 0.5 m. Keep this comment + those numbers in sync.
   if (p.gun) {
     p.gun.visible = true;
     p.gun.position.set(0.15, 1.32, 0.82);

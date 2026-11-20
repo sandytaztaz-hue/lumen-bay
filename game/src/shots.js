@@ -55,6 +55,8 @@ export function stageShot1(G) {
   G.nosBurning = true;
   G.setWanted(5);
   G.spawnPoliceBehind(8); // the eight-cruiser pack, all facing east
+  G.spawnPoliceBikes(); // two police motorcycles flanking the hero (Sand 02:12)
+  G.clearUmbrellasAll(); // Sand 02:08 — NO umbrella anywhere in shot 1
   G.heli.active = true;
   G.heli.hover = 2; // body at y=10, orbit 24: the 14 m rotor fits the frame
   G.heli.orbit = 24;
@@ -63,6 +65,11 @@ export function stageShot1(G) {
   // The heli body + rotor + lamp carry it; the HUD keeps the SPOTLIGHT row.
   G.heli.cone.visible = false;
   G.heli.pool.visible = false;
+  // HELI SPOTLIGHT BEAM (Sand 2026-11-21 ~02:12 WIT): the heli shines a
+  // visible beam DOWN onto the hero car — a tapered cone from the heli
+  // belly to the car + a bright pool around the car (heli.beam, aimed by
+  // the shot-1 autopilot every frame). NOT the old vertical cone above.
+  G.aimSpotlight(90, 1.0, 215);
   G.spawnTrafficNear(20, 215, 6); // traffic down the beach, in the background
   G.clearTrafficNear(90, 215, 30); // NO stray car may overlap the hero
   G.clearPedsNear(90, 215, 15); // clear the hero's foreground
@@ -113,8 +120,15 @@ export function stageShot1(G) {
 // scaled up (1.3 / 1.15) so the shootout reads at a glance, not as toy
 // figures.
 export function stageShot2(G) {
-  G.setLighting('sunset'); // 18:45 — also stamps the HUD clock
-  G.spawnSandPatch(); // deterministic tan sand at a grazing camera angle
+  // FULL REBUILD (Sand 2026-11-21 ~02:10 WIT: "semuanya terlalu terang
+  // dan ga jelas" — the sunset take was a blown-white beach): the DUSK
+  // preset — same golden-hour sky, exposure + sun + hemi toned down so
+  // the sand + sky stop blowing out and the figures read. Smaller
+  // flashes, dimmer dress lights, bigger pistol (see below).
+  G.setLighting('dusk'); // 18:45 golden hour, toned down — also stamps the HUD clock
+  G.spawnSandPatch(0xd8c098); // tan-tinted sand: the pale-cream foreground
+  // survived the dusk preset + dimmed lights, so the light #f0d49a texture
+  // itself is darkened here (shot 2 only — shots 1 + 4 keep the untinted patch).
   G.startPlay();
   G.enterCar(G.parked[0]); // hot pink-red Comet RS, the hero car
   G.warpTo(78, 222); // park the Comet south of the cordon, nose east
@@ -151,24 +165,16 @@ export function stageShot2(G) {
   // light bar glowing, front facing EAST toward Mara and the lens. The
   // south flanker is dropped: the hero Comet parks there instead.
   G.parkPoliceCar(78, 206, Math.PI / 2);
-  // Muzzle flashes: Mara's FIRST, at her pistol tip west of her hands —
-  // a BIG 8-point starburst + light, clearly past her silhouette — then
-  // the cordon's, one per officer at his pistol tip (east of him, toward
-  // Mara). Positions are the barrel tips after the poseAim 1.8x gun scale
-  // and the figure scale (Mara 1.4: tip 2.36 m west of her centre at
-  // chest height 1.85; officers 1.3: tip 2.19 m east, height 1.72).
-  // Round-2 targeted pass: the old scale-1.5 flash read as a small white
-  // glow blob — Mara's is now 2.0, the cordon's 1.6, on the new 8-point
-  // starburst (see addMuzzleFlash). The first 2.8-scale take was a solid
-  // yellow blob that swallowed the pistol and the cordon, so the star is
-  // now THIN-rayed with gaps and the scale is pulled back to 2.0 — and
-  // the flash centre sits 0.5 m PAST the muzzle tip (Mara's tip is at
-  // x=88.5 after the 2.0x gun scale, officers' at e.x+2.31), so the full
-  // barrel shows east of the flash instead of hiding inside it. Mara's
-  // flash is 1.6, not 2.0: at 2.0 the star's rays still covered the
-  // grip hanging below the slide.
-  G.addMuzzleFlash(88.0, 1.85, 214.2, 1.6);
-  for (const e of squad.slice(0, 4)) G.addMuzzleFlash(e.x + 2.7, 1.72, e.z, 1.6);
+  // Muzzle flashes — SMALL starbursts (Sand 2026-11-21 ~02:10 WIT: the v3
+  // flash was a giant white blob that whited out the scene): scale 1.0,
+  // not 1.6 — compact 8-point stars with gaps, clearly past the muzzle
+  // tips, never swallowing the pistol. Positions track the 2.0x chunkier
+  // pistol (see people.js poseAim): Mara's tip is 2.60 m west of her
+  // centre (x=88.40 at chest height 1.85), so her flash sits at 87.9 —
+  // 0.5 m past the tip; officers' tips are 2.42 m east, so theirs sit
+  // at e.x+2.9. The full barrel shows between hand and flash.
+  G.addMuzzleFlash(87.9, 1.85, 214.2, 1.0);
+  for (const e of squad.slice(0, 4)) G.addMuzzleFlash(e.x + 2.9, 1.72, e.z, 1.0);
   // Cash flying LOW between Mara and the cordon (knee-to-waist height now
   // — see spawnCashBurst) + a spill by her feet, set SOUTH of her gun
   // line so the gold bars never sit under the pistol in frame.
@@ -185,9 +191,11 @@ export function stageShot2(G) {
   G.heli.cone.visible = false;
   G.heli.pool.visible = false;
   // Golden-hour dressing: a warm pool of light over Mara, another over the
-  // cordon so the officers read, beachgoers scattering west beyond the cordon.
-  G.addPointLight(84, 8, 206, 0xffb347, 40, 20);
-  G.addPointLight(78, 8, 216, 0xffb347, 40, 20);
+  // cordon so the officers read — DIMMED to 12 (was 40, then 18): the old
+  // dress lights + the flash lights were bleaching the foreground sand
+  // pale (Sand 02:10). Beachgoers scattering west beyond the cordon.
+  G.addPointLight(84, 8, 206, 0xffb347, 12, 20);
+  G.addPointLight(78, 8, 216, 0xffb347, 12, 20);
   G.spawnPedsNear(64, 230, 4); // beachgoers scattering west, clear of the lens
   G.spawnPedsNear(60, 216, 3);
   G.clearPedsNear(91, 205, 14); // NO ped may loom in the foreground (v3's giant)
@@ -210,17 +218,15 @@ export function stageShot2(G) {
   // — Mara faces west in profile with her pistol + flash toward the
   // cordon, the cordon fills the centre in profile facing her with its
   // muzzle flashes, the Comet reads at the right edge, and the background
-  // is open beach + sea + sunset sky. NO building in the frame. The
-  // camera sits 1 m SOUTH of the z=204 umbrella row, so the row stays
-  // behind the lens instead of looming in the foreground (v3's giant
-  // blob) — and the z=224 row behind the cordon is cleared outright
-  // below, so no umbrella sits behind the duel.
+  // is open beach + sea + sunset sky. NO building in the frame. ALL
+  // umbrellas are cleared outright below (Sand 02:08), so none looms in
+  // the foreground or behind the duel.
   // Mara reads BIG in frame.
   G.camYaw = -0.25;
   G.setCamDist(6.5);
   G.setCamHeight(2.6);
   G.camPitch = -0.05;
-  G.clearUmbrellasNear(91, 214, 18); // the umbrella behind the cordon goes
+  G.clearUmbrellasAll(); // Sand 02:08 — NO umbrella anywhere in shot 2
 }
 // FULL CITY MAP of Puerto Lumen (21:40) — the finale's escape plan, not a
 // 3D scene. Sand rejected the vault interior (sparse brown/orange, gold
@@ -313,9 +319,10 @@ export function stageShot4(G) {
   // centre of the frame, BELOW and CLEAR of the MISSION PASSED banner —
   // never behind it.
   G.spawnBoat(-158, 252, Math.PI / 2 - 0.12, 3.6);
-  // The beach umbrellas around the camera/boat go: the z=224 row loomed
-  // in the left foreground and hid the boat behind a giant canopy.
-  G.clearUmbrellasNear(-158, 230, 30);
+  // NO umbrella anywhere in shot 4 (Sand 02:08 — clear them ALL, not
+  // just near the camera; the z=224 row used to loom in the foreground
+  // and hide the boat behind a giant canopy).
+  G.clearUmbrellasAll();
   // Morning mist over the sea, kept SMALL and OFF the boat.
   G.spawnMist(-230, 258, 35);
   G.spawnMist(-105, 272, 35);
@@ -463,6 +470,19 @@ export function shotAutopilot(G, dt) {
       c.mesh.group.position.set(c.x, 0, c.z);
       c.mesh.group.rotation.y = c.heading;
     });
+    // Police bikes flanking the hero (Sand 02:12) + heli spotlight beam
+    // onto the car (Sand 02:12): pinned + aimed every frame, like the
+    // cruiser pack. Bikes sit a few metres back on both sides of the hero.
+    const bikeSlots = [[-1, -10], [0, -8]];
+    (G.bikes || []).forEach((b, i) => {
+      const [back, lat] = bikeSlots[i] || bikeSlots[0];
+      b.x = G.player.x - fx * back + rx * lat;
+      b.z = G.player.z - fz * back + rz * lat;
+      b.heading = G.player.car.heading;
+      b.group.position.set(b.x, 0, b.z);
+      b.group.rotation.y = b.heading;
+    });
+    if (G.heli && G.heli.beam) G.aimSpotlight(G.player.x, 1.0, G.player.z);
     return;
   }
   if (G.shotMode === 4) {
