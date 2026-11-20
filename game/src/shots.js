@@ -165,6 +165,24 @@ export function stageShot2(G) {
   // light bar glowing, front facing EAST toward Mara and the lens. The
   // south flanker is dropped: the hero Comet parks there instead.
   G.parkPoliceCar(78, 206, Math.PI / 2);
+  // ONE DOWNED POLICE OFFICER flat on the sand (Sand 2026-11-21 ~07:33
+  // WIT): a static prop, never in the enemy loop — head toward the
+  // cordon (west), blood pooled around the torso/head. FOREGROUND spot
+  // (89, 210): the first take at (88.5, 216.5) sat INSIDE the cordon
+  // spread and the standing officers hid the body behind their legs —
+  // only the blood pool showed. Here it lies in the open sand between
+  // the camera and the firing line, clear of Mara (91, 214), the cordon
+  // (z 214–218), the cash burst (85, 213) and the loot pile (90, 216.5).
+  // Second take moved it WEST to (87, 210): at (89, 210) its east half
+  // sat behind the right-side dialogue/toast panels. That made it WORSE:
+  // facing south, west is screen-RIGHT, so the head slid to sx 1038,
+  // behind the panels. A three.js projection of the shot-2 camera
+  // (93.23, 2.40, 205.28, fov 72) says feet (91, 209) land at sx 729 /
+  // sy 553 and head at sx 888 / sy 524 — open foreground sand, clear of
+  // the 940+ panels, below Mara (feet sx 589 / sy 448), above the bottom
+  // bar (y 640+), 5 m clear of Mara, the cordon, the cash burst and the
+  // loot pile. Third placement: (91, 209).
+  G.spawnDownedOfficer(91, 209);
   // Muzzle flashes — SMALL starbursts (Sand 2026-11-21 ~02:10 WIT: the v3
   // flash was a giant white blob that whited out the scene): scale 1.0,
   // not 1.6 — compact 8-point stars with gaps, clearly past the muzzle
@@ -212,18 +230,20 @@ export function stageShot2(G) {
   G.state.health = 100;
   G.state.armour = 100; // the cordon shoots back through the whole settle
   // LOW ground-level PROFILE view from the NORTH, looking SOUTH across
-  // the firing line: the camera sits 6.5 out (was 7 — closer so Mara's
-  // pistol + flash read at a glance), 2.6 high, at camYaw -0.25 (turned
-  // slightly west, down the firing line, so the cordon stays in frame)
-  // — Mara faces west in profile with her pistol + flash toward the
-  // cordon, the cordon fills the centre in profile facing her with its
-  // muzzle flashes, the Comet reads at the right edge, and the background
-  // is open beach + sea + sunset sky. NO building in the frame. ALL
-  // umbrellas are cleared outright below (Sand 02:08), so none looms in
-  // the foreground or behind the duel.
+  // the firing line: the camera sits 9 out (Sand 2026-11-21 ~07:33 WIT:
+  // Mara pulled FURTHER BACK — the CAMERA moves out, not her staging,
+  // so she reads smaller and deeper with more beach/cordon/sea visible;
+  // was 6.5, 9 first, 8.5 if the pistol stops reading), 2.6 high, at
+  // camYaw -0.25 (turned slightly west, down the firing line, so the
+  // cordon stays in frame) — Mara faces west in profile with her pistol
+  // + flash toward the cordon, the cordon fills the centre in profile
+  // facing her with its muzzle flashes, the Comet reads at the right
+  // edge, and the background is open beach + sea + sunset sky. NO
+  // building in the frame. ALL umbrellas are cleared outright below
+  // (Sand 02:08), so none looms in the foreground or behind the duel.
   // Mara reads BIG in frame.
   G.camYaw = -0.25;
-  G.setCamDist(6.5);
+  G.setCamDist(9);
   G.setCamHeight(2.6);
   G.camPitch = -0.05;
   G.clearUmbrellasAll(); // Sand 02:08 — NO umbrella anywhere in shot 2

@@ -775,6 +775,57 @@ const G = {
     e.mesh.position.y = 0.3;
     return e;
   },
+  /** A DOWNED POLICE OFFICER for shot 2 (Sand 2026-11-21 ~07:33 WIT):
+   one cop flat on the sand with a BLOOD SPLATTER around him, so the
+   shootout reads as a fight already won in part. STATIC prop, like the
+   parked cruiser: built from spawnDowned('police') — which never pushes
+   it into the enemies array, so updateEnemy never moves or shoots it —
+   then laid flat with the head toward the WEST (toward the cordon) and
+   the blood pooled around the torso/head. The body's own pistol is
+   hidden: laid flat it would float 0.65 m up beside the torso. Blood is
+   flat dark-red circles on the sand (MeshBasicMaterial, unlit so the
+   dusk light cannot wash it pale), y 0.09–0.12 — above the sand patch
+   (0.06), below the body's underside — plus droplets radiating out. */
+  spawnDownedOfficer(x, z) {
+    const e = this.spawnDowned(x, z, 'police');
+    // Head WEST (toward the cordon): rotation.set(0, PI/2, 0) then
+    // rotateX(-PI/2) lays the body flat with local +y (head direction)
+    // mapped to world -x. Body then spans feet (x, z) → head (x-1.85, z).
+    e.mesh.rotation.set(0, Math.PI / 2, 0);
+    e.mesh.rotateX(-Math.PI / 2);
+    e.mesh.position.y = 0.3;
+    if (e.gun) e.gun.visible = false; // no floating pistol beside the body
+    // BLOOD — a flat dark-red pool around the torso/head, built from
+    // overlapping circles so the edge reads as an irregular spill, not a
+    // disc. Centre sits over the torso (x-1.2) spreading to the head.
+    const blood = new THREE.MeshBasicMaterial({ color: 0x8b0000, side: THREE.DoubleSide });
+    const bloodDark = new THREE.MeshBasicMaterial({ color: 0x6e0000, side: THREE.DoubleSide });
+    const pool = [
+      [x - 1.35, z, 1.0, blood, 0.09],
+      [x - 1.95, z + 0.3, 0.65, bloodDark, 0.10],
+      [x - 0.7, z - 0.4, 0.6, blood, 0.10],
+      [x - 1.2, z + 0.55, 0.5, bloodDark, 0.11],
+      [x - 1.6, z - 0.55, 0.45, blood, 0.11],
+    ];
+    for (const [bx, bz, r, mat, by] of pool) {
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(r, 20), mat);
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.set(bx, by, bz);
+      R.scene.add(disc);
+    }
+    // Splatter droplets radiating out from the pool.
+    const drops = [
+      [x - 2.7, z - 0.5, 0.2], [x - 3.0, z + 0.6, 0.15], [x - 0.25, z + 0.85, 0.18],
+      [x - 3.2, z - 0.1, 0.12], [x - 1.0, z + 1.05, 0.15], [x - 2.4, z + 1.0, 0.12],
+    ];
+    for (const [bx, bz, r] of drops) {
+      const drop = new THREE.Mesh(new THREE.CircleGeometry(r, 12), bloodDark);
+      drop.rotation.x = -Math.PI / 2;
+      drop.position.set(bx, 0.12, bz);
+      R.scene.add(drop);
+    }
+    return e;
+  },
   /** A second crew figure standing with the player — static, never moves. */
   spawnAlly(x, z, heading) {
     const a = makePlayerMesh(R.scene);
