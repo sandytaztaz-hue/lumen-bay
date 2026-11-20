@@ -16,26 +16,35 @@ import { resolveCollisions } from './city.js';
 import { shirtTexture } from './textures.js';
 
 /** A REAL pistol (top-1/3 benchmark: the gun must read as a pistol at a
- glance): short slide + barrel + a vertical grip, ~0.4 m long total — NOT
+ glance): short slide + barrel + a vertical grip, ~0.5 m long total — NOT
  the old 0.7 m black slab that read as an SMG. Origin at the grip so
- poseAim() can seat it in the hands; barrel points +z (local forward). */
+ poseAim() can seat it in the hands; barrel points +z (local forward).
+ Round-2 targeted pass (shot 2 still did not read at a glance): the
+ pistol is CHUNKIER — a wider slide, a fatter barrel, a taller grip and
+ a taller front sight — so the slide + grip + barrel silhouette survives
+ at 5–7 m from the camera instead of collapsing into a dark nub. */
 export function makePistol() {
   const gun = new THREE.Group();
-  const steel = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.35, metalness: 0.8 });
-  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.34), steel);
-  slide.position.set(0, 0.06, 0.1);
+  // TWO-TONE for at-a-glance readability: a bright silver slide + barrel
+  // against a near-black grip — the slide reads as a light metal bar and
+  // the grip as a dark vertical bar below it, an unmistakable pistol
+  // silhouette even at 5–7 m. The old all-dark gun vanished against the
+  // dark officers and washed tan under the warm sunset + flash lights.
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, roughness: 0.3, metalness: 0.85 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.7 });
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.4), steel);
+  slide.position.set(0, 0.06, 0.12);
   gun.add(slide);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 8), steel);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.16, 8), steel);
   barrel.rotation.x = Math.PI / 2;
-  barrel.position.set(0, 0.06, 0.32);
+  barrel.position.set(0, 0.06, 0.4);
   gun.add(barrel);
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.22, 0.12),
-    new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.8 }));
-  grip.position.set(0, -0.06, -0.02);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.16), dark);
+  grip.position.set(0, -0.08, -0.02);
   grip.rotation.x = 0.25;
   gun.add(grip);
-  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.06), steel);
-  sight.position.set(0, 0.13, -0.04);
+  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.08), dark);
+  sight.position.set(0, 0.15, -0.04);
   gun.add(sight);
   return gun;
 }
@@ -63,13 +72,14 @@ export function poseAim(group) {
   if (p.handL) p.handL.position.set(0.0, 1.3, 0.58);
   // Pistol CENTRED in front of the chest (a real two-handed stance), so
   // it reads in profile from EITHER camera side — the old x=0.44 seat hid
-  // the gun behind the body from the south camera. Scaled 1.4x: the
-  // 1:1 pistol vanished at 7 m.
+  // the gun behind the body from the south camera. Scaled 2.0x: the
+  // 1.4x pistol still vanished at 5–7 m (round-2 targeted pass); the
+  // flash sits 0.5 m PAST the muzzle now, so the full barrel shows.
   if (p.gun) {
     p.gun.visible = true;
     p.gun.position.set(0.15, 1.32, 0.82);
     p.gun.rotation.set(0, 0, 0);
-    p.gun.scale.setScalar(1.4);
+    p.gun.scale.setScalar(2.0);
   }
   return true;
 }

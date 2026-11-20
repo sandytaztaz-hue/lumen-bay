@@ -19,6 +19,7 @@ function box(w, h, d, mat) {
 export function createCity(scene, rng) {
   const colliders = [];
   const landmarks = {};
+  const umbrellas = []; // every beach umbrella {x, z, meshes} — shot staging clears the ones in the way (see clearUmbrellasNear)
   const group = new THREE.Group();
   scene.add(group);
   // --- ground: grass base, wide sand beach south + west, sea beyond.
@@ -179,11 +180,11 @@ export function createCity(scene, rng) {
     leg.rotation.z = s * 0.35;
     group.add(leg);
   }
-  addPalmsAndProps(scene, group, rng, colliders, landmarks);
+  addPalmsAndProps(scene, group, rng, colliders, landmarks, umbrellas);
   addNeonAndFestival(scene, group, rng, landmarks);
-  return { colliders, landmarks, group };
+  return { colliders, landmarks, group, umbrellas };
 }
-function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
+function addPalmsAndProps(scene, group, rng, colliders, landmarks, umbrellas) {
   // Palm rows along the beach avenues + scattered through the city.
   const palmTex = palmTexture(rng);
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8a6f4d, roughness: 1 });
@@ -215,6 +216,7 @@ function addPalmsAndProps(scene, group, rng, colliders, landmarks) {
       const top = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.4, 8), umbMat);
       top.position.set(x, 3.4, z);
       group.add(top);
+      umbrellas.push({ x, z, meshes: [pole, top] });
     }
   }
   // Street lamps along the main avenues (unlit meshes; shots light the ones

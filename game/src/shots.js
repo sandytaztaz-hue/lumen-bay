@@ -124,7 +124,7 @@ export function stageShot2(G) {
   G.warpTo(91, 214); // Mara on foot on the sand, facing west in profile
   G.player.heading = -Math.PI / 2;
   G.player.mesh.group.rotation.y = -Math.PI / 2;
-  G.player.mesh.group.scale.setScalar(1.3); // Mara reads BIG
+  G.player.mesh.group.scale.setScalar(1.4); // Mara reads BIG
   G.player.weapon = 'pistol'; // PISTOL, not SMG — Sand's order
   poseAim(G.player.mesh.group); // two-handed aim, pistol out in front
   // Police cordon closing in ahead (WEST), tight and close, firing back
@@ -133,16 +133,18 @@ export function stageShot2(G) {
   // LARGE from the camera (v3's 8–14 m cordon read as toy soldiers at
   // the frame edge) and the sim holds them in place (updateEnemy only
   // advances officers further than 20 m out). Every officer is posed
-  // aiming and scaled up.
+  // aiming and scaled up. The two northern groups sit SOUTH enough
+  // (z 214/216, not 210/212) to stay inside the camera's view cone —
+  // at camYaw -0.25 the old 210/212 groups fell off the right edge.
   const squad = [
-    ...G.spawnEnemiesAt(85, 210, 4, 'police'),
+    ...G.spawnEnemiesAt(85, 214, 4, 'police'),
     ...G.spawnEnemiesAt(87, 216, 3, 'police'),
     ...G.spawnEnemiesAt(83, 218, 3, 'police'),
-    ...G.spawnEnemiesAt(86, 212, 2, 'police'),
+    ...G.spawnEnemiesAt(86, 216, 2, 'police'),
   ];
   for (const e of squad) {
     poseAim(e.mesh);
-    e.mesh.scale.setScalar(1.15);
+    e.mesh.scale.setScalar(1.3);
   }
   // ONE parked cruiser flanking the cordon at its north end — static
   // prop (not in the police array, so updatePolice never drives it off),
@@ -150,13 +152,28 @@ export function stageShot2(G) {
   // south flanker is dropped: the hero Comet parks there instead.
   G.parkPoliceCar(78, 206, Math.PI / 2);
   // Muzzle flashes: Mara's FIRST, at her pistol tip west of her hands —
-  // big star + light, clearly past her silhouette — then the cordon's,
-  // one per officer at his pistol tip (east of him, toward Mara).
-  G.addMuzzleFlash(89.8, 1.5, 214, 1.5);
-  for (const e of squad.slice(0, 4)) G.addMuzzleFlash(e.x + 1.3, 1.4, e.z, 1.2);
-  // Cash flying in the air between Mara and the cordon + a spill by her feet.
-  G.spawnCashBurst(86, 214);
-  G.spawnLootPile(88, 215);
+  // a BIG 8-point starburst + light, clearly past her silhouette — then
+  // the cordon's, one per officer at his pistol tip (east of him, toward
+  // Mara). Positions are the barrel tips after the poseAim 1.8x gun scale
+  // and the figure scale (Mara 1.4: tip 2.36 m west of her centre at
+  // chest height 1.85; officers 1.3: tip 2.19 m east, height 1.72).
+  // Round-2 targeted pass: the old scale-1.5 flash read as a small white
+  // glow blob — Mara's is now 2.0, the cordon's 1.6, on the new 8-point
+  // starburst (see addMuzzleFlash). The first 2.8-scale take was a solid
+  // yellow blob that swallowed the pistol and the cordon, so the star is
+  // now THIN-rayed with gaps and the scale is pulled back to 2.0 — and
+  // the flash centre sits 0.5 m PAST the muzzle tip (Mara's tip is at
+  // x=88.5 after the 2.0x gun scale, officers' at e.x+2.31), so the full
+  // barrel shows east of the flash instead of hiding inside it. Mara's
+  // flash is 1.6, not 2.0: at 2.0 the star's rays still covered the
+  // grip hanging below the slide.
+  G.addMuzzleFlash(88.0, 1.85, 214.2, 1.6);
+  for (const e of squad.slice(0, 4)) G.addMuzzleFlash(e.x + 2.7, 1.72, e.z, 1.6);
+  // Cash flying LOW between Mara and the cordon (knee-to-waist height now
+  // — see spawnCashBurst) + a spill by her feet, set SOUTH of her gun
+  // line so the gold bars never sit under the pistol in frame.
+  G.spawnCashBurst(85, 213);
+  G.spawnLootPile(90, 216.5);
   // Heli overhead SOUTH-WEST over the waterline (angle pinned by the
   // autopilot). Hover 2 (body at y=10), orbit 16: at orbit 24 + angle PI
   // the heli sat 66° off-axis and out of frame; angle 2.4 puts it 34°
@@ -187,18 +204,23 @@ export function stageShot2(G) {
   G.state.health = 100;
   G.state.armour = 100; // the cordon shoots back through the whole settle
   // LOW ground-level PROFILE view from the NORTH, looking SOUTH across
-  // the firing line: the camera sits 7 out, 2.8 high, at camYaw 0 — Mara
-  // faces west in profile with her pistol + flash toward the cordon, the
-  // cordon fills the centre in profile facing her with its muzzle
-  // flashes, the Comet reads at the left edge, and the background is
-  // open beach + sea + sunset sky. NO building in the frame. The camera
-  // sits 1 m SOUTH of the z=204 umbrella row, so the row stays behind
-  // the lens instead of looming in the foreground (v3's giant blob).
+  // the firing line: the camera sits 6.5 out (was 7 — closer so Mara's
+  // pistol + flash read at a glance), 2.6 high, at camYaw -0.25 (turned
+  // slightly west, down the firing line, so the cordon stays in frame)
+  // — Mara faces west in profile with her pistol + flash toward the
+  // cordon, the cordon fills the centre in profile facing her with its
+  // muzzle flashes, the Comet reads at the right edge, and the background
+  // is open beach + sea + sunset sky. NO building in the frame. The
+  // camera sits 1 m SOUTH of the z=204 umbrella row, so the row stays
+  // behind the lens instead of looming in the foreground (v3's giant
+  // blob) — and the z=224 row behind the cordon is cleared outright
+  // below, so no umbrella sits behind the duel.
   // Mara reads BIG in frame.
-  G.camYaw = 0;
-  G.setCamDist(7);
-  G.setCamHeight(2.8);
+  G.camYaw = -0.25;
+  G.setCamDist(6.5);
+  G.setCamHeight(2.6);
   G.camPitch = -0.05;
+  G.clearUmbrellasNear(91, 214, 18); // the umbrella behind the cordon goes
 }
 // FULL CITY MAP of Puerto Lumen (21:40) — the finale's escape plan, not a
 // 3D scene. Sand rejected the vault interior (sparse brown/orange, gold
@@ -256,14 +278,19 @@ export function stageShot3(G) {
 // parked on the sand at the water's edge, the speedboat moored just off it,
 // Mara's crew standing by the car, MISSION PASSED banner and the
 // story-progress line (STORY 15/15, SAVE SLOT 1).
-// r12 round-2 re-shoot (Sand ~23:45: the 91f401a boat sat BEHIND the
-// MISSION PASSED banner): the boat now moors WEST of the car (it reads
-// right-of-centre from the south-facing camera, clear of the centred
-// banner), the car faces WEST toward it, the camera is LOW (height 3.2)
-// so the boat — 40 m out, low over the water — drops to the lower half
-// of the frame instead of floating up behind the banner, and the banner
-// itself is lifted to 26% height. The boat is bigger (3.8x) with a real
-// tapered bow (see main.js spawnBoat).
+// r12 round-2 targeted pass (Sand: the boat was a thin strip partly
+// hidden behind the car + umbrella, NOT the focal point): the boat is
+// 3.6x and moored FURTHER out (z=252) with a slight three-quarter angle
+// so the WHOLE boat fits in frame with sea + sky around it — the first
+// 4.5x take at z=247 filled the whole width and read as a flat white
+// wall, its deck + windshield + motor cut off at the frame edges. The
+// camera is higher (4.5) so the deck reads as a surface and the
+// windshield sits on it instead of floating as a slab. The beach
+// umbrellas around the camera are cleared so none looms over the boat,
+// and the MISSION PASSED banner is lifted to 12% — above the boat's
+// cabin top — so it can never cover the boat. The car stays foreground
+// centre; it occludes only a thin slice of the boat's length, like a
+// car parked on the beach in front of a moored boat.
 export function stageShot4(G) {
   G.setLighting('dawn'); // 06:10 — also stamps the HUD clock
   G.spawnSandPatch(); // the dawn beach, deterministically tan
@@ -279,14 +306,16 @@ export function stageShot4(G) {
   G.missions.active = false;
   G.missions.objective = 'Story complete — Puerto Lumen is yours. Free roam!';
   // The getaway boat, moored IN THE WATER directly south of the car
-  // (dead-ahead in frame, lower-centre) — 3.4x, side-on to the low
-  // camera, tapered bow pointing EAST (left), white hull + red stripe +
-  // windshield + outboard motor. Centred so its 31 m length spans the
-  // frame instead of being cut off at the right edge and hidden behind
-  // the toast panels (v2's west-moored boat) or shrunk to a bar (v3's
-  // far-out boat). It sits in the lower half of the frame, BELOW and
-  // CLEAR of the MISSION PASSED banner — never behind it.
-  G.spawnBoat(-158, 246, Math.PI / 2, 3.4);
+  // (dead-ahead in frame, centre) — 3.6x, slight three-quarter angle so
+  // the tapered bow + deck + windshield + outboard motor all read, white
+  // hull + red stripe, 32 m long so the whole boat fits in frame with
+  // margins instead of being cut off at the edges. It sits in the
+  // centre of the frame, BELOW and CLEAR of the MISSION PASSED banner —
+  // never behind it.
+  G.spawnBoat(-158, 252, Math.PI / 2 - 0.12, 3.6);
+  // The beach umbrellas around the camera/boat go: the z=224 row loomed
+  // in the left foreground and hid the boat behind a giant canopy.
+  G.clearUmbrellasNear(-158, 230, 30);
   // Morning mist over the sea, kept SMALL and OFF the boat.
   G.spawnMist(-230, 258, 35);
   G.spawnMist(-105, 272, 35);
@@ -302,22 +331,24 @@ export function stageShot4(G) {
   G.spawnPedsNear(-166, 224, 3);
   G.clearTrafficNear(-158, 230, 30); // no stray car may cross the duel
   G.setDialogue('TIO REYES', 'Dawn breaks over the marina, Mara. The boat\'s waiting — Puerto Lumen is ours.');
-  G.hud.showBanner('MISSION PASSED', '+$8,000  ·  +500 REP  ·  UNLOCKED: PIER SAFEHOUSE', 600000, '26%');
+  G.hud.showBanner('MISSION PASSED', '+$8,000  ·  +500 REP  ·  UNLOCKED: PIER SAFEHOUSE', 600000, '12%');
   G.hud.notify('MISSION PASSED', 'El Puerto Es Nuestro  +$8,000', 'good', true);
   G.hud.notify('STORY 15/15 — SAVE SLOT 1', '100% COMPLETE — Puerto Lumen is yours', 'good', true);
   G.hud.log('MISSION PASSED: El Puerto Es Nuestro — +$8,000  ·  +500 REP');
   G.hud.log('STORY 15/15 — SAVE SLOT 1  100% COMPLETE.');
-  // LOW wide ESTABLISHING — camera north of the car on the beach, 14 out,
-  // 3.2 high (low, like top-1): the boat sits side-on and BIG in the
-  // lower-right of the frame, clear of the banner, the sunrise glows low
-  // over the visible sea behind it, the car + crew anchor the foreground.
+  // LOW wide ESTABLISHING — camera north of the car on the beach, 13.5
+  // out, 4.5 high (high enough to look down on the boat's deck so the
+  // windshield + seats read as boat parts, not floating slabs): the boat
+  // sits side-on and BIG in the centre of the frame, clear of the
+  // banner, the sunrise glows low over the visible sea behind it, the
+  // car + crew anchor the foreground.
   // The car is parked (G.holdStill) and anchored, so the slow settle can
   // never drift the frame.
-  G.camYaw = 0.2;
-  G.setCamDist(14);
-  G.setCamHeight(3.2);
+  G.camYaw = 0.15;
+  G.setCamDist(13.5);
+  G.setCamHeight(4.5);
   G.camPitch = 0.05;
-  G.anchor = [-158, 230]; // on the car — pins the frame; boat sits just west
+  G.anchor = [-158, 230]; // on the car — pins the frame; boat sits just south
 }
 /** Stage shot N (1..4) on the live game; any other value stages shot 1. */
 export function stageShot(n, G) {

@@ -593,35 +593,53 @@ const G = {
       }
     }
   },
+  /** Remove beach umbrellas near a point (shot staging only): the z=224
+   umbrella row looms in the foreground of the low beach cameras — one
+   giant umbrella hid the shot-4 boat and one sat behind the shot-2
+   cordon. The city tracks every umbrella in city.umbrellas (city.js). */
+  clearUmbrellasNear(x, z, r) {
+    for (const u of (city.umbrellas || [])) {
+      if (dist2([u.x, u.z], [x, z]) < r) {
+        for (const m of u.meshes) city.group.remove(m);
+      }
+    }
+  },
   /** A PERSISTENT muzzle-flash glow at a gun position, so a shootout reads
-   in a still (the live 60 ms flash never lands in a screenshot). Now a
-   STAR, not a soft blob: two crossed emissive blades + a hot core + a
-   real point light, so the flash reads as a gunshot at a glance. */
+   in a still (the live 60 ms flash never lands in a screenshot). An
+   8-POINT STARBURST, not a soft blob: two crossed emissive blade pairs
+   (one axis-aligned, one diagonal) + a hot core + a big glow sprite + a
+   real point light, so the flash reads as a gunshot at a glance.
+   Round-2 targeted pass: the old 4-blade star read as a small white glow
+   blob at 5–7 m — blades are now longer AND thicker, the sprite bigger,
+   the light stronger. */
   addMuzzleFlash(x, y, z, scale) {
     const s = scale || 2.2;
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: sunGlowTexture(), color: 0xffe9a0, transparent: true, opacity: 0.95, depthWrite: false,
+      map: sunGlowTexture(), color: 0xffc21a, transparent: true, opacity: 0.95, depthWrite: false,
     }));
     flash.position.set(x, y, z);
     flash.scale.set(s * 0.25, s * 0.25, 1);
     R.scene.add(flash);
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.4 * (s / 2.2), 8, 8),
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.25 * (s / 2.2), 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
     core.position.set(x, y, z);
     R.scene.add(core);
-    const starMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
-    // A 3D star: blades facing both axes, so the flash reads from any
-    // camera side (shot 2's camera sits west of the duel looking east).
+    const starMat = new THREE.MeshBasicMaterial({ color: 0xffb400, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+    // An 8-point star: blades facing both axes AND the diagonals, so the
+    // flash reads as a starburst from any camera side (shot 2's camera
+    // sits north of the duel looking south). Blades are THIN with gaps
+    // between the rays — the first 2.8-scale take was a solid yellow
+    // blob that swallowed the pistol and the cordon behind it.
     for (const ry of [0, Math.PI / 2]) {
-      for (const a of [0, Math.PI / 2]) {
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(s * 0.7, s * 0.14, 0.05), starMat);
+      for (const a of [0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4]) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(s * 0.7, s * 0.13, 0.05), starMat);
         blade.position.set(x, y, z);
         blade.rotation.y = ry;
         blade.rotation.z = a;
         R.scene.add(blade);
       }
     }
-    const light = new THREE.PointLight(0xffc21a, 50, 14, 1.5);
+    const light = new THREE.PointLight(0xffc21a, 70, 16, 1.5);
     light.position.set(x, y, z);
     R.scene.add(light);
     return flash;
@@ -648,11 +666,14 @@ const G = {
       R.scene.add(strap);
     });
   },
-  /** Cash stacks frozen mid-air — money flying in a shootout still. */
+  /** Cash stacks frozen mid-air — money flying in a shootout still.
+   Kept LOW (knee-to-waist height): the old 1.4–2.6 m stacks floated at
+   gun height right across the firing line and read as the main action,
+   hiding the pistols and flashes behind green boxes. */
   spawnCashBurst(x, z) {
     const cash = new THREE.MeshStandardMaterial({ color: 0x2fae5f, roughness: 0.8 });
     const band = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.7 });
-    const spots = [[-2, -1, 1.6], [1.5, -2, 2.2], [2.5, 1, 1.8], [-1, 2, 2.6], [0.5, 0.5, 1.4]];
+    const spots = [[-2, -1, 0.9], [1.5, -2, 1.2], [2.5, 1, 1.0], [-1, 2, 1.4], [0.5, 0.5, 0.8]];
     spots.forEach(([dx, dz, h], i) => {
       const stack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.45), cash);
       stack.position.set(x + dx, h, z + dz);
