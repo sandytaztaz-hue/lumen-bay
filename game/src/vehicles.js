@@ -176,11 +176,27 @@ export function buildCarMesh(type, opts) {
       glow.scale.set(2.2, 2.2, 1);
       group.add(glow);
     }
-    // Rear: full-width red taillight strip + dark diffuser + twin pipes.
-    const tailStrip = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 0.06),
-      new THREE.MeshBasicMaterial({ color: 0xff1a1a }));
-    tailStrip.position.set(0, 0.8, -2.56);
-    group.add(tailStrip);
+    // Rear: dark panel + twin bright clusters + glow halos + dark
+    // diffuser + twin pipes. 3D-BOULEVARD POLISH (2026-11-21): the old
+    // single red strip on pink read as a flat red bar from the chase
+    // cam. The dark surround makes the lights pop; the clusters +
+    // halos read as lights ON, like the top-1/top-2 cars' rears.
+    const tailPanel = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.3, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
+    tailPanel.position.set(0, 0.8, -2.57);
+    group.add(tailPanel);
+    for (const x of [-0.5, 0.5]) {
+      const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.16, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3.0 }));
+      cluster.position.set(x, 0.8, -2.61);
+      group.add(cluster);
+      const tGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: sunGlowTexture(), color: 0xff2a2a, transparent: true, opacity: 0.65, depthWrite: false,
+      }));
+      tGlow.position.set(x, 0.8, -2.68);
+      tGlow.scale.set(1.3, 1.3, 1);
+      group.add(tGlow);
+    }
     const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.16, 0.3),
       new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
     diffuser.position.set(0, 0.3, -2.55);
@@ -217,6 +233,21 @@ export function buildCarMesh(type, opts) {
     glare.position.set(0, 1.24, 0.62);
     glare.rotation.x = -0.6;
     group.add(glare);
+    // Rear decklid (3D-boulevard polish): a RAKED deck panel over the
+    // rear deck between the rear glass and the tail — the old deck was
+    // one broad flat pink plane from the chase cam. The raked panel +
+    // twin raised deck ridges break it with highlight/shadow lines, so
+    // the rear reads sculpted, not slab. Rear edge slightly lower.
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 1.15), paint);
+    deck.position.set(0, 0.97, -1.95);
+    deck.rotation.x = 0.14;
+    group.add(deck);
+    for (const x of [-0.55, 0.55]) {
+      const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 1.0), paint);
+      ridge.position.set(x, 1.01, -1.95);
+      ridge.rotation.x = 0.14;
+      group.add(ridge);
+    }
     // Rear spoiler on struts + side mirrors + door lines.
     const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.07, 0.42), paint);
     spoiler.position.set(0, 1.12, -2.35);
@@ -226,6 +257,12 @@ export function buildCarMesh(type, opts) {
       const strut = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.1), bumpMat);
       strut.position.set(s * 0.7, 0.98, -2.35);
       group.add(strut);
+      // Spoiler readability (chase cam): the pink-on-pink blade vanished
+      // against the deck. Dark endplates + a black gurney lip outline
+      // the wing so it reads as a wing from the rear, not a pink shelf.
+      const endplate = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.46), bumpMat);
+      endplate.position.set(s * 0.98, 1.12, -2.35);
+      group.add(endplate);
       const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.3), paint);
       mirror.position.set(s * 1.06, 1.0, 0.7);
       group.add(mirror);
@@ -234,6 +271,12 @@ export function buildCarMesh(type, opts) {
       line.position.set(s * 1.03, 0.7, 0.1);
       group.add(line);
     }
+    // Black gurney lip on the spoiler's trailing edge — the dark top
+    // edge is what the chase cam catches first; it draws the wing's
+    // line against the sky instead of letting pink bleed into pink.
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.14, 0.04), bumpMat);
+    lip.position.set(0, 1.19, -2.56);
+    group.add(lip);
     // Visible driver: dark hair + orange jacket, hands on the wheel.
     // Lowered into the LOW cabin (roof 1.36): torso y 0.9, head 1.12 —
     // the whole driver stays inside the glasshouse, never a blob on the roof.
@@ -410,11 +453,22 @@ export function buildCarMesh(type, opts) {
     group.add(p);
     plates.push(p);
   }
-  // NOS flame cone at the exhausts (hidden unless burning).
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.6, 8),
-    new THREE.MeshBasicMaterial({ color: 0x66c8ff, transparent: true, opacity: 0.9 }));
-  flame.rotation.x = -Math.PI / 2;
-  flame.position.set(0, 0.42, -3.1);
+  // NOS flames at the twin exhaust pipes (hidden unless burning).
+  // 3D-BOULEVARD FIX (2026-11-21): the old single cone (radius 0.35,
+  // 1.6 long, solid pale blue, sticking ~1.9 m out behind the bumper)
+  // read as a glitch triangle under the rear bumper. Twin SMALL flames,
+  // one per pipe, additive + translucent so they read as exhaust fire,
+  // angled slightly down-back so they hug the diffuser instead of
+  // jutting out. A Group, not a Mesh: main.js only toggles .visible,
+  // which a Group supports, and the twin cones stay one flame object.
+  const flame = new THREE.Group();
+  for (const x of [-0.55, 0.55]) {
+    const f = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x7fd4ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    f.rotation.x = -Math.PI / 2 + 0.35;
+    f.position.set(x, 0.38, -2.85);
+    flame.add(f);
+  }
   flame.visible = false;
   group.add(flame);
   // Poster scale: the hero reads ~30% of frame width on the chase camera.
@@ -753,7 +807,7 @@ export function makeHelicopter(scene) {
   beam.visible = false;
   scene.add(beam);
   const beamPool = new THREE.Mesh(new THREE.CircleGeometry(1, 24),
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending }));
   beamPool.rotation.x = -Math.PI / 2;
   beamPool.visible = false;
   scene.add(beamPool);

@@ -893,8 +893,13 @@ const G = {
   spawnBeachRoad(x0, x1, z) {
     const len = x1 - x0;
     const cx = (x0 + x1) / 2;
+    // COOLER GREY asphalt (3D-boulevard polish 2026-11-21): the old
+    // 0x2e2f33 under the warm sunset sun + warm hemi read BROWN/muddy
+    // like dirt, not a road — top 1 Karimbu's road is cool grey. The
+    // lighter blue-grey 0x60646d holds grey under the same warm light,
+    // and the sidewalks go greyer too (0xb8a88e was warm tan).
     const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(len, 14),
-      new THREE.MeshStandardMaterial({ color: 0x2e2f33, roughness: 0.95 }));
+      new THREE.MeshStandardMaterial({ color: 0x60646d, roughness: 0.9 }));
     asphalt.rotation.x = -Math.PI / 2;
     asphalt.position.set(cx, 0.07, z);
     asphalt.receiveShadow = true;
@@ -913,7 +918,7 @@ const G = {
         R.scene.add(dash);
       }
     }
-    const walkMat = new THREE.MeshStandardMaterial({ color: 0xb8a88e, roughness: 1 });
+    const walkMat = new THREE.MeshStandardMaterial({ color: 0xa39a8c, roughness: 1 });
     for (const dz of [-8.5, 8.5]) {
       const walk = new THREE.Mesh(new THREE.PlaneGeometry(len, 3), walkMat);
       walk.rotation.x = -Math.PI / 2;

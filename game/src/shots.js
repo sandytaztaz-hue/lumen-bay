@@ -70,7 +70,9 @@ export function stageShot1(G) {
   G.spawnPedsNear(140, 206, 8); // pedestrians on the north sidewalk ahead
   G.spawnPedsNear(170, 228, 5); // beachgoers on the sand ahead, south side
   // Warm bounce light over the hero so the pink-red paint + chrome glow.
-  G.addPointLight(90, 6, 215, 0xffb347, 200, 26);
+  // 100, not 200: the old 200 washed the road under the hero warm and
+  // fed the brown/muddy asphalt read — the paint still glows at 100.
+  G.addPointLight(90, 6, 215, 0xffb347, 100, 26);
   G.missions.startMission(11); // Street King race is live: checkpoints on minimap
   G.setDialogue('LCPD DISPATCH', 'All units — suspect eastbound on the Playa front, five stars. Air One overhead, eight units closing. Do not let her reach the pier.');
   G.hud.log('LCPD DISPATCH: "All units — suspect eastbound on the Playa front."');
@@ -84,10 +86,12 @@ export function stageShot1(G) {
   // sits WEST of the hero (camYaw = heading, slightly offset so the hero
   // sits a touch left of centre), LOW (height 3.4), looking EAST down the
   // boulevard — road + lane markings vanishing to the sunset horizon,
-  // palms both sides, buildings left, sea right, heli ahead. At dist 9.5
-  // the hero reads ~30% of the frame with the whole pursuit column ahead.
+  // palms both sides, buildings left, sea right, heli ahead. POLISH
+  // (2026-11-21): dist 9.5 → 8.5 → 7.0 — at 9.5 the hero read ~17% of
+  // frame width and at 8.5 ~24%, not the ~30% the top-1/top-2 chase
+  // cams land; 7.0 is the next step (bikes stay in frame to ~6.5).
   G.camYaw = Math.PI / 2 - 0.12;
-  G.setCamDist(9.5);
+  G.setCamDist(7.0);
   G.setCamHeight(3.4);
   G.camPitch = 0.06;
   G.state.cash = 18450;
