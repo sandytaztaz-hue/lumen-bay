@@ -128,6 +128,22 @@ export function stageShot2(G) {
   G.spawnSandPatch(0xd8c098); // tan-tinted sand: the pale-cream foreground
   // survived the dusk preset + dimmed lights, so the light #f0d49a texture
   // itself is darkened here (shot 2 only — shots 1 + 4 keep the untinted patch).
+  // 3D-BOULEVARD DENSITY (2026-11-21): the 3a5f34a take staged the duel
+  // on EMPTY sand — a tan plane, a pink sky, a thin sea strip, nothing
+  // else. The shootout now happens ON the same boulevard as shot 1:
+  // the asphalt road with double-yellow + white dashes runs east-west
+  // straight through the duel (Mara at z 214, cordon z 214–218, downed
+  // cop at z 209 on the road's north edge — the blood pool at y 0.09+
+  // sits above the asphalt at 0.07, so it still reads), and two palm
+  // rows stand SOUTH of the duel (z 224 + 232) behind the cordon, so
+  // the background is palms + beach + sea + sunset sky, not void. The
+  // north row is skipped on purpose: the camera sits at z ~205 looking
+  // south, so a z 206 row would loom over the lens. Traffic east down
+  // the road (x 140–200) gives the street depth behind the duel.
+  G.spawnBeachRoad(-40, 380, 215);
+  G.spawnPalmRow(-20, 360, 224, 30);
+  G.spawnPalmRow(40, 360, 232, 30);
+  G.spawnTrafficNear(170, 215, 3);
   G.startPlay();
   G.enterCar(G.parked[0]); // hot pink-red Comet RS, the hero car
   G.warpTo(78, 222); // park the Comet south of the cordon, nose east
@@ -331,13 +347,24 @@ export function stageShot4(G) {
   G.missions.active = false;
   G.missions.objective = 'Story complete — Puerto Lumen is yours. Free roam!';
   // The getaway boat, moored IN THE WATER directly south of the car
-  // (dead-ahead in frame, centre) — 3.6x, slight three-quarter angle so
-  // the tapered bow + deck + windshield + outboard motor all read, white
-  // hull + red stripe, 32 m long so the whole boat fits in frame with
-  // margins instead of being cut off at the edges. It sits in the
-  // centre of the frame, BELOW and CLEAR of the MISSION PASSED banner —
-  // never behind it.
-  G.spawnBoat(-158, 252, Math.PI / 2 - 0.12, 3.6);
+  // (dead-ahead in frame, centre) — 3.6x, THREE-QUARTER angle
+  // (2026-11-21: the old dead side-on take read as a flat white wall —
+  // a 20-degree turn shows the tapered bow + deck + windshield with
+  // depth, like the top-10 beach scenes) so the WHOLE boat fits in
+  // frame with sea + sky around it. White hull + red stripe, 32 m
+  // long. It sits in the centre of the frame, BELOW and CLEAR of the
+  // MISSION PASSED banner — never behind it.
+  G.spawnBoat(-158, 250, Math.PI / 2 - 0.35, 3.6);
+  // Sun glitter on the water behind the boat (see spawnSunGlitter):
+  // the dawn sun sits almost dead ahead (sunPos [-150, 30, 480]), so
+  // a soft warm glow path from the boat toward the sun makes the sea
+  // reflect the sunrise. Starts clear of the stern (z 270+).
+  G.spawnSunGlitter(-158, 290, 12, 40);
+  // Framing palms at the waterline, one each side of the boat — in
+  // frame at the edges (~46-50 deg off-axis), clear of the boat, so
+  // the dawn beach reads as a place, not a void.
+  G.spawnPalmRow(-182, -182, 238, 15);
+  G.spawnPalmRow(-134, -134, 238, 15);
   // NO umbrella anywhere in shot 4 (Sand 02:08 — clear them ALL, not
   // just near the camera; the z=224 row used to loom in the foreground
   // and hide the boat behind a giant canopy).

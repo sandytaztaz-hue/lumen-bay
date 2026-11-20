@@ -958,6 +958,19 @@ const G = {
     R.scene.add(puddle);
     return puddle;
   },
+  /** A soft sun-glitter path on the water (shot 4): a long additive
+   * radial-glow ellipse lying on the sea between the boat and the low
+   * dawn sun, so the water reads as reflecting the sunrise instead of
+   * a flat teal plane. sunGlowTexture() is a radial gradient, so the
+   * stretched ellipse fades at the edges — no hard stripe. */
+  spawnSunGlitter(x, z, w, len) {
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(w || 14, len || 40),
+      new THREE.MeshBasicMaterial({ map: sunGlowTexture(), color: 0xffc98a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+    g.rotation.x = -Math.PI / 2;
+    g.position.set(x, 0.09, z);
+    R.scene.add(g);
+    return g;
+  },
   /** Dust motes hanging in the vault's light beams — small warm additive
    sprites scattered through a box over the loot. */
   spawnDustMotes(x, z, n) {
@@ -996,7 +1009,6 @@ const G = {
     group.scale.setScalar(s || 1);
     const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.2 });
     const red = new THREE.MeshStandardMaterial({ color: 0xe8124a, roughness: 0.4, metalness: 0.3 });
-    const glass = new THREE.MeshStandardMaterial({ color: 0xd8ecf5, roughness: 0.2, metalness: 0.2 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.6 });
     const hullGeo = new THREE.BoxGeometry(3.2, 1.0, 9);
     const pos = hullGeo.attributes.position;
@@ -1022,8 +1034,38 @@ const G = {
     stripe.position.y = 0.55; group.add(stripe);
     const deck = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 5.5), white);
     deck.position.set(0, 0.85, -0.8); group.add(deck);
-    const shield = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.25), glass);
-    shield.position.set(0, 1.4, 1.2); shield.rotation.x = -0.3; group.add(shield);
+    // Windshield (3D-boulevard fix 2026-11-21): the old single pale
+    // slab (2.6x1.0 glass 0xd8ecf5) blew WHITE in the dawn light and
+    // read as a sail/fin sticking out of the boat, not a windshield.
+    // Now TWO raked DARK-tinted panes in a shallow V (centre crease,
+    // like a real speedboat screen) with a white frame + centre post,
+    // lower profile — the glass reads as glass, the white frame reads
+    // take used a near-mirror physical glass (metalness 0.9) that
+    // reflected the bright dawn env and blew WHITE again — this one
+    // is low-metal, low-env dark glass, so it stays a dark screen
+    // against the sunrise.
+    const boatGlass = new THREE.MeshStandardMaterial({ color: 0x14202c, roughness: 0.25, metalness: 0.3, envMapIntensity: 0.3 });
+    for (const s of [-1, 1]) {
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.72, 0.08), boatGlass);
+      pane.position.set(s * 0.62, 1.22, 1.15);
+      pane.rotation.set(-0.25, s * 0.32, 0);
+      group.add(pane);
+    }
+    const frameTop = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.09, 0.12), white);
+    frameTop.position.set(0, 1.58, 1.12);
+    frameTop.rotation.x = -0.25;
+    group.add(frameTop);
+    const framePost = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.72, 0.1), white);
+    framePost.position.set(0, 1.22, 1.18);
+    framePost.rotation.x = -0.25;
+    group.add(framePost);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.45, 1.8), white);
+    cabin.position.set(0, 1.2, -0.6);
+    group.add(cabin);
+    const cabinGlass = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x14202c, roughness: 0.25, metalness: 0.3, envMapIntensity: 0.3 }));
+    cabinGlass.position.set(-1.12, 1.2, -0.6);
+    group.add(cabinGlass);
     for (const sx of [-0.7, 0.7]) {
       const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8),
         new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.8 }));
