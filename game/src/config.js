@@ -23,7 +23,7 @@ export const DAYLIGHT = {
 // NIGHT chase ('nightchase', 22:40) — dark blue starry sky, cool moonlight,
 // neon and lamp glow, the heli cone and the cruisers' light bars carrying
 // the frame. Shot 2 keeps the wet-night pier shootout (23:20). Shot 3 is
-// the warm vault interior (21:40). Shot 4 is dawn mist (06:10).
+// the FULL CITY MAP (21:40). Shot 4 is dawn mist (06:10).
 // Fields: sky ('day'|'sunset'|'night'|'dawn'|null = dome hidden),
 // sunPos (sun/moon disc world position), sunDisc [colour, scale, visible],
 // glow [colour, opacity, scale], streakOpacity, sunLight [colour, intensity,
@@ -50,27 +50,34 @@ export const LIGHTING_PRESETS = {
   // (a white disc at night reads as a moon artefact). Dark blue starry sky,
   // cool dim moonlight, fog close and dark so the neon, the heli cone, the
   // muzzle flashes and the cruisers' red/blue light bars carry the frame.
+  // r12 revision: BRIGHTENED (BRISA BAY: the chase must read CLEAR, not
+  // muddy) — moonlight 0.7→1.5, hemi 0.7→1.1, fill 0.25→0.45, exposure
+  // 1.1→1.25, env 0.3→0.55, fog pushed out so the cars and road read.
   nightchase: {
     sky: 'night', sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
     glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
-    sunLight: [0x8fb4ff, 0.7, -100, 300, -100],
-    rim: [0x4d6fff, 0.65], rearFill: 0.3, hemi: [0x2a3f66, 0x0e1a24, 0.7],
-    fill: 0.25, fog: [0x0a1428, 140, 650], bg: 0x060d24,
-    exposure: 1.1, envIntensity: 0.3, clock: '22:40',
+    sunLight: [0x8fb4ff, 1.5, -100, 300, -100],
+    rim: [0x4d6fff, 0.9], rearFill: 0.55, hemi: [0x3a5578, 0x16242e, 1.1],
+    fill: 0.45, fog: [0x0e1c33, 160, 800], bg: 0x0a1830,
+    exposure: 1.25, envIntensity: 0.55, clock: '22:40',
   },
   // Shot 2 — NIGHT, recent rain, wet street. Same night family as shot 1
   // but wetter and darker: the pier shootout, lamp glows, puddles.
+  // r12 revision: BRIGHTENED like shot 1 so Mara, the cordon and the cash
+  // read clearly instead of sinking into the dark road.
   night: {
     sky: 'night', sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
     glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
-    sunLight: [0x8fb4ff, 0.55, -100, 300, -100],
-    rim: [0x4d6fff, 0.5], rearFill: 0.25, hemi: [0x2a3f66, 0x0e1a24, 0.55],
-    fill: 0.2, fog: [0x0a1428, 120, 550], bg: 0x060d24,
-    exposure: 1.05, envIntensity: 0.25, clock: '23:20',
+    sunLight: [0x8fb4ff, 1.2, -100, 300, -100],
+    rim: [0x4d6fff, 0.8], rearFill: 0.5, hemi: [0x3a5578, 0x16242e, 1.0],
+    fill: 0.4, fog: [0x0e1c33, 140, 750], bg: 0x0a1830,
+    exposure: 1.2, envIntensity: 0.5, clock: '23:20',
   },
   // Shot 3 — VAULT INTERIOR: no sky, no weather, no sun. Dome hidden,
   // background dark warm brown, fog tight and warm; the real light comes
-  // from the in-room point lights shots.js places.
+  // from the in-room point lights shots.js places. (Kept for plain play;
+  // shot 3 now renders the FULL CITY MAP instead — the preset survives so
+  // the HUD clock still stamps 21:40 and any 3D behind the map stays dark.)
   interior: {
     sky: null, sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
     glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
@@ -161,6 +168,7 @@ export const CARS = {
 };
 // r12: a longer LCPD call-sign roster — the night-chase cover runs SIX
 // cruisers plus AIR-1, and every unit needs its own name on the response list.
+// r12 revision: EIGHT cruisers on the cover, so two more call-signs.
 export const POLICE_ROSTER = ['PELICAN-11', 'GECKO-25', 'BARRACUDA-18', 'TAC-45', 'COBRA-07', 'VIPER-33', 'ORCA-09', 'FALCON-52'];
 export const WEAPONS = {
   fists: { name: 'Fists', damage: 12, rate: 0.45, range: 3, auto: false },

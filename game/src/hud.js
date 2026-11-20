@@ -8,7 +8,20 @@
 // ring while wanted, dialogue box with drawn portraits, big speed + gear +
 // vehicle + condition + radio. All readable at a glance, like the top
 // entries: lots of text, lots of notifications.
-import { DISTRICTS, CLOCK, STREETS, FERRIS, SEARCH_ZONE_RADIUS } from './config.js';
+// r12 revision: shot 3 is now a FULL CITY MAP (drawFullMap) — the same
+// minimap data (districts, streets, landmarks, route, blips) rendered
+// full-screen, with the game's HUD panels floating on top. The LCPD list
+// also caps its rows: the cover now runs EIGHT cruisers + AIR-1, and nine
+// rows would push the panel down over the RESPECT bar — so it shows five
+// cruisers + AIR-1 + a "+N MORE UNITS" footer, BRISA BAY style.
+// Map legibility (first render review): landmark pins carry NO text —
+// their names duplicate the district names and stacked into unreadable
+// piles. The player arrow carries NO text tag (the legend explains it;
+// the tag collided with the heli blip and the TORRE label). The heli is
+// one "H", no sublabel. Vertical street names sit in the lower third so
+// they never cross the middle-row district labels, and PLAYA DR is
+// right-of-centre so the title pill never hides it.
+import { DISTRICTS, CLOCK, STREETS, FERRIS, SEARCH_ZONE_RADIUS, LANDMARKS } from './config.js';
 import { turfLabel as turfLabelFn } from './turf.js';
 
 export function createHud() {
@@ -19,7 +32,7 @@ export function createHud() {
     weapon: $('hud-weapon'), objective: $('hud-objective'), log: $('hud-log'),
     radio: $('hud-radio'), clock: $('hud-clock'), turf: $('hud-turf'),
     banner: $('hud-banner'), bannerTitle: $('hud-banner-title'), bannerSub: $('hud-banner-sub'),
-    minimap: $('hud-minimap'), prompt: $('hud-prompt'), timer: $('hud-timer'),
+    minimap: $('hud-minimap'), fullmap: $('hud-fullmap'), prompt: $('hud-prompt'), timer: $('hud-timer'),
     feed: $('hud-feed'), garage: $('hud-garage'), garageList: $('hud-garage-list'),
     title: $('screen-title'), pause: $('screen-pause'), busted: $('screen-busted'),
     missionTitle: $('hud-mission-title'), missionObjectives: $('hud-mission-objectives'),
@@ -241,10 +254,27 @@ export function updateHud(hud, s) {
     const key = JSON.stringify(s.policeUnits) + (s.roadblockAhead ? '|RB' : '');
     if (key !== hud._policeCache) {
       hud._policeCache = key;
-      el.policeList.innerHTML = s.policeUnits.map((u) =>
+      // The cover runs EIGHT cruisers + AIR-1; nine rows would push the
+      // panel over the RESPECT bar, so show four cruisers + AIR-1 and
+      // fold the rest into a "+N MORE UNITS" footer (BRISA BAY does the
+      // same). Four, not five: with the roadblock banner the panel still
+      // reached the RESPECT label at five rows (yellow-on-yellow). The
+      // banner is suppressed while capped — the mission panel already
+      // carries the ROADBLOCK AHEAD alert and the toast says it too.
+      // Plain play never has more than four units, so this never triggers
+      // outside the staged cover.
+      const air = s.policeUnits.filter((u) => u.name === 'AIR-1');
+      const rest = s.policeUnits.filter((u) => u.name !== 'AIR-1');
+      const capped = rest.length > 5;
+      const shown = [...rest.slice(0, capped ? 4 : 5), ...air];
+      const hidden = rest.length - shown.length + air.length;
+      const more = hidden > 0
+        ? `<div class="unit"><span class="uname">+${hidden} MORE UNITS</span><span class="udist">—</span><span class="ustat chasing">EN ROUTE</span></div>` : '';
+      el.policeList.innerHTML = shown.map((u) =>
         `<div class="unit"><span class="uname">${u.name}</span><span class="udist">${u.dist}m</span><span class="ustat ${u.status.toLowerCase()}">${u.status}</span></div>`).join('')
+        + more
         || '<div class="unit"><span class="uname">NO UNITS</span><span class="udist">—</span><span class="ustat">CLEAR</span></div>';
-      el.roadblockBanner.style.display = s.roadblockAhead ? 'block' : 'none';
+      el.roadblockBanner.style.display = s.roadblockAhead && !capped ? 'block' : 'none';
     }
   }
   if (s.dialogue) {
@@ -258,7 +288,16 @@ export function updateHud(hud, s) {
   } else {
     el.dialogue.style.display = 'none';
   }
-  drawMinimap(el.minimap, s);
+  // Shot 3 is the FULL CITY MAP: draw the big map on its own canvas and
+  // hide the corner minimap (CSS body.map-mode); every other shot keeps
+  // the round minimap.
+  if (s.mapMode && el.fullmap) {
+    el.fullmap.style.display = 'block';
+    drawFullMap(el.fullmap, s);
+  } else {
+    if (el.fullmap) el.fullmap.style.display = 'none';
+    drawMinimap(el.minimap, s);
+  }
 }
 /** The detailed minimap: turquoise sea + sand, district turf colours + labels,
  streets with names, ferris wheel + lighthouse icons, mission marker, police
@@ -388,4 +427,271 @@ function drawMinimap(canvas, s) {
   g.fillStyle = '#fff';
   g.font = 'bold 10px system-ui, sans-serif';
   g.fillText('N', W - 12, 14);
+}
+/** The FULL CITY MAP (shot 3): the same minimap data as drawMinimap, but
+ rendered full-screen on a 1280x720 canvas — the whole of Puerto Lumen in
+ one frame, dense and legible, like the top entries' big detailed minimaps
+ blown up to fill the screen. The city square (480 world units) is drawn
+ 640 px across, centred, with turquoise sea + sand on the west/south edges,
+ district turf tints + names, the street grid with names, landmark pins
+ (dots only — their names duplicate the district names), properties /
+ robbery targets, police blips, the heli, the red search-zone ring, the
+ player arrow, and a GOLD dashed ESCAPE ROUTE from the Torre Lumen vault
+ to the Playa Dorada boat (via Marina Road and Ocean Boulevard). A title
+ pill names the map at the bottom-centre and a legend fills the free
+ bottom-left corner. The game's DOM HUD (mission panel, LCPD list, wanted
+ stars, cash, toasts, dialogue, speed) floats on top of it. */
+function drawFullMap(canvas, s) {
+  const g = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  // City square: 640 px for 480 world units, centred at (640, 360).
+  const S = 640 / 480;
+  const OX = 320, OY = 40;
+  const toMap = (x, z) => [OX + (x + 240) * S, OY + (z + 240) * S];
+  const label = (text, x, y, font, colour, align) => {
+    g.font = font;
+    g.textAlign = align || 'center';
+    g.fillStyle = 'rgba(0,0,0,0.75)';
+    g.fillText(text, x + 1.5, y + 1.5);
+    g.fillStyle = colour || 'rgba(255,255,255,0.95)';
+    g.fillText(text, x, y);
+  };
+  // Opaque deep-sea background (the 3D scene hides behind this canvas).
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#0b2233';
+  g.fillRect(0, 0, W, H);
+  // Land base: dark slate city square.
+  g.fillStyle = '#26313f';
+  g.fillRect(OX, OY, 640, 640);
+  // Turquoise sea + sand on the WEST and SOUTH edges of the square.
+  g.fillStyle = '#19b8c4';
+  g.fillRect(OX, OY, 26, 640);
+  g.fillRect(OX, OY + 640 - 26, 640, 26);
+  g.fillStyle = '#f2ddab';
+  g.fillRect(OX + 26, OY, 12, 640);
+  g.fillRect(OX, OY + 640 - 38, 640, 12);
+  // District turf tints + names.
+  g.textAlign = 'center';
+  for (let i = 0; i < DISTRICTS.length; i += 1) {
+    const r = DISTRICTS[i].rect;
+    const [x0, y0] = toMap(r[0], r[1]);
+    const [x1, y1] = toMap(r[2], r[3]);
+    g.fillStyle = s.turf.owners[i] === 'crew' ? 'rgba(55,201,120,0.30)' : 'rgba(229,72,77,0.16)';
+    g.fillRect(x0, y0, x1 - x0, y1 - y0);
+  }
+  // Street grid: every 60 world units, white; the three named coast roads
+  // slightly heavier.
+  g.strokeStyle = 'rgba(255,255,255,0.55)';
+  g.lineWidth = 3;
+  for (let i = -4; i <= 4; i += 1) {
+    const c = (i * 60 + 240) * S + OX;
+    g.beginPath(); g.moveTo(c, OY); g.lineTo(c, OY + 640); g.stroke();
+    g.beginPath(); g.moveTo(OX, c - OX + OY); g.lineTo(OX + 640, c - OX + OY); g.stroke();
+  }
+  // City square border.
+  g.strokeStyle = 'rgba(255,255,255,0.8)';
+  g.lineWidth = 2;
+  g.strokeRect(OX, OY, 640, 640);
+  // ESCAPE ROUTE (under the labels, over the streets): gold dashed line
+  // from the vault north to Marina Road, west to Ocean Boulevard, south to
+  // the Playa Dorada boat. Waypoints follow the named streets. No text
+  // along the line itself — the title pill + legend already name it, and
+  // a rotated label collided with OCEAN BLVD on the same street.
+  if (s.mapRoute) {
+    const [fx0, fz0] = s.mapRoute.from;
+    const [tx0, tz0] = s.mapRoute.to;
+    const pts = [[fx0, fz0], [fx0, -180], [-180, -180], [-180, tz0], [tx0, tz0]];
+    g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(0,0,0,0.55)';
+    g.lineWidth = 9;
+    g.beginPath();
+    pts.forEach(([x, z], i) => { const [mx, my] = toMap(x, z); if (i === 0) g.moveTo(mx, my); else g.lineTo(mx, my); });
+    g.stroke();
+    g.strokeStyle = '#ffd23f';
+    g.lineWidth = 5;
+    g.setLineDash([16, 11]);
+    g.beginPath();
+    pts.forEach(([x, z], i) => { const [mx, my] = toMap(x, z); if (i === 0) g.moveTo(mx, my); else g.lineTo(mx, my); });
+    g.stroke();
+    g.setLineDash([]);
+    // Arrowhead at the boat end, pointing south down Ocean Boulevard.
+    const [ax, ay] = toMap(tx0, tz0);
+    g.fillStyle = '#ffd23f';
+    g.beginPath();
+    g.moveTo(ax, ay + 16); g.lineTo(ax - 9, ay - 2); g.lineTo(ax + 9, ay - 2);
+    g.closePath(); g.fill();
+  }
+  // District names (drawn over the route so they stay readable).
+  for (let i = 0; i < DISTRICTS.length; i += 1) {
+    const r = DISTRICTS[i].rect;
+    const [x0, y0] = toMap(r[0], r[1]);
+    const [x1, y1] = toMap(r[2], r[3]);
+    label(DISTRICTS[i].name.toUpperCase(), (x0 + x1) / 2, (y0 + y1) / 2 + 5, 'bold 15px system-ui, sans-serif');
+  }
+  // Street names: vertical streets rotated, centred in the LOWER third so
+  // they never cross the middle-row district labels; horizontal streets
+  // flat. PLAYA DR sits right-of-centre so the title pill never hides it.
+  g.fillStyle = 'rgba(255,255,255,0.95)';
+  g.font = 'bold 12px system-ui, sans-serif';
+  const vNames = [['OCEAN BLVD', -180], ['PALMA AVE', -120], ['MERCADO ST', -60], ['CASINO AVE', 0], ['TORRE BLVD', 60], ['FESTIVAL AVE', 120], ['FAROL WAY', 180]];
+  for (const [name, at] of vNames) {
+    const [x] = toMap(at, 0);
+    g.save();
+    g.translate(x - 5, OY + 380);
+    g.rotate(-Math.PI / 2);
+    g.fillText(name, 0, 0);
+    g.restore();
+  }
+  for (const [name, at, xOff] of [['MARINA RD', -180, 0], ['MIRAMAR STRIP', 120, 0], ['PLAYA DR', 180, 280]]) {
+    const [, y] = toMap(0, at);
+    g.fillText(name, OX + 320 + xOff, y - 6);
+  }
+  // Landmark pins: gold dots only, NO text — every landmark name duplicates
+  // its district name, and the labels stacked into unreadable piles.
+  // Skip a pin that lands ON a district label (casino + festival sit at
+  // their district centres): the dot punched a hole in the label's letters.
+  const labelCentres = DISTRICTS.map((d) => {
+    const r = d.rect;
+    const [x0, y0] = toMap(r[0], r[1]);
+    const [x1, y1] = toMap(r[2], r[3]);
+    return [(x0 + x1) / 2, (y0 + y1) / 2 + 5];
+  });
+  for (const key of Object.keys(LANDMARKS)) {
+    const lm = LANDMARKS[key];
+    const [x, y] = toMap(lm.pos[0], lm.pos[1]);
+    if (labelCentres.some(([cx, cy]) => Math.abs(x - cx) < 50 && Math.abs(y - cy) < 18)) continue;
+    g.fillStyle = '#ffd23f';
+    g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#1a1210'; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.stroke();
+  }
+  // Ferris wheel + lighthouse icons.
+  const [fx, fy] = toMap(FERRIS.pos[0], FERRIS.pos[1]);
+  g.fillStyle = '#ff2a5e';
+  g.beginPath(); g.arc(fx, fy, 7, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#fff'; g.font = 'bold 10px system-ui, sans-serif';
+  g.fillText('F', fx, fy + 3.5);
+  const [lx, ly] = toMap(180, -180);
+  g.fillStyle = '#ffd23f';
+  g.beginPath(); g.arc(lx, ly, 6, 0, Math.PI * 2); g.fill();
+  // Properties + robbery targets.
+  g.font = 'bold 15px system-ui, sans-serif';
+  for (const p of s.properties) {
+    const [x, y] = toMap(p.pos[0], p.pos[1]);
+    g.fillStyle = s.turf.isOwned(p.id) ? '#37c978' : '#e8e8e8';
+    g.fillText(s.turf.isOwned(p.id) ? '⌂' : '$', x, y);
+  }
+  for (const t of s.robTargets) {
+    const [x, y] = toMap(t.pos[0], t.pos[1]);
+    g.fillStyle = '#ff9a56';
+    g.fillText('$', x, y);
+  }
+  if (s.raceCheckpoints) {
+    g.fillStyle = '#ffd23f';
+    for (const [x, z] of s.raceCheckpoints) {
+      const [mx, my] = toMap(x, z);
+      g.fillRect(mx - 3, my - 3, 6, 6);
+    }
+  }
+  // Mission target diamond (the boat at Playa Dorada).
+  if (s.missionTarget) {
+    const [x, y] = toMap(s.missionTarget[0], s.missionTarget[1]);
+    const pulse = 6 + Math.sin(performance.now() * 0.006) * 2;
+    g.fillStyle = '#ffd23f';
+    g.beginPath();
+    g.moveTo(x, y - pulse - 5); g.lineTo(x + pulse + 5, y); g.lineTo(x, y + pulse + 5); g.lineTo(x - pulse - 5, y);
+    g.closePath(); g.fill();
+    g.strokeStyle = '#1a1210'; g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(x, y - pulse - 5); g.lineTo(x + pulse + 5, y); g.lineTo(x, y + pulse + 5); g.lineTo(x - pulse - 5, y);
+    g.closePath(); g.stroke();
+    // Label to the LEFT of the diamond, right-aligned, clear of the title
+    // pill (which starts at x=425) and of the PLAYA DORADA district label.
+    label('BOAT — PLAYA DORADA', x - 18, y + 5, 'bold 12px system-ui, sans-serif', '#ffd23f', 'right');
+  }
+  // Police blips + roadblocks + heli (one "H" — the legend explains it).
+  for (const [x, z] of s.policeBlips) {
+    const [mx, my] = toMap(x, z);
+    g.fillStyle = '#4d8dff';
+    g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 2;
+    g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.stroke();
+  }
+  g.fillStyle = '#ff2a2a';
+  for (const [x, z] of s.roadblocks) {
+    const [mx, my] = toMap(x, z);
+    g.fillRect(mx - 5, my - 5, 10, 10);
+  }
+  if (s.heli) {
+    const [x, y] = toMap(s.heli[0], s.heli[1]);
+    label('H', x, y + 5, 'bold 17px system-ui, sans-serif', '#ffffff');
+  }
+  // Red dashed SEARCH-ZONE ring around the player while wanted.
+  if (s.searchZone) {
+    const [px, py] = toMap(s.px, s.pz);
+    const rPx = (SEARCH_ZONE_RADIUS / 480) * 640;
+    g.strokeStyle = 'rgba(255,42,42,0.9)';
+    g.lineWidth = 3;
+    g.setLineDash([10, 7]);
+    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = 'rgba(255,42,42,0.08)';
+    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.fill();
+  }
+  // Player arrow at the vault. NO text tag — the legend explains the
+  // arrow, and a tag here collided with the heli blip + TORRE label.
+  const [px, py] = toMap(s.px, s.pz);
+  g.save();
+  g.translate(px, py);
+  g.rotate(Math.atan2(Math.sin(s.heading), Math.cos(s.heading)) * -1 + Math.PI);
+  g.fillStyle = '#fff';
+  g.beginPath();
+  g.moveTo(0, -12); g.lineTo(9, 9); g.lineTo(-9, 9);
+  g.closePath(); g.fill();
+  g.strokeStyle = '#1a1210'; g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(0, -12); g.lineTo(9, 9); g.lineTo(-9, 9);
+  g.closePath(); g.stroke();
+  g.restore();
+  // Compass rose, top-right of the map square (clear of the cash panel).
+  const [cx, cy] = [OX + 640 - 34, OY + 34];
+  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 2;
+  g.beginPath(); g.arc(cx, cy, 18, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#ff5252';
+  g.beginPath(); g.moveTo(cx, cy - 13); g.lineTo(cx - 5, cy + 4); g.lineTo(cx + 5, cy + 4); g.closePath(); g.fill();
+  label('N', cx, cy - 24, 'bold 13px system-ui, sans-serif');
+  // Title pill, bottom-centre above the dialogue box. SINGLE line: the
+  // two-line pill's subtitle sat half under the dialogue box (its top edge
+  // is y≈629) and read as sliced text; the subtitle is redundant anyway
+  // (mission panel NEXT + legend already name the route). Pill 586–622,
+  // clear of the bottom-row district labels (≈578) and the dialogue.
+  g.fillStyle = 'rgba(10,14,24,0.82)';
+  g.strokeStyle = 'rgba(255,210,63,0.6)'; g.lineWidth = 1.5;
+  const tw = 430, th = 36, tx = (W - tw) / 2, ty = 586;
+  g.beginPath();
+  g.roundRect(tx, ty, tw, th, 10);
+  g.fill(); g.stroke();
+  label('PUERTO LUMEN — CITY MAP', W / 2, ty + 25, 'bold 22px system-ui, sans-serif', '#ffd23f');
+  // Legend, bottom-left (the corner minimap is hidden in map mode).
+  const lx0 = 24, ly0 = 548;
+  g.textAlign = 'left';
+  g.font = 'bold 13px system-ui, sans-serif';
+  const legend = [
+    ['—', '#ffd23f', 'ESCAPE ROUTE — VAULT → BOAT'],
+    ['▲', '#ffffff', 'MARA — YOU'],
+    ['◆', '#ffd23f', 'MISSION TARGET — BOAT'],
+    ['●', '#4d8dff', 'LCPD UNITS ON THE STREET'],
+    ['H', '#ffffff', 'AIR-1 HELICOPTER'],
+    ['$', '#ff9a56', 'ROBBERY TARGETS / PROPERTIES'],
+    ['■', '#37c978', 'CREW TURF'],
+    ['■', '#e5484d', 'TIBURONES TURF'],
+  ];
+  legend.forEach(([mark, colour, text], i) => {
+    const y = ly0 + i * 19;
+    g.fillStyle = colour;
+    g.fillText(mark, lx0, y);
+    g.fillStyle = 'rgba(255,255,255,0.92)';
+    g.fillText(text, lx0 + 22, y);
+  });
+  g.textAlign = 'center';
 }

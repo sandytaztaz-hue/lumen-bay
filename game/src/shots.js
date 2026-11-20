@@ -10,21 +10,32 @@
 // top-entry look Sand ordered: MANY police cruisers + helicopter, detailed
 // city minimap, night neon, wanted stars, police-response panel, weapon
 // slots, dispatch dialogue. Shot 2 is the night pier shootout (23:20).
-// Shot 3 is the vault interior (21:40). Shot 4 is the dawn marina escape
-// (06:10) — r12 FIXES the r11 boat defect: the boat now sits EAST of the
-// car, on the screen-LEFT side of the frame (the camera looks south, so
-// screen-right is west), clear of the MISSION PASSED banner (top-centre)
-// and the toast stack (top-right), big and close to shore, with the car
-// facing east toward it.
+// Shot 3 is the FULL CITY MAP of Puerto Lumen (21:40) — the vault interior
+// is gone (Sand rejected it: sparse brown, gold read as debris, figures
+// tiny). The map is the game's own minimap data rendered full-screen with
+// the escape route, districts, streets and landmarks, HUD panels on top.
+// Shot 4 is the dawn marina escape (06:10) — r12 FIXES the r11 boat defect:
+// the boat now sits EAST of the car, on the screen-LEFT side of the frame
+// (the camera looks south, so screen-right is west), clear of the MISSION
+// PASSED banner (top-centre) and the toast stack (top-right), big and close
+// to shore, with the car facing east toward it.
 import { ROB_TARGETS } from './config.js';
 
 // Cover: NIGHT boulevard chase. Hot pink-red Comet RS LARGE in frame, NOS
-// burning, SIX cruisers close around it with flashing light bars, heli
+// burning, EIGHT cruisers close around it with flashing light bars, heli
 // overhead with a visible searchlight cone, roadblock ahead, neon signs,
 // full dense HUD: mission panel + alerts, WANTED 5 stars, big green cash,
-// police response list (six units + AIR-1), notification toasts, weapon
-// slots, IN SIGHT banner, RESPECT bar, search-zone minimap, dispatch
-// dialogue, big speed. CLEAR night, neon glow, wet-looking asphalt.
+// police response list (eight units + AIR-1, capped display + footer),
+// notification toasts, weapon slots, IN SIGHT banner, RESPECT bar,
+// search-zone minimap, dispatch dialogue, big speed. CLEAR night, neon
+// glow, wet-looking asphalt.
+// r12 revision (BRISA BAY: crowded + clear + exciting): the pack grows
+// from six to eight cruisers — a centre head-on charger down the middle
+// and a close far-side flanker — the heli drops to hover 3 so its body
+// sits INSIDE the frame (at hover 5 only the cone showed, the body sat
+// just above the top edge), and the night lighting is brightened in
+// config.js so the cars, road and action read clearly instead of
+// muddy/dark.
 export function stageShot1(G) {
   G.setLighting('nightchase'); // 22:40 — also stamps the HUD clock
   G.startPlay();
@@ -35,9 +46,12 @@ export function stageShot1(G) {
   G.garage.nos = 120;
   G.nosBurning = true;
   G.setWanted(5);
-  G.spawnPoliceBehind(6); // the six-cruiser pack: chase + 2 head-on + 2 flank + 2nd chaser
+  G.spawnPoliceBehind(8); // the eight-cruiser pack: chase + 3 head-on + 3 flank + 2nd chaser
   G.heli.active = true;
-  G.heli.hover = 12;
+  G.heli.hover = 3; // body at y=11: the cone's apex (the heli) sat just
+  // above the frame's top edge at hover 5 — the beam showed but the body
+  // didn't. Hover 3 pulls the body + rotor into the frame; the cone
+  // still reads long (11 m of beam over the road).
   G.spawnRoadblockAhead();
   G.spawnTrafficNear(-40, 180, 8); // far ahead of the hero, in the mid-road
   G.clearTrafficNear(-150, 180, 30); // NO stray pickup may overlap the hero
@@ -52,17 +66,20 @@ export function stageShot1(G) {
   G.setDialogue('LCPD DISPATCH', 'All units — suspect eastbound on Playa Drive, five stars. Air One overhead, roadblock at Miramar Strip. Do not let her reach the beach.');
   G.hud.log('LCPD DISPATCH: "All units — suspect eastbound on Playa Drive."');
   G.hud.log('NOS burning — hold Shift on the straight.');
-  G.hud.log('Night chase — six units on you, heli overhead, roadblock ahead.');
+  G.hud.log('Night chase — eight units on you, heli overhead, roadblock ahead.');
   G.hud.notify('WANTED LEVEL UP', '5 stars — the whole LCPD is on you', 'danger', true);
   G.hud.notify('ROADBLOCK AHEAD', 'Ram it or dodge — 24m', 'danger', true);
   G.hud.notify('NOS READY', 'Tank full — hold Shift to burn', 'good', true);
   G.addAlert('info', 'VEHICLE STOLEN: VELOZ COMET RS');
-  // LOW rear 3/4 chase cam: a stronger side offset (-0.5) shows the hero's
-  // flank + driver and puts the far-side chase fan at ~the hero's distance
-  // from the lens, so the cruisers match its scale instead of looming.
+  // WIDER rear 3/4 chase cam (BRISA BAY framing): dist 9 kept the hero
+  // at ~50% of the frame, cropped at the bottom, with the pack squeezed
+  // to partial cars at the edges and no sky for the heli. At dist 12 /
+  // height 4 the hero reads ~30%, the flankers + head-on pair + roadblock
+  // fit around it, and the sky opens up at the top of the frame. The
+  // side offset (-0.5) still shows the hero's flank + driver.
   G.camYaw = Math.PI / 2 - 0.5;
-  G.setCamDist(9.0);
-  G.setCamHeight(2.8);
+  G.setCamDist(12);
+  G.setCamHeight(4.0);
   G.state.cash = 18450;
   // Anchor: the chase autopilot holds speed 34, so without this the hero
   // drives hundreds of units during a slow SwiftShader settle and the
@@ -82,6 +99,15 @@ export function stageShot1(G) {
 // reads side-on directly behind her as cover, and the cordon stands
 // ahead-south (screen-right) with its muzzle flashes. A warm point light
 // hangs over Mara so she reads against the dark road.
+// r12 revision (BRISA BAY: crowded + clear): the cordon grows — TWO parked
+// police cruisers flank it (light bars glowing, facing the lens) and four
+// more officers widen it east and west so the shootout reads CROWDED, not
+// a lone duel. Muzzle flashes shrink (4.0→2.4, 3.6→2.0) so they read as
+// flashes, not one giant white blob. The camera pulls closer (11→9.5) so
+// Mara reads BIG, the heli drops to hover 2 so its body sits IN the frame
+// over the cordon (at hover 5 it flew above the top edge with this
+// down-pitched camera; at hover 0 the cone shrank to a stub), and the
+// night lighting is brightened in config.js.
 export function stageShot2(G) {
   G.setLighting('night'); // 23:20 — also stamps the HUD clock
   G.startPlay();
@@ -95,25 +121,41 @@ export function stageShot2(G) {
   G.player.weapon = 'smg';
   // Police cordon closing in ahead (south), tight and close, firing back —
   // spread WIDE of the hero car so the cordon reads clear of it from the
-  // west camera instead of hiding behind the Comet's flank.
+  // west camera instead of hiding behind the Comet's flank. Two extra
+  // groups widen the cordon east and west so the frame reads CROWDED.
   G.spawnEnemiesAt(-177, -136, 3, 'police');
   G.spawnEnemiesAt(-174, -134, 2, 'police');
   G.spawnEnemiesAt(-180, -132, 2, 'police');
   G.spawnEnemiesAt(-168, -134, 2, 'police');
   G.spawnEnemiesAt(-166, -130, 2, 'police');
+  G.spawnEnemiesAt(-186, -136, 2, 'police');
+  G.spawnEnemiesAt(-164, -132, 2, 'police');
+  // TWO parked cruisers flanking the cordon — static props (not in the
+  // police array, so updatePolice never drives them off), light bars
+  // glowing, angled toward the lens. They make the cordon read as a real
+  // police presence, not just officers on foot. Placed at the cordon ENDS,
+  // close to the camera: at the old spots (-172/-186, -128/-130) they sat
+  // 22–29 m out at the building base and vanished into the dark.
+  G.parkPoliceCar(-170, -133, -2.4);
+  G.parkPoliceCar(-190, -136, 2.4);
   // Muzzle flashes: Mara's gun + the cordon's guns, persistent in the still.
-  G.addMuzzleFlash(-180.5, 1.4, -142.5, 4.0);
-  G.addMuzzleFlash(-177, 1.4, -135.5, 3.6);
-  G.addMuzzleFlash(-174.5, 1.4, -133.5, 3.6);
-  G.addMuzzleFlash(-179.5, 1.4, -131.5, 3.6);
-  G.addMuzzleFlash(-175.5, 1.4, -134.5, 3.2);
+  // SMALLER than r12 (2.4/2.0): a flash, not a white blob.
+  G.addMuzzleFlash(-180.5, 1.4, -142.5, 2.4);
+  G.addMuzzleFlash(-177, 1.4, -135.5, 2.0);
+  G.addMuzzleFlash(-174.5, 1.4, -133.5, 2.0);
+  G.addMuzzleFlash(-179.5, 1.4, -131.5, 1.8);
+  G.addMuzzleFlash(-175.5, 1.4, -134.5, 1.8);
   // Cash flying in the air around the shootout + a spill by the car door.
   G.spawnCashBurst(-178, -138);
   G.spawnLootPile(-179, -146);
   // Heli overhead with its spotlight cone on the road (angle pinned by the
-  // autopilot so the cone stays in frame over the cordon).
+  // autopilot so the cone stays in frame over the cordon). Hover 2 (body
+  // at y=10, ~12° elevation over the cordon): at hover 5 the body sat at
+  // ~19° elevation, right on the frame's top edge with this down-pitched
+  // camera, and never appeared; at hover 0 the cone shrank to a 7 m stub
+  // (the cone hangs 26 m below the heli) and the body sat too low.
   G.heli.active = true;
-  G.heli.hover = 10;
+  G.heli.hover = 2;
   // NIGHT street dressing: two LIT lamps down the road ahead, a warm pool of
   // light over Mara, rain puddles on the road catching the light,
   // dockworkers scattering further down the pier.
@@ -140,76 +182,60 @@ export function stageShot2(G) {
   G.state.cash = 21700;
   G.state.health = 82;
   G.state.armour = 45;
-  // ELEVATED SIDE view: camera NORTH-WEST of Mara on the ROAD (camYaw 0.6),
-  // 11 out, 5 high, pitched down — the high angle sees OVER the Comet's
-  // flank to the cordon behind it and pulls Mara, the car and the whole
-  // cordon big in frame instead of a wide empty road.
+  // CLOSER elevated side view: camera NORTH-WEST of Mara on the ROAD
+  // (camYaw 0.6), 9.5 out, 4.6 high, pitched down — Mara reads BIG in
+  // frame, the high angle still sees OVER the Comet's flank to the cordon
+  // behind it, and the two cordon cruisers + widened cordon fill the frame.
   G.camYaw = 0.6;
-  G.setCamDist(11);
-  G.setCamHeight(5.0);
-  G.camPitch = -0.35;
+  G.setCamDist(9.5);
+  G.setCamHeight(4.6);
+  G.camPitch = -0.30;
 }
-// VAULT INTERIOR heist at Torre Lumen (21:40, warm vault light, dust in the
-// beams, NO weather, NO sky). INSIDE the vault: gold bars + cash piles,
-// guards down, Mara + two allies inside, the round gold vault door blown
-// open on the north wall. The sky dome is HIDDEN for this shot (preset
-// 'interior'); the room is a staged set in the world with its south side
-// open as a cutaway. CAMERA: HIGH wide looking DOWN into the room from the
-// south — camera 11 out, ~13 high, steep down-angle, the whole vault floor
-// in frame with the door on the far wall. The mission's live tower squad is
-// cleared silently (G.clearEnemies) so no guard walks in shooting during
-// the still; the beacon pillar is suppressed (it would poke through the
-// north wall).
+// FULL CITY MAP of Puerto Lumen (21:40) — the finale's escape plan, not a
+// 3D scene. Sand rejected the vault interior (sparse brown/orange, gold
+// read as debris, figures tiny) and ordered a full denah map kota like the
+// top entries' big detailed minimaps, full-screen. The map is the game's
+// OWN minimap data (hud.js drawFullMap: districts, streets, landmarks,
+// route, blips) rendered on a full-screen canvas with the HUD panels
+// floating on top — mission panel, LCPD response, wanted stars, cash,
+// weapon slots, toasts, dialogue, speed. The 3D scene still runs behind
+// the opaque map canvas; the staging below only sets the GAME STATE the
+// map reads: Mara at the Torre Lumen vault, mission 15 advanced to the
+// escape stage (vault cracked, drive to Playa Dorada), 5 stars, $48,500.
+// The escape route on the map runs vault → Marina Road → Ocean Boulevard
+// → Playa Dorada boat. No vault room, no loot piles, no muzzle flashes:
+// the map IS the shot.
 export function stageShot3(G) {
   G.setLighting('interior'); // 21:40 — also stamps the HUD clock
-  G.noBeacon = true;
+  G.noBeacon = true; // no 3D beacon pillar behind the map
+  G.mapMode = true; // hud.js draws the full-screen city map this shot
+  document.body.classList.add('map-mode'); // hide corner minimap + turf row
   G.startPlay();
-  G.spawnVaultRoom(60, -150); // Torre Lumen vault, south of the tower
-  G.warpTo(58, -147); // Mara on foot INSIDE the vault, facing the door (north)
+  G.warpTo(60, -150); // Mara on foot AT the Torre Lumen vault
   G.player.heading = Math.PI;
   G.player.mesh.group.rotation.y = Math.PI;
   G.player.weapon = 'smg';
   G.missions.startMission(14); // El Puerto Es Nuestro finale
-  G.clearEnemies(); // the tower squad stays OUT of the vault still
+  G.clearEnemies(); // the tower squad stays OUT of the map still
   G.setWanted(5); // finale heat, pinned AFTER startMission
-  // The loot: SIX gold/cash piles + cash frozen mid-air over the floor.
-  G.spawnLootPile(55, -148);
-  G.spawnLootPile(65, -152);
-  G.spawnLootPile(60, -145.5);
-  G.spawnLootPile(57, -151);
-  G.spawnLootPile(63, -149.5);
-  G.spawnLootPile(58, -153);
-  G.spawnCashBurst(60, -148);
-  // Guards down on the vault floor + TWO allies covering the door.
-  G.spawnDowned(54, -147, 'shark');
-  G.spawnDowned(66, -153, 'shark');
-  G.spawnDowned(62, -150, 'shark');
-  G.spawnAlly(64, -147, Math.PI);
-  G.spawnAlly(57, -150.5, Math.PI * 0.75);
-  // Muzzle flashes: Mara's gun + the ally's, persistent in the still.
-  G.addMuzzleFlash(58.5, 1.4, -146);
-  G.addMuzzleFlash(63.5, 1.4, -145.5);
-  // Warm vault light: one big gold light over the loot + two smaller ones,
-  // plus dust motes hanging in the beams.
-  G.addPointLight(60, 6, -150, 0xffc46b, 500, 45);
-  G.addPointLight(54, 5, -146, 0xff9a3c, 250, 25);
-  G.addPointLight(66, 5, -154, 0xff9a3c, 250, 25);
-  G.spawnDustMotes(60, -149, 10);
-  G.clearPedsNear(60, -150, 16); // no wanderer may stroll through the vault
-  G.setDialogue('MARA', "Vault's open — gold everywhere. Grab it all and go!");
-  G.hud.log('MARA: "Vault\'s open — gold everywhere."');
-  G.hud.log('Torre Lumen vault cracked — $48,500 in gold and cash.');
+  // Advance the finale to its escape stage: vault guards beaten, vault
+  // cracked, NOW drive to Playa Dorada — so the mission panel reads
+  // STAGE 3/3 with the escape as NEXT, and the map's mission target sits
+  // on the Playa Dorada boat. (completeStage only advances the stage
+  // index; no cash or rep is awarded by staging.)
+  G.missions.completeStage();
+  G.missions.completeStage();
+  G.setDialogue('MARA', "Vault's cracked — $48,500. Map's open: gold line to the boat at Playa Dorada. Five stars, so we run it clean.");
+  G.hud.log('MARA: "Vault\'s cracked — $48,500. Map\'s open."');
+  G.hud.log('Escape route set — Torre Lumen vault to the Playa Dorada boat.');
   G.hud.notify('VAULT CRACKED', 'Torre Lumen vault — $48,500 in gold and cash', 'good', true);
   G.hud.notify('WANTED LEVEL UP', '5 stars — the whole LCPD is on you', 'danger', true);
-  G.hud.notify('LOOT SECURED', 'Gold bars + cash stacks — grab it all', 'good', true);
+  G.hud.notify('ESCAPE ROUTE SET', 'Gold line to Playa Dorada — boat\'s waiting', 'good', true);
   G.state.cash = 48500;
   G.state.health = 82;
   G.state.armour = 45;
-  // HIGH wide looking down into the room: camera south of Mara, 11 out,
-  // ~13 high — the closer camera makes the figures and loot bigger so the
-  // floor reads full, not empty. The 13-high walls hide the HOTEL LUMEN sign
-  // and the rooftop cruiser; there is no VAULT sign plane (it collided with
-  // the DOM WANTED stars).
+  // No camera framing: the map canvas covers the screen. The camera keeps
+  // its default framing behind the map; nothing in the 3D scene is visible.
   G.camYaw = Math.PI;
   G.setCamDist(11);
   G.setCamHeight(13);
@@ -267,7 +293,7 @@ export function stageShot4(G) {
   G.spawnPedsNear(-168, 214, 6); // beachgoers at dawn (south of the camera)
   G.spawnPedsNear(-146, 216, 4); // near-foreground beachgoers, bottom of frame
   G.spawnPedsNear(-166, 218, 3);
-  G.clearTrafficNear(-158, 230, 30); // no stray car may overlap the hero
+  G.clearTrafficNear(-158, 230, 30); // no stray car may cross the duel
   G.setDialogue('TIO REYES', 'Dawn breaks over the marina, Mara. The boat\'s waiting — Puerto Lumen is ours.');
   G.hud.showBanner('MISSION PASSED', '+$8,000  ·  +500 REP  ·  UNLOCKED: PIER SAFEHOUSE', 600000);
   G.hud.notify('MISSION PASSED', 'El Puerto Es Nuestro  +$8,000', 'good', true);
@@ -291,20 +317,37 @@ export function stageShot(n, G) {
 // In ?shot mode the game plays itself just enough to look alive: traffic and
 // peds keep moving, the camera holds, the player car holds its line and speed.
 export function shotAutopilot(G, dt) {
-  // Pier shootout (shotMode 2, on foot): pin the heli ahead-south of the
-  // player so its spotlight cone stays in frame over the cordon — otherwise
-  // the circling heli drifts out of frame during the settle.
-  if (G.shotMode === 2 && G.heli) G.heli.angle = Math.PI / 2;
-  if (!G.player.inCar || !G.player.car) return;
+  // Pier shootout (shotMode 2, on foot): pin the heli north-east of the
+  // player, over the cordon, so its body + spotlight cone stay in frame —
+  // at the old PI/2 (dead north of Mara) the body never appeared in any
+  // take. PI/4 puts it at the cordon's depth, in front of the building,
+  // ~11° off the camera axis.
+  if (G.shotMode === 2 && G.heli) G.heli.angle = Math.PI / 4;
+  // Shot 3 is the FULL CITY MAP: Mara is on foot at the vault and the four
+  // LCPD cruisers updateWanted spawns would drive straight to her and
+  // BUST the run mid-still (no vault walls any more). Pin them at fixed
+  // map spots instead — they read as converging blips on the map and can
+  // never reach her. The heli keeps circling overhead (its blip orbits).
   if (G.shotMode === 3) {
-    G.player.car.speed = 0;
+    const spots = [[-30, -180], [150, -120], [30, 30], [-60, -60]];
+    (G.police || []).forEach((c, i) => {
+      const [x, z] = spots[i % spots.length];
+      c.x = x; c.z = z; c.speed = 0;
+      c.mesh.group.position.set(x, 0, z);
+      c.mesh.group.rotation.y = c.heading;
+    });
     return;
   }
+  if (!G.player.inCar || !G.player.car) return;
   if (G.shotMode === 1) {
     // Cover chase: pin the speed high so the speedo reads big all the time,
     // keep the roadblock parked 22 units ahead of the hero car so it stays
-    // in frame, keep the SIX cruisers pinned in their slots, and keep the
-    // helicopter ahead-right in frame, circling over the chase.
+    // in frame, keep the EIGHT cruisers pinned in their slots, and keep the
+    // helicopter ahead-right in frame, circling over the chase. Heli angle
+    // +0.5 puts it AHEAD-SOUTH over the beach (open sky, +z is south):
+    // -0.8 was tried and put it ahead-NORTH behind the tall building,
+    // invisible in the take. Body lands upper-centre with its cone down
+    // onto the road.
     G.player.car.speed = 34;
     G.player.car.heading += Math.sin(performance.now() * 0.0004) * 0.05 * dt;
     if (G.heli) { G.heli.angle = 0.5; }
@@ -320,9 +363,10 @@ export function shotAutopilot(G, dt) {
         c.mesh.group.rotation.y = c.heading;
       });
     }
-    // The six-cruiser pack, pinned every frame to its staging slot:
+    // The eight-cruiser pack, pinned every frame to its staging slot:
     // chase tight behind on the camera side, second chaser behind far side,
-    // two head-on ahead, two flankers at the hero's sides.
+    // three head-on ahead (left, right, centre charger), three flankers at
+    // the hero's sides (two ahead, one close on the far side).
     const pin = (kind, back, lat, face, speed) => {
       for (const c of (G.police || []).filter((c) => c.kind === kind)) {
         c.x = G.player.x - fx * back + rx * lat;
@@ -335,23 +379,24 @@ export function shotAutopilot(G, dt) {
     };
     pin('chase', 2.2, -4.8, G.player.car.heading, 34);
     pin('chase2', 5, 4.5, G.player.car.heading, 34);
-    // Flank pair: one per side — per-car slots, like the head-on pair.
+    // Flank trio: one per side ahead, plus a close one on the far side.
     const flank = (G.police || []).filter((c) => c.kind === 'flank');
+    const flankSlots = [[8, -7], [8, 7], [2, 8.5]];
     flank.forEach((c, i) => {
-      const lat = i === 0 ? -7 : 7;
-      c.x = G.player.x + fx * 8 + rx * lat;
-      c.z = G.player.z + fz * 8 + rz * lat;
+      const [back, lat] = flankSlots[i] || flankSlots[0];
+      c.x = G.player.x + fx * back + rx * lat;
+      c.z = G.player.z + fz * back + rz * lat;
       c.heading = G.player.car.heading;
       c.speed = 34;
       c.mesh.group.position.set(c.x, 0, c.z);
       c.mesh.group.rotation.y = c.heading;
     });
-    // Head-on pair: two cruisers, one per side — pin() above matches by
-    // kind, so the head-on pair needs its own per-car slot.
+    // Head-on trio: two cruisers, one per side, plus a centre charger
+    // straight down the middle at 20 m.
     const headon = (G.police || []).filter((c) => c.kind === 'headon');
+    const headonSlots = [[13, -4.5], [16, 4.5], [20, 0]];
     headon.forEach((c, i) => {
-      const ahead = i === 0 ? 13 : 16;
-      const lat = i === 0 ? -4.5 : 4.5;
+      const [ahead, lat] = headonSlots[i] || headonSlots[0];
       c.x = G.player.x + fx * ahead + rx * lat;
       c.z = G.player.z + fz * ahead + rz * lat;
       c.heading = G.player.car.heading + Math.PI;

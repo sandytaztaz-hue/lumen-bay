@@ -413,8 +413,10 @@ export function makeHelicopter(scene) {
       group.add(strut);
     }
   }
-  // Thin translucent rotor: two crossed blades, no dark bar.
-  const rotorMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+  // Thin translucent rotor: two crossed blades, no dark bar. Brighter
+  // than the old 0.35 — the dark-navy body vanishes against the night
+  // sky, so the rotor disc + lamp + cone are what make the heli read.
+  const rotorMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
   const rotor = new THREE.Group();
   for (const a of [0, Math.PI / 2]) {
     const blade = new THREE.Mesh(new THREE.BoxGeometry(13, 0.08, 0.5), rotorMat);
@@ -427,13 +429,15 @@ export function makeHelicopter(scene) {
   tailRotor.position.set(1.0, 1.2, -8.6);
   group.add(tailRotor);
   // Searchlight: a bright belly lamp + a long additive cone to the ground.
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10),
+  // The lamp is big and the cone strong (0.5): at night the cone is the
+  // heli's main tell — the old 0.28 cone over the bright road was invisible.
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.8, 10, 10),
     new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
   lamp.position.set(0, -1.2, 1.5);
   group.add(lamp);
   const coneGeo = new THREE.ConeGeometry(7, 26, 16, 1, true);
   const cone = new THREE.Mesh(coneGeo,
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
   cone.rotation.x = Math.PI;
   cone.position.set(0, -14, 1.5);
   group.add(cone);

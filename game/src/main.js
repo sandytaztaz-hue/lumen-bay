@@ -10,6 +10,9 @@
 // title and the toasts. Gameplay is the proven r11 game; r12 rebuilds the
 // LOOK per shot (per-shot lighting presets in config.js/render.js, staged
 // sets in shots.js) toward the top-3 layout, with our city/story/missions.
+// r12 revision: shot 3 is now a FULL CITY MAP (not the vault), the cover
+// runs EIGHT cruisers, and both night shots are brighter with the heli
+// visible in frame.
 import * as THREE from 'three';
 import { WORLD, STEP, SAVE_KEY, CLOCK, DISTRICTS, ROB_TARGETS, PROPERTIES, WEAPONS, CARS, LANDMARKS, POLICE_ROSTER, freshSave, clamp, dist2, streetNameAt, districtAt } from './config.js';
 import { createRandom } from './random.js';
@@ -178,15 +181,16 @@ function spawnPoliceNear(count) {
     police.push(car);
   }
 }
-/** Stage cruisers for the shot-1 cover: a six-cruiser pack around the hero.
+/** Stage cruisers for the shot-1 cover: an eight-cruiser pack around the hero.
  The chase camera sits ~4.5 units to the side of the hero, so any far-side
  cruiser further back than ~3 units sits past a 45-degree bearing and crops
  off the frame edge — the slots below were picked so every cruiser stays in
  frame: ONE tight chaser right behind the hero (back 2.5, lat -4.8, on the
- camera side so it peeks out beside the hero), TWO head-on cruisers AHEAD
- (13/16 m, lats -4.5/+4.5, light bars facing the lens), TWO flank cruisers
- ahead at the hero's sides (8 m, lats ±7), and ONE second chaser behind on
- the far side (back 5, lat +4.5). */
+ camera side so it peeks out beside the hero), THREE head-on cruisers AHEAD
+ (13/16 m, lats -4.5/+4.5, plus a centre charger at 20 m, light bars facing
+ the lens), THREE flank cruisers ahead at the hero's sides (8 m, lats ±7,
+ plus a close one on the far side), and ONE second chaser behind on the
+ far side (back 5, lat +4.5). */
 function spawnPoliceBehind(count) {
   const heading = player.inCar && player.car ? player.car.heading : player.heading;
   const fx = Math.sin(heading), fz = Math.cos(heading);
@@ -198,9 +202,11 @@ function spawnPoliceBehind(count) {
     { kind: 'flank', back: -8, lat: -7, face: heading },
     { kind: 'flank', back: -8, lat: 7, face: heading },
     { kind: 'chase2', back: 5, lat: 4.5, face: heading },
+    { kind: 'headon', back: -20, lat: 0, face: heading + Math.PI },
+    { kind: 'flank', back: -2, lat: 8.5, face: heading },
   ];
   for (let i = 0; i < count && i < slots.length; i += 1) {
-    if (police.length >= 6) break;
+    if (police.length >= 8) break;
     const s = slots[i];
     const car = makeCar('police',
       player.x - fx * s.back + rx * s.lat,
@@ -225,7 +231,12 @@ function updateWanted(dt) {
     if (hasLineOfSight(colliders, c.x, c.z, player.x, player.z)) { seen = true; break; }
   }
   state.seen = seen;
-  if (state.wanted > 0) {
+  // Staged shots pin their wanted level: in shot 3 Mara is on foot at the
+  // vault with the cruisers pinned far away, so `seen` is false and the
+  // heat decayed 92→78 in ~1.5 s, dropping the HUD to 4 stars mid-still
+  // (the 5th star only filled back once a cruiser gained LOS). In shot
+  // mode the staged wanted level holds; plain play still decays.
+  if (state.wanted > 0 && !shotMode) {
     state.heat = clamp(state.heat + (seen ? 1.5 : -9) * dt, 0, 100);
     const nw = starsForHeat(state.heat);
     if (nw !== state.wanted) {
@@ -530,6 +541,7 @@ const G = {
   get shotClock() { return shotClock; },
   holdStill: false,
   noBeacon: false,
+  mapMode: false, // shot 3: draw the full-screen city map instead of the 3D scene
   get nosBurning() { return nosBurning; },
   set nosBurning(v) { nosBurning = v; },
   get camYaw() { return camYaw; },
@@ -667,6 +679,15 @@ const G = {
     halo.scale.set(7, 7, 1);
     R.scene.add(halo);
     return halo;
+  },
+  /** A PARKED police cruiser as a static set piece — light bars glowing,
+   never driven (it is NOT in the police array, so updatePolice never moves
+   it). Shot 2 flanks its cordon with two of these. */
+  parkPoliceCar(x, z, heading) {
+    const car = makeCar('police', x, z, heading, { kind: 'cordon' });
+    car.speed = 0;
+    R.scene.add(car.mesh.group);
+    return car;
   },
   /** A sand patch for the dawn shot — the world's south-beach sand plane
    sits only 0.01 above the grass base, so at a grazing camera angle the two
@@ -1045,6 +1066,8 @@ function update(dt) {
     condition: player.inCar && player.car ? player.car.health : 100,
     inSight: state.wanted > 0 && state.seen,
     searchZone: state.wanted > 0,
+    mapMode: G.mapMode,
+    mapRoute: G.mapMode ? { from: [player.x, player.z], to: [-180, 180] } : null,
     alerts, weapons, respect: rep, respectRank,
   });
   if (!G.noBeacon) setBeacon(beacon, missions.stageTarget() || (race.active ? race.nextCheckpoint() : null));
