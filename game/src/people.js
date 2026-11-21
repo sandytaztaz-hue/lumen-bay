@@ -10,6 +10,12 @@
 // hand + gun meshes on group.userData.parts, and poseAim() puts a figure
 // into a two-handed aiming stance: both arms forward, pistol out in front
 // at chest height, so the gun + shooting pose read at a glance.
+// r12 BRIGHT-NIGHT revision (Sand 2026-11-21 ~10:39 WIT: "Bagus, bersih
+// variatif" — good, clean, VARIED): figures get SMOOTH rounded torsos
+// (capsules, not boxes) + shoulder spheres, so no character reads as a
+// box from the front camera, and the police cordon is VARIED — mixed
+// white/navy shirts, mixed vests, mixed skin, some capped, some bare —
+// instead of twelve identical white-shirt clones.
 import * as THREE from 'three';
 import { clamp, dist2, PED_COUNT } from './config.js';
 import { resolveCollisions } from './city.js';
@@ -119,9 +125,20 @@ function makePersonMesh(shirt, pants, skin, rng) {
     shortsBox.position.y = 0.62;
     group.add(shortsBox);
   }
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.4), shirtMat);
+  // SMOOTH rounded torso (Sand 10:39 — "3D jelas"): a capsule, not a
+  // box, so the chest reads curved from the front camera, + smooth
+  // shoulder spheres where the arms meet the body. Same size as the
+  // old box (0.7 wide, 0.8 tall, 0.4 deep), so poseAim's arm + gun
+  // seats stay valid.
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.25, 4, 10), shirtMat);
+  torso.scale.set(1.15, 1, 0.7);
   torso.position.y = 1.2; torso.castShadow = true;
   group.add(torso);
+  for (const s of [-1, 1]) {
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), shirtMat);
+    shoulder.position.set(s * 0.36, 1.52, 0);
+    group.add(shoulder);
+  }
   const armMat = shirtMat;
   let armL = null; let armR = null; let handL = null; let handR = null;
   for (const s of [-1, 1]) {
@@ -249,23 +266,30 @@ export function updatePedestrians(peds, dt, gunPos, colliders) {
   }
 }
 /** An armed enemy: police officer or Tiburones shark, vest + cap/band.
- Police wear WHITE shirts + dark vests (like the white/black cruisers),
- so the cordon reads as police at a glance against the sand instead of
- a blue blob. */
+ Police read as police at a glance against the street — white or navy
+ shirts + dark vests (like the white/black cruisers) — but VARIED
+ (Sand 2026-11-21 ~10:39 WIT: "variatif"): each officer's shirt, vest,
+ skin and cap come from a deterministic hash of his spawn position, so
+ the cordon is a mixed squad — white shirts, navy shirts, navy/black
+ vests, several skin tones, some capped, some bare — never twelve
+ identical clones. */
 export function spawnEnemy(scene, x, z, kind) {
-  const shirt = kind === 'police' ? '#e8ecf2' : '#222226';
-  const m = makePersonMesh(shirt, kind === 'police' ? 0x1c2a4a : 0x333333, 0xd9a066);
+  const v = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+  const shirt = kind === 'police' ? (v < 0.55 ? '#e8ecf2' : '#1c2a4a') : '#222226';
+  const vestCol = kind === 'police' ? (v < 0.5 ? 0x0d1a3a : 0x1a1a1a) : 0x3a0d0d;
+  const skin = SKIN_COLOURS[Math.floor(v * SKIN_COLOURS.length) % SKIN_COLOURS.length];
+  const m = makePersonMesh(shirt, kind === 'police' ? 0x1c2a4a : 0x333333, skin);
   m.gun.visible = true;
   const vest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.55, 0.44),
-    new THREE.MeshStandardMaterial({ color: kind === 'police' ? 0x0d1a3a : 0x3a0d0d, roughness: 0.9 }));
+    new THREE.MeshStandardMaterial({ color: vestCol, roughness: 0.9 }));
   vest.position.set(0, 1.25, 0);
   m.group.add(vest);
-  if (kind === 'police') {
+  if (kind === 'police' && v < 0.6) {
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.12, 10),
       new THREE.MeshStandardMaterial({ color: 0x0d1a3a, roughness: 0.8 }));
     cap.position.y = 2.08;
     m.group.add(cap);
-  } else {
+  } else if (kind !== 'police') {
     const band = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.12, 0.58),
       new THREE.MeshStandardMaterial({ color: 0xe8124a, roughness: 0.85 }));
     band.position.y = 1.98;
@@ -302,7 +326,10 @@ export function updateEnemy(e, dt, px, pz, onShoot, colliders) {
 // ---- player character -------------------------------------------------------
 /** Mara Solis, on foot: orange jacket with a dark collar + zipper stripe +
  belt, dark jeans, long dark hair down her back, boots — a readable
- close-up character. */
+ close-up character. Her torso is a SMOOTH capsule + shoulder spheres
+ (Sand 10:39 — "3D jelas"), not a box, so she reads as a person from
+ the front camera instead of a block. Same size as the old box, so
+ poseAim's arm + gun seats stay valid. */
 export function makePlayerMesh(scene) {
   const group = new THREE.Group();
   const jacket = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.85 });
@@ -320,9 +347,15 @@ export function makePlayerMesh(scene) {
     boot.position.set(s * 0.14, 0.09, 0.03);
     group.add(boot);
   }
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.85, 0.42), jacket);
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.3, 4, 10), jacket);
+  torso.scale.set(1.15, 1, 0.68);
   torso.position.y = 1.25; torso.castShadow = true;
   group.add(torso);
+  for (const s of [-1, 1]) {
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), jacket);
+    shoulder.position.set(s * 0.38, 1.58, 0);
+    group.add(shoulder);
+  }
   const collar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.44),
     new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
   collar.position.set(0, 1.68, 0);

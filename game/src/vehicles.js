@@ -11,6 +11,13 @@
 // front-three-quarter chase camera lives on the headlights + grille), and
 // the heli gets a white side stripe so its dark-navy body reads against a
 // bright sunset sky instead of vanishing into a silhouette.
+// r12 BRIGHT-NIGHT FRONT-VIEW revision (Sand 2026-11-21 ~10:39 WIT:
+// "3D jelas", 99% like top-1 Karimbu — SMOOTH detailed models, NOT boxy
+// voxel): the hero gets curved bodywork — a rounded nose bumper, a smooth
+// hood bulge, a domed roof and smooth fender haunches, all curved
+// surfaces with smooth normals in the same metallic paint — and the
+// generic cars + cruisers get raked windshields + sloped hoods + a
+// rounded light-bar base, so no car in the frame reads as a flat box.
 import * as THREE from 'three';
 import { CARS, TRAFFIC_COUNT } from './config.js';
 import { clamp, dist2 } from './config.js';
@@ -131,12 +138,23 @@ export function buildCarMesh(type, opts) {
     noseWedge.position.set(0, 0.52, 2.42);
     noseWedge.rotation.x = 0.18;
     group.add(noseWedge);
-    // Front splitter: a low dark lip under the nose — the aggressive
-    // Ferrari front. Dark, not chrome: a classic bumper would read sedan.
-    const splitter = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, 0.55),
+    // ROUNDED nose bumper (smooth-body pass, Sand 10:39 — "3D jelas"):
+    // a smooth horizontal cylinder across the nose, not the old flat
+    // dark splitter box — the front camera catches a curved highlight
+    // across the whole nose instead of a hard box edge. Low (y 0.26)
+    // so the grille + headlights above it stay clear of its curve.
+    const noseBumper = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.9, 20),
       new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
-    splitter.position.set(0, 0.28, 2.55);
-    group.add(splitter);
+    noseBumper.rotation.z = Math.PI / 2;
+    noseBumper.position.set(0, 0.26, 2.55);
+    group.add(noseBumper);
+    // SMOOTH hood bulge (same pass): a flattened sphere on the sloped
+    // hood — a curved highlight dome down the hood's centreline, so the
+    // hood reads sculpted, not a flat pink plank, from the front 3/4.
+    const hoodBulge = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), paint);
+    hoodBulge.scale.set(0.8, 0.16, 1.0);
+    hoodBulge.position.set(0, 0.96, 1.25);
+    group.add(hoodBulge);
     // Bright flank highlight: a thin lighter band along each side at
     // mid-height. The old flank was one blank pink slab; the band + the
     // dark side skirt below it give the side a waistline like the top-1 car.
@@ -154,6 +172,16 @@ export function buildCarMesh(type, opts) {
         new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
       scoop.position.set(s * 1.04, 0.72, -0.9);
       group.add(scoop);
+    }
+    // SMOOTH fender haunches (same pass): flattened spheres over the four
+    // wheels, bulging out of the flanks in the same paint — the haunch
+    // curve is what makes a sports car's flank read sculpted instead of
+    // slab-sided, and the curve catches the lamp light from the front.
+    for (const [x, z] of [[-1.02, 1.45], [1.02, 1.45], [-1.02, -1.45], [1.02, -1.45]]) {
+      const haunch = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), paint);
+      haunch.scale.set(0.28, 0.3, 0.55);
+      haunch.position.set(x, 0.72, z);
+      group.add(haunch);
     }
     // Low dark grille + slim LED headlights on the sloped nose.
     const grille = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.22, 0.08),
@@ -207,16 +235,19 @@ export function buildCarMesh(type, opts) {
       pipe.position.set(x, 0.4, -2.6);
       group.add(pipe);
     }
-    // Cabin (top-1 geometry, pushed LOWER): a PAINT-COLOURED roof slab
+    // Cabin (top-1 geometry, pushed LOWER): a PAINT-COLOURED curved roof
     // over a narrower glasshouse — the old single dark box was the "Lego
-    // cabin". Slanted windshield up front, slanted rear glass, dark side
-    // glass with a bright glare band, so the cabin reads as glass + roof,
-    // not a black brick. Roof 1.36 (was 1.44 in afaba99) — the low
-    // Ferrari roofline.
+    // cabin", and the flat roof slab that replaced it still read as a
+    // pink shelf from the front. The DOMED roof (a flattened sphere in
+    // the same paint) gives the cabin a smooth curved roofline; slanted
+    // windshield up front, slanted rear glass, dark side glass with a
+    // bright glare band, so the cabin reads as glass + curved roof,
+    // not a black brick. Roof dome top 1.64 — the low Ferrari roofline.
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.08, clearcoat: 1 });
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.09, 1.4), paint);
-    roof.position.set(0, 1.36, -0.35);
-    group.add(roof);
+    const roofDome = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), paint);
+    roofDome.scale.set(0.78, 0.32, 0.78);
+    roofDome.position.set(0, 1.32, -0.35);
+    group.add(roofDome);
     const glasshouse = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.42, 1.8), glassMat);
     glasshouse.position.set(0, 1.1, -0.35);
     group.add(glasshouse);
@@ -294,9 +325,10 @@ export function buildCarMesh(type, opts) {
     group.add(dHair);
   } else {
     // Generic cars (sedan / taxi / pickup / police): the SAME classic
-    // boxy treatment as the hero — upright cabin, near-vertical
-    // windshield, flat hood + trunk lids, chrome bumpers, ROUND
-    // headlights, distinct grille. No sloped windshield, no LED slits.
+    // treatment as the hero, but upright — a raked windshield + sloped
+    // hood (smooth-body pass, Sand 10:39: no car in the frame reads as
+    // a flat box) instead of the old near-vertical shield + flat lids,
+    // chrome bumpers, ROUND headlights, distinct grille.
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.12, clearcoat: 1 });
     const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 1.9), glassMat);
     cabin.position.set(0, 1.5, -0.2);
@@ -305,16 +337,18 @@ export function buildCarMesh(type, opts) {
     roofG.position.set(0, 1.82, -0.2);
     group.add(roofG);
     const shieldG = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.62, 0.08), glassMat);
-    shieldG.position.set(0, 1.52, 0.82);
-    shieldG.rotation.x = -0.12;
+    shieldG.position.set(0, 1.48, 0.78);
+    shieldG.rotation.x = -0.38;
     group.add(shieldG);
     const rearG = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 0.08), glassMat);
     rearG.position.set(0, 1.52, -1.22);
     rearG.rotation.x = 0.12;
     group.add(rearG);
-    // Flat hood + trunk lids.
+    // Sloped hood + flat trunk lid: the hood rakes down toward the nose
+    // instead of lying flat, so the front reads as a car, not a box.
     const hoodG = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1.2), paint);
-    hoodG.position.set(0, 1.2, 1.5);
+    hoodG.position.set(0, 1.16, 1.5);
+    hoodG.rotation.x = 0.15;
     group.add(hoodG);
     const trunkG = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1.0), paint);
     trunkG.position.set(0, 1.2, -1.65);
@@ -396,9 +430,12 @@ export function buildCarMesh(type, opts) {
     // BIG light bar: wider + taller lenses, stronger emissive, red/blue
     // glow halos above — the siren must read at a glance, not as a
     // subtle strip. Children order is load-bearing: flashLightBar uses
-    // children[1] (red) and [2] (blue); the halos are [3] + [4].
+    // children[1] (red) and [2] (blue); the halos are [3] + [4]. The
+    // base is a ROUNDED cylinder (smooth-body pass, Sand 10:39), not a
+    // flat box — the bar reads as a moulded unit from the front.
     lightBar = new THREE.Group();
-    const barBase = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 0.5), blackMat);
+    const barBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.6, 12), blackMat);
+    barBase.rotation.z = Math.PI / 2;
     barBase.position.y = 0;
     lightBar.add(barBase);
     const redLens = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.32, 0.48),

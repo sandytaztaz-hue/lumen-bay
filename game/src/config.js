@@ -2,10 +2,12 @@
 // and price in one place. Puerto Lumen is a 480 x 480 island city: roads
 // every 60, turquoise sea west + south. Plain play is BRIGHT MIDDAY (12:30);
 // the four screenshots each take their own time and weather, like the top
-// entries — and r12's cover is a SUNSET beach-front chase (18:45), not a
-// night chase: warm golden-hour light, car fronts + police fronts to the
-// lens, the heli visible overhead. Positions are [x, z] on the ground plane;
-// y is up. Nothing here comes from any commercial game.
+// entries — and r12's cover is a BRIGHT-NIGHT boulevard chase (22:40,
+// Sand 2026-11-21 ~10:36 WIT: "malam hari terang"): the top-1 Karimbu
+// front-three-quarter composition shot at NIGHT — dark sky + bright
+// street/city lights, the hero's FRONT + the police fronts to the lens,
+// the heli beam + sirens clearly visible, the scene readable, never
+// pitch black. Nothing here comes from any commercial game.
 export const WORLD = { size: 480, half: 240, roadGap: 60, seaLevel: 0.05 };
 export const STEP = 1 / 60;
 export const SAVE_KEY = 'lumenbay.r6.save.v1';
@@ -19,11 +21,12 @@ export const DAYLIGHT = {
   rimColour: 0x9fc8ff, skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, fog: 0xa8cfe0,
 };
 // r12 — PER-SHOT lighting presets. One preset per screenshot; nothing is
-// shared between shots except the city itself. Shot 1 is the SUNSET beach
-// chase ('sunset', 18:45) — warm low sun, orange/pink sky, long shadows,
-// the light the top-3 entries all use: it makes the blocky shapes read as
-// stylized-real instead of flat toy. Shot 2 is the same golden hour on the
-// beach shootout (18:45). Shot 3 is the FULL CITY MAP (21:40). Shot 4 is
+// shared between shots except the city itself. Shot 1 is the BRIGHT-NIGHT
+// beach chase ('brightnight', 22:40) — the top-1 Karimbu composition at
+// night: dark sky, bright street lamps + lit windows, the heli beam and
+// the cruisers' red/blue light bars carrying the frame, the road + cars
+// still reading clearly. Shot 2 is the same bright night on the street
+// shootout (23:20). Shot 3 is the FULL CITY MAP (21:40). Shot 4 is
 // dawn mist (06:10), with the sun disc + glow strengthened so the sunrise
 // reads over the water.
 // Fields: sky ('day'|'sunset'|'night'|'dawn'|null = dome hidden),
@@ -87,6 +90,27 @@ export const LIGHTING_PRESETS = {
     rim: [0x4d6fff, 0.8], rearFill: 0.5, hemi: [0x3a5578, 0x16242e, 1.0],
     fill: 0.4, fog: [0x0e1c33, 140, 750], bg: 0x0a1830,
     exposure: 1.2, envIntensity: 0.5, clock: '23:20',
+  },
+  // BRIGHT NIGHT (Sand 2026-11-21 ~10:36 WIT: "malam hari terang" — the
+  // Karimbu composition shot at NIGHT, but BRIGHT): a dark night sky
+  // with BRIGHT street/city light, so the heli spotlight beam and the
+  // police sirens read clearly and the scene stays readable, never
+  // pitch black. Brighter than the old night/nightchase presets across
+  // the board — but TUNED DOWN after the first two takes (exposure 1.45
+  // and hemi 1.6 washed the road + sand to pale lavender, not night,
+  // and even at 1.25 / 1.15 the ground stayed pale: the lift came from
+  // the DAY-sky environment map, so envIntensity drops to 0.35): the
+  // ground stays dark now and the LAMPS + beam + sirens carry the
+  // brightness, like Karimbu's lit street against a dark sky. No sun
+  // disc (a white disc at night reads as a moon artefact). Clock
+  // 22:40; shot 2 re-stamps it to 23:20 after setLighting.
+  brightnight: {
+    sky: 'night', sunPos: [0, 0, 0], sunDisc: [0xffffff, 1.0, false],
+    glow: [0xffffff, 0.0, 220], streakOpacity: 0.0,
+    sunLight: [0x9db8ff, 1.9, -100, 300, -100],
+    rim: [0x6fa0ff, 1.0], rearFill: 0.6, hemi: [0x4a6a9a, 0x1e2c40, 1.0],
+    fill: 0.5, fog: [0x16263f, 200, 900], bg: 0x101f38,
+    exposure: 1.25, envIntensity: 0.35, clock: '22:40',
   },
   // Shot 3 — VAULT INTERIOR: no sky, no weather, no sun. Dome hidden,
   // background dark warm brown, fog tight and warm; the real light comes
