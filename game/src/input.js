@@ -1,97 +1,78 @@
-// LUMEN BAY r13 — input: keyboard state, one-shot action flags, mouse orbit
-// and click-to-fire. Held keys steer; presses are queued once and taken by the
-// loop, so a press between frames is never lost or double-counted.
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
-export const ACTION_MISSION = 4;
-export const ACTION_INTERACT = 8;
-export const ACTION_WEAPON1 = 16;
-export const ACTION_WEAPON2 = 32;
-export const ACTION_WEAPON3 = 64;
-export const ACTION_RADIO = 128;
-const KEYMAP = {
-  KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
-  KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
-  ShiftLeft: 'sprint', ShiftRight: 'sprint', Space: 'brake',
-};
-export function createInput(canvas) {
-  const held = { up: false, down: false, left: false, right: false, sprint: false, brake: false };
-  let actions = 0;
-  let mouseDX = 0, mouseDY = 0;
-  let mouseDown = false, firing = false, dragging = false;
-  let lastX = 0, lastY = 0;
-  window.addEventListener('keydown', (event) => {
-    const name = KEYMAP[event.code];
-    if (name) { held[name] = true; event.preventDefault(); return; }
-    if (event.repeat) return;
-    if (event.code === 'Enter' || event.code === 'Space') actions |= ACTION_CONFIRM;
-    else if (event.code === 'Escape' || event.code === 'KeyP') actions |= ACTION_PAUSE;
-    else if (event.code === 'KeyM') actions |= ACTION_MISSION;
-    else if (event.code === 'KeyE') actions |= ACTION_INTERACT;
-    else if (event.code === 'Digit1') actions |= ACTION_WEAPON1;
-    else if (event.code === 'Digit2') actions |= ACTION_WEAPON2;
-    else if (event.code === 'Digit3') actions |= ACTION_WEAPON3;
-    else if (event.code === 'KeyR') actions |= ACTION_RADIO;
-  });
-  window.addEventListener('keyup', (event) => {
-    const name = KEYMAP[event.code];
-    if (name) held[name] = false;
-  });
-  window.addEventListener('blur', () => {
-    for (const k of Object.keys(held)) held[k] = false;
-    firing = false; dragging = false;
-  });
-  canvas.addEventListener('pointerdown', (event) => {
-    mouseDown = true; firing = true; dragging = true;
-    lastX = event.clientX; lastY = event.clientY;
-    canvas.setPointerCapture(event.pointerId);
-  });
-  canvas.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
-    mouseDX += event.clientX - lastX;
-    mouseDY += event.clientY - lastY;
-    lastX = event.clientX; lastY = event.clientY;
-  });
-  const endPointer = () => { mouseDown = false; firing = false; dragging = false; };
-  canvas.addEventListener('pointerup', endPointer);
-  canvas.addEventListener('pointercancel', endPointer);
-  return {
-    held,
-    get firing() { return firing; },
-    get mouseDown() { return mouseDown; },
-    takeMouse() {
-      const d = { dx: mouseDX, dy: mouseDY };
-      mouseDX = 0; mouseDY = 0;
-      return d;
-    },
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
-    },
-    isDown(name) { return !!held[name]; },
-    clearHeld() {
-      for (const k of Object.keys(held)) held[k] = false;
-      firing = false; dragging = false;
-    },
-    /** Test hook: pretend a key was pressed (used by the scripted probes). */
-    press(action) { actions |= action; },
-    setHeld(name, v) { if (name in held) held[name] = v; },
-  };
-}
-/** Forward/strafe from held keys, relative to a camera yaw. */
-export function moveVector(held, yaw) {
-  const f = (held.up ? 1 : 0) - (held.down ? 1 : 0);
-  const s = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-  const sin = Math.sin(yaw), cos = Math.cos(yaw);
-  const mx = sin * f + cos * s, mz = cos * f - sin * s;
-  const len = Math.hypot(mx, mz);
-  if (len > 1) return [mx / len, mz / len];
-  return [mx, mz];
-}
-/** Car throttle/steer from held keys. */
-export function driveVector(held) {
-  const throttle = (held.up ? 1 : 0) - (held.down ? 0.7 : 0);
-  const steer = (held.left ? 1 : 0) - (held.right ? 1 : 0);
-  return { throttle, steer };
+// LUMEN BAY — keyboard + mouse input. WASD/arrows drive and walk, Space
+// handbrakes, Shift burns NOS, E enters/exits cars and interacts, M opens
+// the map, P pauses, 1/2/3 switch weapons, mouse drag orbits the camera
+// and click fires. State is polled by main.js; edge events (key presses)
+// go through a small queue the game drains each frame.
+
+export class Input {
+  constructor(canvas) {
+    this.keys = new Set();
+    this.pressed = [];
+    this.mouseDown = false;
+    this.mouseDX = 0;
+    this.mouseDY = 0;
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.dragging = false;
+    this.lastX = 0;
+    this.lastY = 0;
+
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      this.keys.add(e.code);
+      this.pressed.push(e.code);
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('blur', () => this.keys.clear());
+
+    canvas.addEventListener('mousedown', (e) => {
+      this.mouseDown = true;
+      this.dragging = true;
+      this.lastX = e.clientX;
+      this.lastY = e.clientY;
+      this.pressed.push('MouseClick');
+    });
+    window.addEventListener('mouseup', () => {
+      this.mouseDown = false;
+      this.dragging = false;
+    });
+    window.addEventListener('mousemove', (e) => {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+      if (this.dragging) {
+        this.mouseDX += e.clientX - this.lastX;
+        this.mouseDY += e.clientY - this.lastY;
+        this.lastX = e.clientX;
+        this.lastY = e.clientY;
+      }
+    });
+  }
+
+  down(...codes) {
+    return codes.some((c) => this.keys.has(c));
+  }
+
+  // Drain the pressed queue (edge-triggered actions only).
+  takePressed() {
+    const out = this.pressed;
+    this.pressed = [];
+    return out;
+  }
+
+  takeMouseDelta() {
+    const d = { x: this.mouseDX, y: this.mouseDY };
+    this.mouseDX = 0;
+    this.mouseDY = 0;
+    return d;
+  }
+
+  // Simulate a key press (used by the probe through window.__lumen).
+  simulate(code) {
+    this.keys.add(code);
+    this.pressed.push(code);
+    setTimeout(() => this.keys.delete(code), 120);
+  }
 }

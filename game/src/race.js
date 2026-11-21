@@ -1,102 +1,61 @@
-// LUMEN BAY — street races: a checkpoint chain plus a Tiburones rival who
-// drives the same points and burns NOS on the straights. First to the last
-// checkpoint wins; the mission engine decides the reward.
-import * as THREE from 'three';
-import { dist2 } from './config.js';
-import { makeCar } from './vehicles.js';
+// LUMEN BAY — street races. A race is a loop of checkpoints down the
+// boulevard and back; each one is a glowing ring on the road and a marker
+// on the minimap. Mission 12 (Street King) is an 8-checkpoint race.
+
+import { WORLD } from './config.js';
+import { makeRng, range } from './random.js';
 
 export class Race {
-  constructor(scene) {
-    this.scene = scene;
+  constructor(game) {
+    this.game = game;
     this.active = false;
     this.checkpoints = [];
-    this.next = 0;
-    this.rival = null;
-    this.rivalNext = 0;
-    this.won = false;
-    this.lost = false;
+    this.index = 0;
     this.markers = [];
   }
 
-  start(points) {
-    this.stop();
+  buildCheckpoints(count) {
+    const rng = makeRng(900 + count);
+    const pts = [];
+    const legs = [
+      { x: 260, z: 215 }, { x: 200, z: 215 }, { x: 120, z: 215 }, { x: 40, z: 215 },
+      { x: 40, z: 185 }, { x: 120, z: 185 }, { x: 200, z: 185 }, { x: 260, z: 185 },
+      { x: 260, z: 250 }, { x: 120, z: 250 },
+    ];
+    for (let i = 0; i < count; i += 1) {
+      const base = legs[i % legs.length];
+      pts.push({ x: base.x + range(rng, -3, 3), z: base.z + range(rng, -2, 2) });
+    }
+    return pts;
+  }
+
+  start(count = 8) {
+    this.checkpoints = this.buildCheckpoints(count);
+    this.index = 0;
     this.active = true;
-    this.checkpoints = points.slice();
-    this.next = 0;
-    this.rivalNext = 0;
-    this.won = false;
-    this.lost = false;
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xffd23f, transparent: true, opacity: 0.5,
-      side: THREE.DoubleSide, depthWrite: false,
-    });
-    for (const [x, z] of this.checkpoints) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(5, 0.5, 8, 24), mat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(x, 1.2, z);
-      this.scene.add(ring);
-      this.markers.push(ring);
-    }
-    const [rx, rz] = this.checkpoints[0];
-    this.rival = makeCar('shark', rx + 6, rz + 6, 0, { kind: 'rival' });
-    this.rival.speed = 24;
-    this.scene.add(this.rival.mesh.group);
+    this.game.hud.toast('STREET RACE', count + ' checkpoints — first to the last one wins.', 'job');
+    this.game.log('Race started: ' + count + ' checkpoints');
+    return this.checkpoints;
   }
 
-  stop() {
-    for (const m of this.markers) this.scene.remove(m);
-    this.markers = [];
-    if (this.rival) {
-      this.scene.remove(this.rival.mesh.group);
-      this.rival = null;
-    }
-    this.active = false;
-  }
-
-  nextCheckpoint() {
-    if (!this.active || this.next >= this.checkpoints.length) return null;
-    return this.checkpoints[this.next];
-  }
-
-  update(dt, px, pz, colliders, onCheckpoint) {
-    if (!this.active) return;
-    if (this.next < this.checkpoints.length) {
-      const [cx, cz] = this.checkpoints[this.next];
-      if (dist2([px, pz], [cx, cz]) < 8) {
-        this.next += 1;
-        if (onCheckpoint) onCheckpoint(this.next, this.checkpoints.length);
-        const done = this.markers[this.next - 1];
-        if (done) done.material.color.setHex(0x37c978);
+  update(player) {
+    if (!this.active) return false;
+    const cp = this.checkpoints[this.index];
+    if (!cp) return false;
+    if (Math.hypot(player.x - cp.x, player.z - cp.z) < 7) {
+      this.index += 1;
+      this.game.hud.toast('CHECKPOINT ' + this.index + '/' + this.checkpoints.length,
+        'Next checkpoint marked.', 'good');
+      if (this.index >= this.checkpoints.length) {
+        this.active = false;
+        this.game.hud.banner('RACE WON', 'Street King — +$3,600');
+        return true;
       }
     }
-    if (this.rival && this.rivalNext < this.checkpoints.length) {
-      const [tx, tz] = this.checkpoints[this.rivalNext];
-      const dx = tx - this.rival.x;
-      const dz = tz - this.rival.z;
-      const d = Math.hypot(dx, dz);
-      if (d < 8) {
-        this.rivalNext += 1;
-      } else {
-        const want = Math.atan2(dx, dz);
-        let diff = want - this.rival.heading;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        this.rival.heading += Math.max(-1.6 * dt, Math.min(1.6 * dt, diff));
-        this.rival.speed = d > 40 ? 30 : 22;
-        this.rival.x += Math.sin(this.rival.heading) * this.rival.speed * dt;
-        this.rival.z += Math.cos(this.rival.heading) * this.rival.speed * dt;
-        this.rival.mesh.group.position.set(this.rival.x, 0, this.rival.z);
-        this.rival.mesh.group.rotation.y = this.rival.heading;
-      }
-    }
-    if (this.next >= this.checkpoints.length) {
-      this.won = this.rivalNext < this.checkpoints.length || this.next <= this.rivalNext;
-      this.active = false;
-      this.stop();
-    } else if (this.rival && this.rivalNext >= this.checkpoints.length) {
-      this.lost = true;
-      this.active = false;
-      this.stop();
-    }
+    return false;
+  }
+
+  get next() {
+    return this.active ? this.checkpoints[this.index] : null;
   }
 }

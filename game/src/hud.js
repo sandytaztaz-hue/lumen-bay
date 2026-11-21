@@ -1,807 +1,517 @@
-// LUMEN BAY — the HUD, rebuilt on the top-3 formula and denser than
-// ever: mission panel (job title, objectives with checkmarks, stage x/y,
-// big timer, NEXT step, alert banners, controls hint, STORY + REP), WANTED
-// stars top-center, big green cash + weapon slots + NOS + health/armour
-// top-right, NOTIFICATION TOASTS, police response list with unit
-// names/distances/statuses (six cruisers + AIR-1 on the night-chase cover),
-// IN SIGHT banner, RESPECT bar, detailed ROUND minimap with a SEARCH-ZONE
-// ring while wanted, dialogue box with drawn portraits, big speed + gear +
-// vehicle + condition + radio. All readable at a glance, like the top
-// entries: lots of text, lots of notifications.
-//
-// Shot 3 is a FULL CITY MAP (drawFullMap) — the same minimap data
-// (districts, streets, landmarks, route, blips) rendered full-screen, with
-// the game's HUD panels floating on top. The LCPD list also caps its rows:
-// the cover now runs EIGHT cruisers + AIR-1, and nine rows would push the
-// panel down over the RESPECT bar — so it shows five cruisers + AIR-1 +
-// a "+N MORE UNITS" footer, BRISA BAY style.
-//
-// Map legibility (first render review): landmark pins carry NO text —
-// their names duplicate the district names and stacked into unreadable
-// piles. The player arrow carries NO text tag (the legend explains it;
-// the tag collided with the heli blip and the TORRE label). The heli is
-// one "H", no sublabel. Vertical street names sit in the lower third so
-// they never cross the middle-row district labels, and PLAYA DR is
-// right-of-centre so the title pill never hides it.
-import { DISTRICTS, CLOCK, STREETS, FERRIS, SEARCH_ZONE_RADIUS, LANDMARKS } from './config.js';
-import { turfLabel as turfLabelFn } from './turf.js';
+// LUMEN BAY — the HUD. All panels are DOM (crisp text at any size) over
+// the WebGL canvas: mission panel, wanted stars, cash + weapons + bars,
+// the LCPD response list, the circular minimap, toasts, the dispatch
+// dialogue, the speedometer, and the full-city-map overlay for shot 3.
+// Shot pins (config SHOT_PINS) fill every field at once for screenshots.
 
-export function createHud() {
-  const $ = (id) => document.getElementById(id);
-  const el = {
-    stars: $('hud-stars'), cash: $('hud-cash'), health: $('hud-health-fill'),
-    armour: $('hud-armour-fill'), speed: $('hud-speed'), nos: $('hud-nos-fill'),
-    weapon: $('hud-weapon'), objective: $('hud-objective'), log: $('hud-log'),
-    radio: $('hud-radio'), clock: $('hud-clock'), turf: $('hud-turf'),
-    banner: $('hud-banner'), bannerTitle: $('hud-banner-title'), bannerSub: $('hud-banner-sub'),
-    minimap: $('hud-minimap'), fullmap: $('hud-fullmap'), prompt: $('hud-prompt'), timer: $('hud-timer'),
-    feed: $('hud-feed'), garage: $('hud-garage'), garageList: $('hud-garage-list'),
-    title: $('screen-title'), pause: $('screen-pause'), busted: $('screen-busted'),
-    missionTitle: $('hud-mission-title'), missionObjectives: $('hud-mission-objectives'),
-    missionStage: $('hud-mission-stage'), missionTimer: $('hud-mission-timer'),
-    missionNext: $('hud-mission-next'), missionAlerts: $('hud-mission-alerts'),
-    missionStory: $('hud-mission-story'), policeList: $('hud-police-list'),
-    roadblockBanner: $('hud-roadblock-banner'), dialogue: $('hud-dialogue'),
-    dialogueAvatar: $('hud-dialogue-avatar'), dialogueName: $('hud-dialogue-name'),
-    dialogueText: $('hud-dialogue-text'), streetLabel: $('hud-street-label'),
-    speedBig: $('hud-speed-big'), gear: $('hud-gear'), vehicleName: $('hud-vehicle-name'),
-    conditionFill: $('hud-condition-fill'), wantedLabel: $('hud-wanted-label'),
-    notifications: $('hud-notifications'), weapons: $('hud-weapons'),
-    insight: $('hud-insight'), respectFill: $('hud-respect-fill'),
-    respectLabel: $('hud-respect-label'),
-  };
-  el.clock.textContent = CLOCK;
-  const lines = [];
-  return {
-    el,
-    _panelCache: '',
-    _policeCache: '',
-    _weaponsCache: '',
-    _alertsCache: '',
-    _respectCache: '',
-    /** Per-shot HUD clock — each screenshot shows its own time of day. */
-    setClock(t) {
-      if (t) el.clock.textContent = t;
-    },
-    log(msg) {
-      const div = document.createElement('div');
-      div.textContent = msg;
-      el.log.prepend(div);
-      while (el.log.children.length > 3) el.log.removeChild(el.log.lastChild);
-      lines.unshift(msg);
-      if (lines.length > 30) lines.pop();
-    },
-    feed(msg) {
-      const div = document.createElement('div');
-      div.textContent = msg;
-      el.feed.prepend(div);
-      while (el.feed.children.length > 2) el.feed.removeChild(el.feed.lastChild);
-    },
-    /** Notification toast, top-right under the cash panel: title + sub-line,
-     auto-expires after ~5 s unless `sticky` (shot staging keeps them). */
-    notify(title, sub, kind, sticky) {
-      if (!el.notifications) return;
-      const div = document.createElement('div');
-      div.className = `toast ${kind || ''}`;
-      const t = document.createElement('div');
-      t.className = 'toast-title';
-      t.textContent = title;
-      div.appendChild(t);
-      if (sub) {
-        const s = document.createElement('div');
-        s.className = 'toast-sub';
-        s.textContent = sub;
-        div.appendChild(s);
-      }
-      el.notifications.prepend(div);
-      while (el.notifications.children.length > 3) el.notifications.removeChild(el.notifications.lastChild);
-      if (!sticky) setTimeout(() => { if (div.parentNode) div.remove(); }, 5000);
-    },
-    showBanner(title, sub, ms, top) {
-      el.bannerTitle.textContent = title;
-      el.bannerSub.textContent = sub || '';
-      el.banner.style.display = 'block';
-      if (top) el.banner.style.top = top; // shot 4: lift the banner clear of the boat
-      setTimeout(() => { el.banner.style.display = 'none'; }, ms || 3500);
-    },
-    setPrompt(text) {
-      el.prompt.textContent = text || '';
-      el.prompt.style.display = text ? 'block' : 'none';
-    },
-    showGarage(rows, cash) {
-      el.garageList.innerHTML = rows.map((r) => `<div>${r}</div>`).join('')
-        + `<div class="dim">Cash $${cash} — 1/2/3 buy, 4 repair $150, E close</div>`;
-      el.garage.style.display = 'block';
-    },
-    hideGarage() {
-      el.garage.style.display = 'none';
-    },
-  };
+import { DISTRICTS, STREETS, POLICE_UNITS, WEAPONS, RADIO } from './config.js';
+
+function el(tag, cls, parent, text) {
+  const d = document.createElement(tag);
+  if (cls) d.className = cls;
+  if (text !== undefined) d.textContent = text;
+  if (parent) parent.appendChild(d);
+  return d;
 }
 
-/** Drawn character portraits for the dialogue box. Flat-style SVG drawn in
- code, no image files: Mara (dark hair, orange jacket), Tio Reyes (cap +
- sunglasses), Lena Cruz (pink cap), LCPD Dispatch (headset + badge). Each
- reads as a face at 44 px. */
-function portraitSVG(name) {
-  const n = (name || '').toUpperCase();
-  if (n.includes('DISPATCH')) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
-      + '<rect width="44" height="44" fill="#0d1a3a"/>'
-      + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#1c4ed8"/>'
-      + '<rect x="17" y="31" width="10" height="7" rx="1" fill="#ffd23f"/>'
-      + '<circle cx="22" cy="34.5" r="2.2" fill="#0d1a3a"/>'
-      + '<rect x="19" y="25" width="6" height="6" fill="#c98d5a"/>'
-      + '<circle cx="22" cy="19.5" r="8.5" fill="#c98d5a"/>'
-      + '<path d="M13 19 A9 9 0 0 1 31 19 L31 14.5 A9 9 0 0 0 13 14.5 Z" fill="#0d1a3a"/>'
-      + '<rect x="11" y="16" width="22" height="3" rx="1.5" fill="#16283e"/>'
-      + '<rect x="12" y="14" width="5" height="8" rx="2" fill="#111"/>'
-      + '<rect x="27" y="14" width="5" height="8" rx="2" fill="#111"/>'
-      + '<rect x="31" y="20" width="2.5" height="6" rx="1" fill="#111"/>'
-      + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
-      + '<path d="M19 24.5 Q22 27 25 24.5" stroke="#3a2410" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>';
-  }
-  if (n.includes('LENA')) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
-      + '<rect width="44" height="44" fill="#7a1040"/>'
-      + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#ff2a5e"/>'
-      + '<path d="M22 29 L22 44" stroke="#ffd23f" stroke-width="1.6"/>'
-      + '<rect x="19" y="25" width="6" height="6" fill="#e8b88a"/>'
-      + '<circle cx="22" cy="16" r="9.5" fill="#e8c25a"/>'
-      + '<circle cx="22" cy="19.5" r="8.5" fill="#f2c9a0"/>'
-      + '<path d="M12.5 19 A9.5 9.5 0 0 1 31.5 19 L31.5 15.5 A9.5 9.5 0 0 0 12.5 15.5 Z" fill="#ff2a5e"/>'
-      + '<rect x="11" y="17.5" width="22" height="3.4" rx="1.7" fill="#ff2a5e"/>'
-      + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
-      + '<path d="M19 24.5 Q22 27 25 24.5" stroke="#8a3a50" stroke-width="1.4" fill="none" stroke-linecap="round"/>'
-      + '<circle cx="13.5" cy="24" r="1.1" fill="#ffd23f"/><circle cx="30.5" cy="24" r="1.1" fill="#ffd23f"/></svg>';
-  }
-  if (n.includes('TIO')) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
-      + '<rect width="44" height="44" fill="#12324a"/>'
-      + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#1c2a4a"/>'
-      + '<path d="M18 29 L20 35 L24 35 L26 29 Z" fill="#9fd4ff"/>'
-      + '<rect x="19" y="25" width="6" height="6" fill="#b57a45"/>'
-      + '<circle cx="22" cy="19.5" r="8.5" fill="#c98d5a"/>'
-      + '<path d="M13 19 A9 9 0 0 1 31 19 L31 14.5 A9 9 0 0 0 13 14.5 Z" fill="#1e3a5f"/>'
-      + '<rect x="11" y="16.5" width="22" height="3.2" rx="1.6" fill="#16283e"/>'
-      + '<rect x="14.5" y="18" width="7" height="4.4" rx="2" fill="#0d0d0d"/>'
-      + '<rect x="22.5" y="18" width="7" height="4.4" rx="2" fill="#0d0d0d"/>'
-      + '<rect x="21" y="19.6" width="2.4" height="1.2" fill="#0d0d0d"/>'
-      + '<circle cx="16.5" cy="19.2" r="1" fill="#fff"/><circle cx="24.5" cy="19.2" r="1" fill="#fff"/>'
-      + '<path d="M18.5 25.5 Q22 24 25.5 25.5" stroke="#3a2410" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
-      + '<path d="M19.5 28 Q22 29.5 24.5 28" stroke="#5a3018" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>';
-  }
-  if (n.includes('DARIO')) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
-      + '<rect width="44" height="44" fill="#1a2a1a"/>'
-      + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#2a6b3a"/>'
-      + '<rect x="19" y="25" width="6" height="6" fill="#8a5a34"/>'
-      + '<circle cx="22" cy="19.5" r="8.5" fill="#8a5a34"/>'
-      + '<path d="M13.5 18 A8.5 8.5 0 0 1 30.5 18 L30.5 14 A8.5 8.5 0 0 0 13.5 14 Z" fill="#1a1210"/>'
-      + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
-      + '<path d="M15 26 Q22 30 29 26 L29 29 Q22 31 15 29 Z" fill="#1a1210"/>'
-      + '<path d="M19 24.5 Q22 26 25 24.5" stroke="#3a2410" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>';
-  }
-  // MARA (default): dark hair, orange jacket — the crew's getaway driver.
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">'
-    + '<rect width="44" height="44" fill="#8a3c00"/>'
-    + '<path d="M5 44 Q7 31 15 29 L29 29 Q37 31 39 44 Z" fill="#ff7a1a"/>'
-    + '<path d="M22 29 L22 44" stroke="#ffe9d0" stroke-width="1.8"/>'
-    + '<rect x="19" y="25" width="6" height="6" fill="#d9a066"/>'
-    + '<circle cx="22" cy="16.5" r="9.5" fill="#1a1210"/>'
-    + '<circle cx="22" cy="19.5" r="8.5" fill="#e8b07a"/>'
-    + '<rect x="12.8" y="17" width="3.2" height="12" rx="1.6" fill="#1a1210"/>'
-    + '<rect x="28" y="17" width="3.2" height="12" rx="1.6" fill="#1a1210"/>'
-    + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
-    + '<path d="M19 24.5 Q22 27 25 24.5" stroke="#7a3a10" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>';
+function bar(parent, label, colour) {
+  const wrap = el('div', 'hud-bar', parent);
+  el('div', 'hud-bar-label', wrap, label);
+  const track = el('div', 'hud-bar-track', wrap);
+  const fill = el('div', 'hud-bar-fill', track);
+  fill.style.background = colour;
+  return fill;
 }
 
-/** Per-frame HUD refresh from the live game state. */
-export function updateHud(hud, s) {
-  const el = hud.el;
-  el.stars.textContent = '★'.repeat(s.wanted) + '☆'.repeat(5 - s.wanted);
-  // WANTED stars are GOLD, always — the red stars read as damage/error.
-  // Rich gold #ffb700, never pale yellow.
-  el.stars.style.color = '#ffb700';
-  el.wantedLabel.textContent = s.wanted > 0 ? 'WANTED' : 'NOT WANTED';
-  el.wantedLabel.style.color = s.wanted >= 3 ? '#ff5252' : '#9fd4ff';
-  el.cash.textContent = `$${Math.floor(s.cash).toLocaleString('en-US')}`;
-  el.health.style.width = `${Math.max(0, s.health)}%`;
-  el.armour.style.width = `${Math.max(0, s.armour)}%`;
-  el.speed.textContent = s.inCar ? `${Math.round(Math.abs(s.speed) * 4.4)} km/h` : 'ON FOOT';
-  el.speedBig.textContent = s.inCar ? `${Math.round(Math.abs(s.speed) * 4.4)}` : '0';
-  el.gear.textContent = s.inCar ? `GEAR ${s.gear || 1}` : 'ON FOOT';
-  el.vehicleName.textContent = (s.vehicleName || 'VELOZ COMET RS').toUpperCase();
-  el.conditionFill.style.width = `${Math.max(0, Math.min(100, s.condition === undefined ? 100 : s.condition))}%`;
-  el.nos.style.width = `${Math.max(0, Math.min(100, (s.nos / s.nosMax) * 100))}%`;
-  el.weapon.textContent = `${s.weapon}  ${s.ammo}`;
-  el.objective.textContent = s.objective;
-  el.radio.textContent = s.radio;
-  el.turf.textContent = turfLabelFn(s.turf);
-  el.timer.textContent = s.timerText || '';
-  el.timer.style.display = s.timerText ? 'block' : 'none';
-  el.streetLabel.textContent = s.streetLabel || '';
-  if (el.insight) el.insight.style.display = s.inSight ? 'block' : 'none';
-  if (s.missionPanel) {
-    const p = s.missionPanel;
-    const key = JSON.stringify(p);
-    if (key !== hud._panelCache) {
-      hud._panelCache = key;
-      el.missionTitle.textContent = p.title;
-      el.missionObjectives.innerHTML = p.objectives.map((o) =>
-        `<div class="obj ${o.done ? 'done' : ''}">${o.done ? '✓' : '○'} ${o.label}</div>`).join('');
-      el.missionStage.textContent = `STAGE ${p.stage}  ·  +$${p.reward}${p.story ? `  ·  ${p.story}` : ''}${p.rep ? `  ·  REP ${p.rep}` : ''}`;
-      el.missionTimer.textContent = p.timer || (s.timerText ? s.timerText.replace('⏱ ', '') : '');
-      el.missionTimer.style.display = (p.timer || s.timerText) ? 'block' : 'none';
-      el.missionNext.innerHTML = `NEXT: ${p.next}`;
-      if (el.missionStory) el.missionStory.textContent = '';
-    }
+export class HUD {
+  constructor() {
+    this.root = document.getElementById('hud');
+    this.build();
+    this.logLines = [];
+    this.toastCount = 0;
+    this.mapVisible = false;
   }
-  if (s.alerts && el.missionAlerts) {
-    const key = s.alerts.join('|');
-    if (key !== hud._alertsCache) {
-      hud._alertsCache = key;
-      el.missionAlerts.innerHTML = s.alerts.map((a) =>
-        `<div class="alert ${a.kind === 'warn' ? 'warn' : 'info'}">${a.text}</div>`).join('');
-    }
-  }
-  if (s.weapons && el.weapons) {
-    const key = JSON.stringify(s.weapons);
-    if (key !== hud._weaponsCache) {
-      hud._weaponsCache = key;
-      el.weapons.innerHTML = s.weapons.map((w) =>
-        `<div class="wslot ${w.active ? 'active' : ''}"><span class="wkey">${w.key}</span> ${w.name}<span class="wammo">${w.ammo}</span></div>`).join('');
-    }
-  }
-  if (s.respect !== undefined && el.respectFill) {
-    const pct = Math.round((s.respect / 550) * 100);
-    const key = `${s.respect}|${s.respectRank || ''}`;
-    if (key !== hud._respectCache) {
-      hud._respectCache = key;
-      el.respectFill.style.width = `${pct}%`;
-      if (el.respectLabel) el.respectLabel.textContent = `RESPECT · ${s.respectRank || 'SHOT CALLER'} ${s.respect}/550`;
-    }
-  }
-  if (s.policeUnits) {
-    const key = JSON.stringify(s.policeUnits) + (s.roadblockAhead ? '|RB' : '');
-    if (key !== hud._policeCache) {
-      hud._policeCache = key;
-      // The cover runs EIGHT cruisers + AIR-1; nine rows would push the
-      // panel over the RESPECT bar, so show four cruisers + AIR-1 and
-      // fold the rest into a "+N MORE UNITS" footer (BRISA BAY does the
-      // same). Four, not five: with the roadblock banner the panel still
-      // reached the RESPECT label at five rows (yellow-on-yellow). The
-      // banner is suppressed while capped — the mission panel already
-      // carries the ROADBLOCK AHEAD alert and the toast says it too.
-      // Plain play never has more than four units, so this never triggers
-      // outside the staged cover.
-      const air = s.policeUnits.filter((u) => u.name === 'AIR-1');
-      const rest = s.policeUnits.filter((u) => u.name !== 'AIR-1');
-      const capped = rest.length > 5;
-      const shown = [...rest.slice(0, capped ? 4 : 5), ...air];
-      const hidden = rest.length - shown.length + air.length;
-      const more = hidden > 0
-        ? `<div class="unit"><span class="uname">+${hidden} MORE UNITS</span><span class="udist">—</span><span class="ustat chasing">EN ROUTE</span></div>` : '';
-      el.policeList.innerHTML = shown.map((u) =>
-        `<div class="unit"><span class="uname">${u.name}</span><span class="udist">${u.dist}m</span><span class="ustat ${u.status.toLowerCase()}">${u.status}</span></div>`).join('')
-        + more
-        || '<div class="unit"><span class="uname">NO UNITS</span><span class="udist">—</span><span class="ustat">CLEAR</span></div>';
-      el.roadblockBanner.style.display = s.roadblockAhead && !capped ? 'block' : 'none';
-    }
-  }
-  if (s.dialogue) {
-    el.dialogue.style.display = 'flex';
-    if (hud._dlgName !== s.dialogue.name) {
-      hud._dlgName = s.dialogue.name;
-      el.dialogueAvatar.innerHTML = portraitSVG(s.dialogue.name);
-    }
-    el.dialogueName.textContent = s.dialogue.name || '';
-    el.dialogueText.textContent = s.dialogue.text || '';
-  } else {
-    el.dialogue.style.display = 'none';
-  }
-  // Shot 3 is the FULL CITY MAP: draw the big map on its own canvas and
-  // hide the corner minimap (CSS body.map-mode); every other shot keeps
-  // the round minimap.
-  if (s.mapMode && el.fullmap) {
-    el.fullmap.style.display = 'block';
-    drawFullMap(el.fullmap, s);
-  } else {
-    if (el.fullmap) el.fullmap.style.display = 'none';
-    drawMinimap(el.minimap, s);
-  }
-}
 
-/** The detailed minimap: turquoise sea + sand, district turf colours + labels,
- streets with names, ferris wheel + lighthouse icons, mission marker, police
- blips, roadblocks, heli, properties, robbery targets, race checkpoints and
- the player arrow — plus a dashed red SEARCH-ZONE ring while wanted. Drawn on
- a round canvas (CSS border-radius: 50%). */
-function drawMinimap(canvas, s) {
-  const g = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-  const toMap = (x, z) => [(x + 240) / 480 * W, (z + 240) / 480 * H];
-  g.clearRect(0, 0, W, H);
-  g.fillStyle = '#0e2a3a';
-  g.fillRect(0, 0, W, H);
-  g.fillStyle = '#19b8c4';
-  g.fillRect(0, H - 26, W, 26);
-  g.fillRect(0, 0, 26, H);
-  g.fillStyle = '#f2ddab';
-  g.fillRect(0, H - 38, W, 12);
-  g.fillRect(26, 0, 12, H);
-  g.textAlign = 'center';
-  for (let i = 0; i < DISTRICTS.length; i += 1) {
-    const r = DISTRICTS[i].rect;
-    const [x0, y0] = toMap(r[0], r[1]);
-    const [x1, y1] = toMap(r[2], r[3]);
-    g.fillStyle = s.turf.owners[i] === 'crew' ? 'rgba(55,201,120,0.30)' : 'rgba(229,72,77,0.16)';
-    g.fillRect(x0, y0, x1 - x0, y1 - y0);
-    g.fillStyle = 'rgba(0,0,0,0.55)';
-    g.font = 'bold 8px system-ui, sans-serif';
-    g.fillText(DISTRICTS[i].name.toUpperCase(), (x0 + x1) / 2 + 1, (y0 + y1) / 2 + 1);
-    g.fillStyle = 'rgba(255,255,255,0.9)';
-    g.fillText(DISTRICTS[i].name.toUpperCase(), (x0 + x1) / 2, (y0 + y1) / 2);
-  }
-  g.strokeStyle = 'rgba(255,255,255,0.55)';
-  g.lineWidth = 2;
-  for (let i = -4; i <= 4; i += 1) {
-    const c = (i * 60 + 240) / 480 * W;
-    g.beginPath();
-    g.moveTo(c, 0);
-    g.lineTo(c, H);
-    g.stroke();
-    g.beginPath();
-    g.moveTo(0, c);
-    g.lineTo(W, c);
-    g.stroke();
-  }
-  g.fillStyle = 'rgba(255,255,255,0.95)';
-  g.font = 'bold 7px system-ui, sans-serif';
-  const vNames = [['OCEAN BLVD', -180], ['PALMA AVE', -120], ['MERCADO ST', -60], ['CASINO AVE', 0], ['TORRE BLVD', 60], ['FESTIVAL AVE', 120], ['FAROL WAY', 180]];
-  for (const [name, at] of vNames) {
-    const [x] = toMap(at, 0);
-    g.save();
-    g.translate(x - 3, 80);
-    g.rotate(-Math.PI / 2);
-    g.fillText(name, 0, 0);
-    g.restore();
-  }
-  for (const [name, at, yOff] of [['PLAYA DR', 180, 224], ['MIRAMAR STRIP', 120, 177], ['MARINA RD', -180, 22]]) {
-    const [, y] = toMap(0, at);
-    g.fillText(name, W / 2, yOff === undefined ? y - 3 : yOff);
-  }
-  const [fx, fy] = toMap(FERRIS.pos[0], FERRIS.pos[1]);
-  g.fillStyle = '#ff2a5e';
-  g.beginPath();
-  g.arc(fx, fy, 5, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#fff';
-  g.font = 'bold 7px system-ui, sans-serif';
-  g.fillText('F', fx, fy + 2.5);
-  const [lx, ly] = toMap(180, -180);
-  g.fillStyle = '#ffd23f';
-  g.beginPath();
-  g.arc(lx, ly, 4, 0, Math.PI * 2);
-  g.fill();
-  g.font = 'bold 11px system-ui, sans-serif';
-  for (const p of s.properties) {
-    const [x, y] = toMap(p.pos[0], p.pos[1]);
-    g.fillStyle = s.turf.isOwned(p.id) ? '#37c978' : '#e8e8e8';
-    g.fillText(s.turf.isOwned(p.id) ? '⌂' : '$', x, y);
-  }
-  for (const t of s.robTargets) {
-    const [x, y] = toMap(t.pos[0], t.pos[1]);
-    g.fillStyle = '#ff9a56';
-    g.fillText('$', x, y);
-  }
-  if (s.raceCheckpoints) {
-    g.fillStyle = '#ffd23f';
-    for (const [x, z] of s.raceCheckpoints) {
-      const [mx, my] = toMap(x, z);
-      g.fillRect(mx - 2, my - 2, 4, 4);
-    }
-  }
-  if (s.missionTarget) {
-    const [x, y] = toMap(s.missionTarget[0], s.missionTarget[1]);
-    const pulse = 3 + Math.sin(performance.now() * 0.006) * 1.5;
-    g.fillStyle = '#ffd23f';
-    g.beginPath();
-    g.moveTo(x, y - pulse - 3);
-    g.lineTo(x + pulse + 3, y);
-    g.lineTo(x, y + pulse + 3);
-    g.lineTo(x - pulse - 3, y);
-    g.closePath();
-    g.fill();
-  }
-  for (const [x, z] of s.policeBlips) {
-    const [mx, my] = toMap(x, z);
-    g.fillStyle = '#4d8dff';
-    g.beginPath();
-    g.arc(mx, my, 3.5, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = '#fff';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.arc(mx, my, 3.5, 0, Math.PI * 2);
-    g.stroke();
-  }
-  g.fillStyle = '#ff2a2a';
-  for (const [x, z] of s.roadblocks) {
-    const [mx, my] = toMap(x, z);
-    g.fillRect(mx - 3, my - 3, 6, 6);
-  }
-  if (s.heli) {
-    const [x, y] = toMap(s.heli[0], s.heli[1]);
-    g.fillStyle = '#fff';
-    g.font = 'bold 12px system-ui, sans-serif';
-    g.fillText('H', x, y);
-  }
-  if (s.searchZone) {
-    const [px, py] = toMap(s.px, s.pz);
-    const rPx = (SEARCH_ZONE_RADIUS / 480) * W;
-    g.strokeStyle = 'rgba(255,42,42,0.9)';
-    g.lineWidth = 2;
-    g.setLineDash([6, 4]);
-    g.beginPath();
-    g.arc(px, py, rPx, 0, Math.PI * 2);
-    g.stroke();
-    g.setLineDash([]);
-    g.fillStyle = 'rgba(255,42,42,0.10)';
-    g.beginPath();
-    g.arc(px, py, rPx, 0, Math.PI * 2);
-    g.fill();
-  }
-  const [px, py] = toMap(s.px, s.pz);
-  g.save();
-  g.translate(px, py);
-  g.rotate(Math.atan2(Math.sin(s.heading), Math.cos(s.heading)) * -1 + Math.PI);
-  g.fillStyle = '#fff';
-  g.beginPath();
-  g.moveTo(0, -7);
-  g.lineTo(5, 5);
-  g.lineTo(-5, 5);
-  g.closePath();
-  g.fill();
-  g.restore();
-  g.fillStyle = '#fff';
-  g.font = 'bold 10px system-ui, sans-serif';
-  g.fillText('N', W - 12, 14);
-}
+  build() {
+    // Top-left: mission panel.
+    this.missionPanel = el('div', 'panel mission-panel', this.root);
+    this.missionTitle = el('div', 'mission-title', this.missionPanel);
+    this.missionObj = el('div', 'mission-obj', this.missionPanel);
+    this.missionStage = el('div', 'mission-stage', this.missionPanel);
+    this.missionNext = el('div', 'mission-next', this.missionPanel);
+    this.missionBanner = el('div', 'mission-banner', this.missionPanel);
+    el('div', 'mission-controls', this.missionPanel,
+      '[WASD] drive · [SPACE] handbrake · [E] exit · [M] map');
 
-/** The FULL CITY MAP (shot 3): the same minimap data as drawMinimap, but
- rendered full-screen on a 1280x720 canvas — the whole of Puerto Lumen in
- one frame, dense and legible, like the top entries' big detailed minimaps
- blown up to fill the screen. The city square (480 world units) is drawn
- 640 px across, centred, with turquoise sea + sand on the west/south edges,
- district turf tints + names, the street grid with names, landmark pins
- (dots only — their names duplicate the district names), properties /
- robbery targets, police blips, the heli, the red search-zone ring, the
- player arrow, and a GOLD dashed ESCAPE ROUTE from the Torre Lumen vault
- to the Playa Dorada boat (via Marina Road and Ocean Boulevard). A title
- pill names the map at the bottom-centre and a legend fills the free
- bottom-left corner. The game's DOM HUD (mission panel, LCPD list, wanted
- stars, cash, toasts, dialogue, speed) floats on top of it. */
-function drawFullMap(canvas, s) {
-  const g = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-  // City square: 640 px for 480 world units, centred at (640, 360).
-  const S = 640 / 480;
-  const OX = 320;
-  const OY = 40;
-  const toMap = (x, z) => [OX + (x + 240) * S, OY + (z + 240) * S];
-  const label = (text, x, y, font, colour, align) => {
-    g.font = font;
-    g.textAlign = align || 'center';
-    g.fillStyle = 'rgba(0,0,0,0.75)';
-    g.fillText(text, x + 1.5, y + 1.5);
-    g.fillStyle = colour || 'rgba(255,255,255,0.95)';
-    g.fillText(text, x, y);
-  };
-  // Opaque deep-sea background (the 3D scene hides behind this canvas).
-  g.clearRect(0, 0, W, H);
-  g.fillStyle = '#0b2233';
-  g.fillRect(0, 0, W, H);
-  // Land base: dark slate city square.
-  g.fillStyle = '#26313f';
-  g.fillRect(OX, OY, 640, 640);
-  // Turquoise sea + sand on the WEST and SOUTH edges of the square.
-  g.fillStyle = '#19b8c4';
-  g.fillRect(OX, OY, 26, 640);
-  g.fillRect(OX, OY + 640 - 26, 640, 26);
-  g.fillStyle = '#f2ddab';
-  g.fillRect(OX + 26, OY, 12, 640);
-  g.fillRect(OX, OY + 640 - 38, 640, 12);
-  // District turf tints + names.
-  g.textAlign = 'center';
-  for (let i = 0; i < DISTRICTS.length; i += 1) {
-    const r = DISTRICTS[i].rect;
-    const [x0, y0] = toMap(r[0], r[1]);
-    const [x1, y1] = toMap(r[2], r[3]);
-    g.fillStyle = s.turf.owners[i] === 'crew' ? 'rgba(55,201,120,0.30)' : 'rgba(229,72,77,0.16)';
-    g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    // Top-centre: wanted.
+    this.wantedBox = el('div', 'wanted-box', this.root);
+    this.wantedLabel = el('div', 'wanted-label', this.wantedBox, 'WANTED');
+    this.stars = el('div', 'stars', this.wantedBox);
+    this.inSight = el('div', 'insight-pill', this.wantedBox, 'IN SIGHT — search zone follows you');
+
+    // Top-right: cash + weapons + bars.
+    this.cashPanel = el('div', 'panel cash-panel', this.root);
+    this.cashValue = el('div', 'cash-value', this.cashPanel, '$1,200');
+    this.weaponName = el('div', 'weapon-name', this.cashPanel, 'Pistol ∞');
+    this.slots = el('div', 'weapon-slots', this.cashPanel);
+    this.slotEls = [];
+    for (const w of WEAPONS) {
+      const s = el('div', 'weapon-slot', this.slots);
+      s.dataset.id = w.id;
+      this.slotEls.push(s);
+    }
+    this.healthFill = bar(this.cashPanel, 'HEALTH', '#2ecc71');
+    this.armourFill = bar(this.cashPanel, 'ARMOUR', '#5a6a7a');
+    this.nosFill = bar(this.cashPanel, 'NOS', '#4aa8ff');
+    this.clock = el('div', 'clock', this.cashPanel, '18:40');
+
+    // Left middle: LCPD response list.
+    this.policePanel = el('div', 'panel police-panel', this.root);
+    el('div', 'panel-head', this.policePanel, 'LCPD RESPONSE');
+    this.policeRows = el('div', 'police-rows', this.policePanel);
+    this.policeMore = el('div', 'police-more', this.policePanel);
+    this.respectWrap = el('div', 'respect-wrap', this.root);
+    el('div', 'respect-label', this.respectWrap, 'RESPECT · HUSTLER 0/550');
+    const respectTrack = el('div', 'respect-track', this.respectWrap);
+    this.respectFill = el('div', 'respect-fill', respectTrack);
+    this.streetLabel = el('div', 'street-label', this.root, 'DUNES — Torre Boulevard');
+
+    // Bottom-left: minimap + turf.
+    this.mapWrap = el('div', 'minimap-wrap', this.root);
+    this.minimap = document.createElement('canvas');
+    this.minimap.width = 200;
+    this.minimap.height = 200;
+    this.minimap.className = 'minimap';
+    this.mapWrap.appendChild(this.minimap);
+    this.turfLabel = el('div', 'turf-label', this.root, 'TURF 1/12');
+
+    // Bottom-centre: dialogue.
+    this.dialogueEl = el('div', 'dialogue', this.root);
+    this.avatar = el('div', 'avatar', this.dialogueEl, 'M');
+    this.dialogueBody = el('div', 'dialogue-body', this.dialogueEl);
+    this.dialogueName = el('div', 'dialogue-name', this.dialogueBody, 'MARA');
+    this.dialogueLine = el('div', 'dialogue-line', this.dialogueBody, '');
+
+    // Right middle: toasts.
+    this.toasts = el('div', 'toasts', this.root);
+    // Right lower: event log.
+    this.logBox = el('div', 'log-box', this.root);
+
+    // Bottom-right: speedometer.
+    this.speedPanel = el('div', 'panel speed-panel', this.root);
+    this.speedValue = el('div', 'speed-value', this.speedPanel, '0');
+    el('div', 'speed-unit', this.speedPanel, 'km/h');
+    this.gearLabel = el('div', 'gear-label', this.speedPanel, 'ON FOOT');
+    this.carLabel = el('div', 'car-label', this.speedPanel, 'ON FOOT');
+    this.condFill = bar(this.speedPanel, 'CONDITION', '#2ecc71');
+    el('div', 'radio-line', this.speedPanel, RADIO.station);
+
+    // Centre: big banner (MISSION PASSED / WASTED / BUSTED).
+    this.bannerEl = el('div', 'big-banner', this.root);
+    this.bannerTitle = el('div', 'big-banner-title', this.bannerEl);
+    this.bannerSub = el('div', 'big-banner-sub', this.bannerEl);
+    this.bannerEl.style.display = 'none';
+
+    // Full-city-map overlay (shot 3). A canvas centred on the screen;
+    // the HUD panels stay visible around it.
+    this.mapOverlay = el('div', 'map-overlay', this.root);
+    this.mapCanvas = document.createElement('canvas');
+    this.mapCanvas.width = 1280;
+    this.mapCanvas.height = 720;
+    this.mapCanvas.className = 'map-canvas';
+    this.mapOverlay.appendChild(this.mapCanvas);
+    this.mapTitle = el('div', 'map-title', this.mapOverlay, 'PUERTO LUMEN — CITY MAP');
+    this.mapOverlay.style.display = 'none';
+
+    // Title screen + pause overlay live in index.html; HUD hooks here.
+    this.titleEl = document.getElementById('title-screen');
+    this.pauseEl = document.getElementById('pause-screen');
   }
-  // Street grid: every 60 world units, white; the three named coast roads
-  // slightly heavier.
-  g.strokeStyle = 'rgba(255,255,255,0.55)';
-  g.lineWidth = 3;
-  for (let i = -4; i <= 4; i += 1) {
-    const c = (i * 60 + 240) * S + OX;
-    g.beginPath();
-    g.moveTo(c, OY);
-    g.lineTo(c, OY + 640);
-    g.stroke();
-    g.beginPath();
-    g.moveTo(OX, c - OX + OY);
-    g.lineTo(OX + 640, c - OX + OY);
-    g.stroke();
+
+  setMission(mission, stage = 0) {
+    this.missionTitle.textContent = 'JOB ' + mission.id + ': ' + mission.name;
+    const stages = mission.stages || [mission.brief];
+    const lines = stages.map((s, i) => (i < stage ? '✓ ' : i === stage ? '○ ' : '○ ') + s);
+    this.missionObj.innerHTML = lines.map((l) => '<div>' + l + '</div>').join('');
+    this.missionStage.textContent = 'STAGE ' + (stage + 1) + '/' + stages.length +
+      ' · +$' + mission.reward.toLocaleString() + ' · STORY ' + mission.id + '/15 · REP ' + (this.rep || 0);
+    this.missionNext.textContent = 'NEXT: ' + (stages[Math.min(stage + 1, stages.length - 1)] || mission.brief);
+    this.missionBanner.style.display = 'none';
   }
-  // City square border.
-  g.strokeStyle = 'rgba(255,255,255,0.8)';
-  g.lineWidth = 2;
-  g.strokeRect(OX, OY, 640, 640);
-  // ESCAPE ROUTE (under the labels, over the streets): gold dashed line
-  // from the vault north to Marina Road, west to Ocean Boulevard, south to
-  // the Playa Dorada boat. Waypoints follow the named streets. No text
-  // along the line itself — the title pill + legend already name it, and
-  // a rotated label collided with OCEAN BLVD on the same street.
-  if (s.mapRoute) {
-    const [fx0, fz0] = s.mapRoute.from;
-    const [tx0, tz0] = s.mapRoute.to;
-    const pts = [[fx0, fz0], [fx0, -180], [-180, -180], [-180, tz0], [tx0, tz0]];
-    g.lineJoin = 'round';
-    g.strokeStyle = 'rgba(0,0,0,0.55)';
-    g.lineWidth = 9;
-    g.beginPath();
-    pts.forEach(([x, z], i) => {
-      const [mx, my] = toMap(x, z);
-      if (i === 0) g.moveTo(mx, my);
-      else g.lineTo(mx, my);
-    });
-    g.stroke();
-    g.strokeStyle = '#ffd23f';
-    g.lineWidth = 5;
-    g.setLineDash([16, 11]);
-    g.beginPath();
-    pts.forEach(([x, z], i) => {
-      const [mx, my] = toMap(x, z);
-      if (i === 0) g.moveTo(mx, my);
-      else g.lineTo(mx, my);
-    });
-    g.stroke();
-    g.setLineDash([]);
-    // Arrowhead at the boat end, pointing south down Ocean Boulevard.
-    const [ax, ay] = toMap(tx0, tz0);
-    g.fillStyle = '#ffd23f';
-    g.beginPath();
-    g.moveTo(ax, ay + 16);
-    g.lineTo(ax - 9, ay - 2);
-    g.lineTo(ax + 9, ay - 2);
-    g.closePath();
-    g.fill();
+
+  setObjective(text) {
+    this.missionObj.innerHTML = '<div>○ ' + text + '</div>';
   }
-  // District names (drawn over the route so they stay readable).
-  for (let i = 0; i < DISTRICTS.length; i += 1) {
-    const r = DISTRICTS[i].rect;
-    const [x0, y0] = toMap(r[0], r[1]);
-    const [x1, y1] = toMap(r[2], r[3]);
-    label(DISTRICTS[i].name.toUpperCase(), (x0 + x1) / 2, (y0 + y1) / 2 + 5, 'bold 15px system-ui, sans-serif');
+
+  setCash(n) {
+    this.cashValue.textContent = '$' + Math.round(n).toLocaleString();
   }
-  // Street names: vertical streets rotated, centred in the LOWER third so
-  // they never cross the middle-row district labels; horizontal streets
-  // flat. PLAYA DR sits right-of-centre so the title pill never hides it.
-  g.fillStyle = 'rgba(255,255,255,0.95)';
-  g.font = 'bold 12px system-ui, sans-serif';
-  const vNames = [['OCEAN BLVD', -180], ['PALMA AVE', -120], ['MERCADO ST', -60], ['CASINO AVE', 0], ['TORRE BLVD', 60], ['FESTIVAL AVE', 120], ['FAROL WAY', 180]];
-  for (const [name, at] of vNames) {
-    const [x] = toMap(at, 0);
-    g.save();
-    g.translate(x - 5, OY + 380);
-    g.rotate(-Math.PI / 2);
-    g.fillText(name, 0, 0);
-    g.restore();
+
+  setRep(rep) {
+    this.rep = rep;
+    const rank = rep < 100 ? 'HUSTLER' : rep < 300 ? 'HUSTLER' : 'KINGPIN';
+    this.respectWrap.querySelector('.respect-label').textContent =
+      'RESPECT · ' + rank + ' ' + rep + '/550';
+    this.respectFill.style.width = Math.min(100, (rep / 550) * 100) + '%';
   }
-  for (const [name, at, xOff] of [['MARINA RD', -180, 0], ['MIRAMAR STRIP', 120, 0], ['PLAYA DR', 180, 280]]) {
-    const [, y] = toMap(0, at);
-    g.fillText(name, OX + 320 + xOff, y - 6);
+
+  setWanted(n, redStars = false) {
+    this.wantedLabel.textContent = n > 0 ? 'WANTED' : 'NOT WANTED';
+    this.wantedLabel.style.color = redStars || n >= 4 ? '#ff5252' : (n > 0 ? '#ff5252' : '#7ec8ff');
+    let html = '';
+    for (let i = 0; i < 5; i += 1) {
+      const filled = i < n;
+      const colour = redStars ? (filled ? '#e23b3b' : '#5a2a2a') : (filled ? '#ffc21a' : '#4a4238');
+      html += '<span style="color:' + colour + '">' + (filled ? '★' : '☆') + '</span>';
+    }
+    this.stars.innerHTML = html;
+    this.inSight.style.display = n > 0 ? 'block' : 'none';
   }
-  // Landmark pins: gold dots only, NO text — every landmark name duplicates
-  // its district name, and the labels stacked into unreadable piles.
-  // Skip a pin that lands ON a district label (casino + festival sit at
-  // their district centres): the dot punched a hole in the label's letters.
-  const labelCentres = DISTRICTS.map((d) => {
-    const r = d.rect;
-    const [x0, y0] = toMap(r[0], r[1]);
-    const [x1, y1] = toMap(r[2], r[3]);
-    return [(x0 + x1) / 2, (y0 + y1) / 2 + 5];
-  });
-  for (const key of Object.keys(LANDMARKS)) {
-    const lm = LANDMARKS[key];
-    const [x, y] = toMap(lm.pos[0], lm.pos[1]);
-    if (labelCentres.some(([cx, cy]) => Math.abs(x - cx) < 50 && Math.abs(y - cy) < 18)) continue;
-    g.fillStyle = '#ffd23f';
-    g.beginPath();
-    g.arc(x, y, 5, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = '#1a1210';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.arc(x, y, 5, 0, Math.PI * 2);
-    g.stroke();
-  }
-  // Ferris wheel + lighthouse icons.
-  const [fx, fy] = toMap(FERRIS.pos[0], FERRIS.pos[1]);
-  g.fillStyle = '#ff2a5e';
-  g.beginPath();
-  g.arc(fx, fy, 7, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#fff';
-  g.font = 'bold 10px system-ui, sans-serif';
-  g.fillText('F', fx, fy + 3.5);
-  const [lx, ly] = toMap(180, -180);
-  g.fillStyle = '#ffd23f';
-  g.beginPath();
-  g.arc(lx, ly, 6, 0, Math.PI * 2);
-  g.fill();
-  // Properties + robbery targets.
-  g.font = 'bold 15px system-ui, sans-serif';
-  for (const p of s.properties) {
-    const [x, y] = toMap(p.pos[0], p.pos[1]);
-    g.fillStyle = s.turf.isOwned(p.id) ? '#37c978' : '#e8e8e8';
-    g.fillText(s.turf.isOwned(p.id) ? '⌂' : '$', x, y);
-  }
-  for (const t of s.robTargets) {
-    const [x, y] = toMap(t.pos[0], t.pos[1]);
-    g.fillStyle = '#ff9a56';
-    g.fillText('$', x, y);
-  }
-  if (s.raceCheckpoints) {
-    g.fillStyle = '#ffd23f';
-    for (const [x, z] of s.raceCheckpoints) {
-      const [mx, my] = toMap(x, z);
-      g.fillRect(mx - 3, my - 3, 6, 6);
+
+  setWeapon(id) {
+    const w = WEAPONS.find((x) => x.id === id) || WEAPONS[1];
+    this.weaponName.textContent = w.name + (w.ammo === Infinity ? ' ∞' : ' ' + w.ammo + '/' + (w.maxAmmo || 120));
+    for (const s of this.slotEls) {
+      const def = WEAPONS.find((x) => x.id === s.dataset.id);
+      s.textContent = (def.id === 'fists' ? '1 ' : def.id === 'pistol' ? '2 ' : '3 ') +
+        def.name + (def.ammo === Infinity ? ' ∞' : ' ' + def.ammo + '/' + (def.maxAmmo || 120));
+      s.classList.toggle('active', def.id === id);
     }
   }
-  // Mission target diamond (the boat at Playa Dorada).
-  if (s.missionTarget) {
-    const [x, y] = toMap(s.missionTarget[0], s.missionTarget[1]);
-    const pulse = 6 + Math.sin(performance.now() * 0.006) * 2;
-    g.fillStyle = '#ffd23f';
-    g.beginPath();
-    g.moveTo(x, y - pulse - 5);
-    g.lineTo(x + pulse + 5, y);
-    g.lineTo(x, y + pulse + 5);
-    g.lineTo(x - pulse - 5, y);
-    g.closePath();
-    g.fill();
-    g.strokeStyle = '#1a1210';
-    g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(x, y - pulse - 5);
-    g.lineTo(x + pulse + 5, y);
-    g.lineTo(x, y + pulse + 5);
-    g.lineTo(x - pulse - 5, y);
-    g.closePath();
-    g.stroke();
-    // Label to the LEFT of the diamond, right-aligned, clear of the title
-    // pill (which starts at x=425) and of the PLAYA DORADA district label.
-    label('BOAT — PLAYA DORADA', x - 18, y + 5, 'bold 12px system-ui, sans-serif', '#ffd23f', 'right');
+
+  setBars(health, healthMax, armour, armourMax, nos, nosMax) {
+    this.healthFill.style.width = Math.max(0, (health / healthMax) * 100) + '%';
+    this.armourFill.style.width = Math.max(0, (armour / armourMax) * 100) + '%';
+    this.nosFill.style.width = Math.max(0, (nos / nosMax) * 100) + '%';
   }
-  // Police blips + roadblocks + heli (one "H" — the legend explains it).
-  for (const [x, z] of s.policeBlips) {
-    const [mx, my] = toMap(x, z);
-    g.fillStyle = '#4d8dff';
-    g.beginPath();
-    g.arc(mx, my, 6, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = '#fff';
-    g.lineWidth = 2;
-    g.beginPath();
-    g.arc(mx, my, 6, 0, Math.PI * 2);
-    g.stroke();
+
+  setClock(str) { this.clock.textContent = str; }
+
+  setStreet(name) { this.streetLabel.textContent = name; }
+
+  setTurf(n) { this.turfLabel.textContent = 'TURF ' + n + '/12'; }
+
+  setSpeed(kmh, gear, carName, onFoot) {
+    this.speedValue.textContent = String(Math.round(kmh));
+    this.gearLabel.textContent = onFoot ? 'ON FOOT' : 'GEAR ' + gear;
+    this.carLabel.textContent = onFoot ? 'ON FOOT' : carName;
   }
-  g.fillStyle = '#ff2a2a';
-  for (const [x, z] of s.roadblocks) {
-    const [mx, my] = toMap(x, z);
-    g.fillRect(mx - 5, my - 5, 10, 10);
+
+  setCondition(pct) {
+    this.condFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
   }
-  if (s.heli) {
-    const [x, y] = toMap(s.heli[0], s.heli[1]);
-    label('H', x, y + 5, 'bold 17px system-ui, sans-serif', '#ffffff');
+
+  setPolice(units, total) {
+    let html = '';
+    for (const u of units) {
+      const pillClass = u.status === 'SPOTLIGHT' ? 'pill-spot' : u.status === 'FLANKING' ? 'pill-flank' : 'pill-chase';
+      html += '<div class="police-row"><span class="police-name">' + u.name + '</span>' +
+        '<span class="police-dist">' + u.dist + 'm</span>' +
+        '<span class="pill ' + pillClass + '">' + u.status + '</span></div>';
+    }
+    this.policeRows.innerHTML = html;
+    if (total > units.length) {
+      this.policeMore.innerHTML = '<div class="police-row"><span class="police-name">+' + (total - units.length) +
+        ' MORE UNITS</span><span></span><span class="pill pill-route">EN ROUTE</span></div>';
+    } else if (units.length === 0) {
+      this.policeMore.innerHTML = '<div class="police-row"><span class="police-name">NO UNITS</span>' +
+        '<span></span><span class="pill pill-clear">CLEAR</span></div>';
+    } else {
+      this.policeMore.innerHTML = '';
+    }
   }
-  // Red dashed SEARCH-ZONE ring around the player while wanted.
-  if (s.searchZone) {
-    const [px, py] = toMap(s.px, s.pz);
-    const rPx = (SEARCH_ZONE_RADIUS / 480) * 640;
-    g.strokeStyle = 'rgba(255,42,42,0.9)';
-    g.lineWidth = 3;
-    g.setLineDash([10, 7]);
-    g.beginPath();
-    g.arc(px, py, rPx, 0, Math.PI * 2);
-    g.stroke();
-    g.setLineDash([]);
-    g.fillStyle = 'rgba(255,42,42,0.08)';
-    g.beginPath();
-    g.arc(px, py, rPx, 0, Math.PI * 2);
-    g.fill();
+
+  toast(title, body, kind = 'info', sticky = false) {
+    const t = el('div', 'toast toast-' + kind, this.toasts);
+    el('div', 'toast-title', t, title);
+    el('div', 'toast-body', t, body);
+    this.toastCount += 1;
+    while (this.toasts.children.length > 3) this.toasts.removeChild(this.toasts.firstChild);
+    if (!sticky) setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 9000);
   }
-  // Player arrow at the vault. NO text tag — the legend explains the
-  // arrow, and a tag here collided with the heli blip + TORRE label.
-  const [px, py] = toMap(s.px, s.pz);
-  g.save();
-  g.translate(px, py);
-  g.rotate(Math.atan2(Math.sin(s.heading), Math.cos(s.heading)) * -1 + Math.PI);
-  g.fillStyle = '#fff';
-  g.beginPath();
-  g.moveTo(0, -12);
-  g.lineTo(9, 9);
-  g.lineTo(-9, 9);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = '#1a1210';
-  g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(0, -12);
-  g.lineTo(9, 9);
-  g.lineTo(-9, 9);
-  g.closePath();
-  g.stroke();
-  g.restore();
-  // Compass rose, top-right of the map square (clear of the cash panel).
-  const [cx, cy] = [OX + 640 - 34, OY + 34];
-  g.strokeStyle = 'rgba(255,255,255,0.9)';
-  g.lineWidth = 2;
-  g.beginPath();
-  g.arc(cx, cy, 18, 0, Math.PI * 2);
-  g.stroke();
-  g.fillStyle = '#ff5252';
-  g.beginPath();
-  g.moveTo(cx, cy - 13);
-  g.lineTo(cx - 5, cy + 4);
-  g.lineTo(cx + 5, cy + 4);
-  g.closePath();
-  g.fill();
-  label('N', cx, cy - 24, 'bold 13px system-ui, sans-serif');
-  // Title pill, bottom-centre above the dialogue box. SINGLE line: the
-  // two-line pill's subtitle sat half under the dialogue box (its top edge
-  // is y≈629) and read as sliced text; the subtitle is redundant anyway
-  // (mission panel NEXT + legend already name the route). Pill 586–622,
-  // clear of the bottom-row district labels (≈578) and the dialogue.
-  g.fillStyle = 'rgba(10,14,24,0.82)';
-  g.strokeStyle = 'rgba(255,210,63,0.6)';
-  g.lineWidth = 1.5;
-  const tw = 430;
-  const th = 36;
-  const tx = (W - tw) / 2;
-  const ty = 586;
-  g.beginPath();
-  g.roundRect(tx, ty, tw, th, 10);
-  g.fill();
-  g.stroke();
-  label('PUERTO LUMEN — CITY MAP', W / 2, ty + 25, 'bold 22px system-ui, sans-serif', '#ffd23f');
-  // Legend, bottom-left (the corner minimap is hidden in map mode).
-  const lx0 = 24;
-  const ly0 = 548;
-  g.textAlign = 'left';
-  g.font = 'bold 13px system-ui, sans-serif';
-  const legend = [
-    ['—', '#ffd23f', 'ESCAPE ROUTE — VAULT → BOAT'],
-    ['▲', '#ffffff', 'MARA — YOU'],
-    ['◆', '#ffd23f', 'MISSION TARGET — BOAT'],
-    ['●', '#4d8dff', 'LCPD UNITS ON THE STREET'],
-    ['H', '#ffffff', 'AIR-1 HELICOPTER'],
-    ['$', '#ff9a56', 'ROBBERY TARGETS / PROPERTIES'],
-    ['■', '#37c978', 'CREW TURF'],
-    ['■', '#e5484d', 'TIBURONES TURF'],
-  ];
-  legend.forEach(([mark, colour, text], i) => {
-    const y = ly0 + i * 19;
-    g.fillStyle = colour;
-    g.fillText(mark, lx0, y);
-    g.fillStyle = 'rgba(255,255,255,0.92)';
-    g.fillText(text, lx0 + 22, y);
-  });
-  g.textAlign = 'center';
+
+  log(line) {
+    this.logLines.push(line);
+    if (this.logLines.length > 3) this.logLines.shift();
+    this.logBox.innerHTML = this.logLines.map((l) => '<div class="log-line">' + l + '</div>').join('');
+  }
+
+  dialogue(name, line, colour = '#ff7a1a') {
+    this.dialogueName.textContent = name;
+    this.dialogueName.style.color = colour;
+    this.dialogueLine.textContent = line;
+    this.avatar.textContent = name.charAt(0);
+    this.avatar.style.background = colour;
+  }
+
+  banner(title, sub, sticky = false) {
+    this.bannerTitle.textContent = title;
+    this.bannerSub.textContent = sub || '';
+    this.bannerEl.style.display = 'block';
+    if (!sticky) setTimeout(() => { this.bannerEl.style.display = 'none'; }, 4200);
+  }
+
+  showTitle(show) {
+    if (this.titleEl) this.titleEl.style.display = show ? 'flex' : 'none';
+  }
+
+  showPause(show) {
+    if (this.pauseEl) this.pauseEl.style.display = show ? 'flex' : 'none';
+  }
+
+  // Fill every field from a SHOT_PINS entry (screenshots only).
+  applyPin(pin) {
+    this.missionTitle.textContent = pin.title;
+    this.missionObj.innerHTML = '<div>○ ' + pin.objective + '</div>';
+    this.missionStage.textContent = pin.stage;
+    this.missionNext.textContent = pin.next;
+    if (pin.banner) {
+      this.missionBanner.style.display = 'block';
+      this.missionBanner.textContent = pin.banner;
+    } else {
+      this.missionBanner.style.display = 'none';
+    }
+    this.setCash(pin.cash);
+    this.setClock(pin.clock);
+    this.setWanted(pin.wanted, !!pin.starsRed);
+    this.setWeapon(pin.weapon);
+    this.setStreet(pin.street);
+    this.setTurf(pin.turf);
+    this.setRep(290);
+    this.setSpeed(pin.speed, pin.gear, 'VELOZ COMET RS', pin.gear === 0);
+    this.setCondition(100);
+    this.setBars(100, 100, 0, 100, 100, 100);
+  }
+
+  // ---- minimap (circular, bottom-left) ----
+  drawMinimap(game) {
+    const ctx = this.minimap.getContext('2d');
+    const W = 200, R = 95, cx = 100, cy = 100;
+    ctx.clearRect(0, 0, W, W);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#0e2a33';
+    ctx.fillRect(0, 0, W, W);
+    // sea (south) + sand strip
+    ctx.fillStyle = '#1e6f8e';
+    ctx.fillRect(0, 162, W, 38);
+    ctx.fillStyle = '#d9b380';
+    ctx.fillRect(0, 152, W, 10);
+    // streets
+    const sx = (x) => 8 + ((x + 60) / 380) * 184;
+    const sz = (z) => 8 + ((z - 110) / 190) * 184;
+    ctx.strokeStyle = 'rgba(225,230,240,0.9)';
+    ctx.lineWidth = 3;
+    for (const s of STREETS) {
+      ctx.beginPath();
+      ctx.moveTo(sx(s.x1), sz(s.z1));
+      ctx.lineTo(sx(s.x2), sz(s.z2));
+      ctx.stroke();
+    }
+    // district labels (tiny)
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    for (const d of DISTRICTS) {
+      ctx.fillText(d.name, sx(d.x), sz(d.z));
+    }
+    // turf $ marks
+    ctx.fillStyle = '#ffd76a';
+    ctx.font = 'bold 9px sans-serif';
+    for (const t of game.turf.spots) {
+      if (t.owner === 'mara') ctx.fillText('$', sx(t.x), sz(t.z));
+    }
+    // mission marker (gold diamond)
+    const m = game.missions.current;
+    if (m) {
+      ctx.fillStyle = '#ffd21a';
+      ctx.beginPath();
+      ctx.moveTo(sx(m.target.x), sz(m.target.z) - 7);
+      ctx.lineTo(sx(m.target.x) + 6, sz(m.target.z));
+      ctx.lineTo(sx(m.target.x), sz(m.target.z) + 7);
+      ctx.lineTo(sx(m.target.x) - 6, sz(m.target.z));
+      ctx.fill();
+    }
+    // police blips (blue) + heli (white H)
+    ctx.fillStyle = '#4aa8ff';
+    for (const c of game.police.cruisers) {
+      ctx.beginPath();
+      ctx.arc(sx(c.mesh.position.x), sz(c.mesh.position.z), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (game.heli.visible) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('H', sx(game.heli.mesh.position.x), sz(game.heli.mesh.position.z));
+    }
+    // player arrow (gold, rotated by heading)
+    const p = game.player;
+    ctx.save();
+    ctx.translate(sx(p.x), sz(p.z));
+    ctx.rotate(-p.heading);
+    ctx.fillStyle = '#ffd21a';
+    ctx.beginPath();
+    ctx.moveTo(0, -8); ctx.lineTo(6, 6); ctx.lineTo(-6, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+    // ring + north tick
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R - 1, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // ---- full city map (shot 3) ----
+  showMap(game) {
+    this.mapVisible = true;
+    this.mapOverlay.style.display = 'block';
+    const ctx = this.mapCanvas.getContext('2d');
+    const W = 1280, H = 720;
+    ctx.clearRect(0, 0, W, H);
+    const x0 = 385, y0 = 28, x1 = 1015, y1 = 612;
+    // map panel
+    ctx.fillStyle = '#2a1a24';
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fillStyle = '#1e6f8e';
+    ctx.fillRect(x0, y0, 26, y1 - y0); // sea strip, west edge
+    ctx.fillStyle = '#d9b380';
+    ctx.fillRect(x0 + 26, y0, 8, y1 - y0);
+    ctx.fillStyle = '#2a5a3a';
+    ctx.fillRect(x0 + 200, y0 + 300, 130, 110); // park block
+    const sx = (x) => x0 + 40 + ((x + 60) / 380) * (x1 - x0 - 80);
+    const sz = (z) => y0 + 20 + ((z - 110) / 190) * (y1 - y0 - 40);
+    // street grid
+    ctx.strokeStyle = 'rgba(235,235,245,0.85)';
+    ctx.lineWidth = 2.5;
+    for (const s of STREETS) {
+      ctx.beginPath();
+      ctx.moveTo(sx(s.x1), sz(s.z1));
+      ctx.lineTo(sx(s.x2), sz(s.z2));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(235,235,245,0.25)';
+    ctx.lineWidth = 1;
+    for (let gx = -40; gx <= 320; gx += 20) {
+      ctx.beginPath(); ctx.moveTo(sx(gx), y0); ctx.lineTo(sx(gx), y1); ctx.stroke();
+    }
+    for (let gz = 120; gz <= 300; gz += 20) {
+      ctx.beginPath(); ctx.moveTo(x0, sz(gz)); ctx.lineTo(x1, sz(gz)); ctx.stroke();
+    }
+    // street names
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const streetNames = [
+      ['MARINA RD', 150, 128], ['OCEAN BLVD', 40, 170], ['PALM AVE', 120, 170],
+      ['MERCADO ST', 175, 170], ['CASINO AVE', 225, 170], ['TORRE BLVD', 275, 170],
+      ['FESTIVAL AVE', 150, 185], ['MIRAMAR STRIP', 150, 250], ['PLAYA DR', 150, 215],
+    ];
+    for (const [name, x, z] of streetNames) {
+      ctx.save();
+      ctx.translate(sx(x), sz(z));
+      if (name === 'OCEAN BLVD' || name === 'PALM AVE' || name === 'MERCADO ST' ||
+          name === 'CASINO AVE' || name === 'TORRE BLVD') ctx.rotate(-Math.PI / 2);
+      ctx.fillText(name, 0, 0);
+      ctx.restore();
+    }
+    // district labels
+    ctx.font = 'bold 17px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    for (const d of DISTRICTS) ctx.fillText(d.name, sx(d.x), sz(d.z));
+    // escape route: gold dashed line TORRE -> PLAYA DORADA boat
+    ctx.strokeStyle = '#ffd21a';
+    ctx.lineWidth = 5;
+    ctx.setLineDash([14, 10]);
+    ctx.beginPath();
+    ctx.moveTo(sx(180), sz(150));
+    ctx.lineTo(sx(180), sz(128));
+    ctx.lineTo(sx(30), sz(128));
+    ctx.lineTo(sx(30), sz(262));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // search zone: red dashed circle around TORRE
+    ctx.strokeStyle = '#ff4040';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.arc(sx(180), sz(150), 78, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // markers: $ robbery targets, blue mission dots, H heli, Mara triangle
+    ctx.fillStyle = '#ffd76a';
+    ctx.font = 'bold 18px sans-serif';
+    for (const [x, z] of [[55, 168], [245, 228], [85, 275], [235, 275]]) {
+      ctx.fillText('$', sx(x), sz(z));
+    }
+    ctx.fillStyle = '#4aa8ff';
+    for (const [x, z] of [[150, 165], [120, 215], [215, 165]]) {
+      ctx.beginPath(); ctx.arc(sx(x), sz(z), 6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('H', sx(195), sz(150));
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(sx(180), sz(150) - 12);
+    ctx.lineTo(sx(180) + 10, sz(150) + 8);
+    ctx.lineTo(sx(180) - 10, sz(150) + 8);
+    ctx.closePath();
+    ctx.fill();
+    // boat marker at Playa Dorada
+    ctx.fillStyle = '#ffd21a';
+    ctx.save();
+    ctx.translate(sx(30), sz(262));
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-7, -7, 14, 14);
+    ctx.restore();
+    ctx.fillStyle = '#ffd21a';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BOAT — PLAYA DORADA', sx(30), sz(262) - 22);
+    // compass
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x1 - 42, y0 + 42, 22, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ff4040';
+    ctx.beginPath();
+    ctx.moveTo(x1 - 42, y0 + 26);
+    ctx.lineTo(x1 - 36, y0 + 48);
+    ctx.lineTo(x1 - 48, y0 + 48);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', x1 - 42, y0 + 16);
+    // legend: two columns, bottom-left inside the panel, below the
+    // PLAYA DORADA row and clear of the title pill.
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 13px sans-serif';
+    const legend = [
+      ['#ffd21a', '—  ESCAPE ROUTE — VAULT → BOAT', '#ffffff', 'H  AIR-1 HELICOPTER'],
+      ['#ffffff', '▲  MARA — YOU', '#ffd76a', '$  ROBBERY TARGETS / PROPERTIES'],
+      ['#4aa8ff', '●  MISSION TARGET — BOAT', '#2ecc71', '●  CREW TURF'],
+      ['#4aa8ff', '●  LCPD UNITS ON THE STREET', '#ff4040', '■  TIBURONES TURF'],
+    ];
+    let ly = 532;
+    for (const [c1, t1, c2, t2] of legend) {
+      ctx.fillStyle = c1;
+      ctx.fillText(t1, x0 + 16, ly);
+      ctx.fillStyle = c2;
+      ctx.fillText(t2, x0 + 330, ly);
+      ly += 13;
+    }
+  }
+
+  hideMap() {
+    this.mapVisible = false;
+    this.mapOverlay.style.display = 'none';
+  }
 }

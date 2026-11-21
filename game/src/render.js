@@ -1,264 +1,164 @@
-// LUMEN BAY — the renderer: three.js scene, PER-SHOT lighting (one preset
-// per screenshot, applied by shots.js before the first frame), close low
-// chase camera, muzzle flashes, tracers, damage numbers, mission beacon.
-// The sky is a real gradient dome with a sun disc + light glare; a PMREM
-// environment map baked from that sky makes the hero car's clearcoat paint
-// pick up real daylight reflections, and a cool sky-blue rim light gives
-// the bright edge glow.
-import * as THREE from 'three';
-import { WORLD, PALETTE, DAYLIGHT, LIGHTING_PRESETS } from './config.js';
-import { daySkyTexture, sunsetSkyTexture, nightSkyTexture, dawnSkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
+// LUMEN BAY — renderer, sky and lighting. One WebGLRenderer with soft
+// shadows and ACES tone mapping; a gradient sky dome with a sun disc and
+// drifting cloud sprites; four lighting presets (bright night for the
+// chase, sunset for the shootout, night map, dawn for the boat) that set
+// the sun, the hemisphere light, the fog and the exposure together.
 
-export function createRenderer3D(canvas, opts) {
-  const o = opts || {};
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(o.lowRes ? 0.5 : Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = o.shadows !== false;
+import * as THREE from '../vendor/three/three.module.min.js';
+
+export function createRenderer(canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87bfe8);
-  scene.fog = new THREE.Fog(DAYLIGHT.fog, 400, 1100);
-  const skyTex = daySkyTexture();
-  const skyTexes = {
-    day: skyTex,
-    sunset: sunsetSkyTexture(),
-    night: nightSkyTexture(),
-    dawn: dawnSkyTexture(),
-  };
-  const skyDome = new THREE.Mesh(
-    new THREE.SphereGeometry(950, 24, 16),
-    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }),
-  );
-  skyDome.renderOrder = -10;
-  scene.add(skyDome);
-  try {
-    const envScene = new THREE.Scene();
-    const envSky = new THREE.Mesh(
-      new THREE.SphereGeometry(100, 24, 16),
-      new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide }),
-    );
-    envScene.add(envSky);
-    const sunBall = new THREE.Mesh(
-      new THREE.SphereGeometry(8, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    );
-    sunBall.position.set(55, 28, 20);
-    envScene.add(sunBall);
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const envRT = pmrem.fromScene(envScene, 0.04);
-    scene.environment = envRT.texture;
-    if ('environmentIntensity' in scene) scene.environmentIntensity = 1.0;
-    pmrem.dispose();
-  } catch {
-    // Env map is a bonus: the game still renders without it.
-  }
-  const sun = new THREE.DirectionalLight(DAYLIGHT.sunColour, DAYLIGHT.sunIntensity);
-  sun.position.set(320, 260, 170);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -260;
-  sun.shadow.camera.right = 260;
-  sun.shadow.camera.top = 260;
-  sun.shadow.camera.bottom = -260;
-  sun.shadow.camera.far = 800;
-  scene.add(sun);
-  const rim = new THREE.DirectionalLight(DAYLIGHT.rimColour, 0.9);
-  rim.position.set(-160, 200, -120);
-  scene.add(rim);
-  const rearFill = new THREE.DirectionalLight(0xffffff, 0.9);
-  rearFill.position.set(-220, 70, 200);
-  scene.add(rearFill);
-  const hemi = new THREE.HemisphereLight(0x9fd4ff, 0x5da244, 1.25);
-  scene.add(hemi);
-  const fill = new THREE.DirectionalLight(0xeaf4ff, 0.5);
-  fill.position.set(-120, 80, 140);
-  scene.add(fill);
-  const sunDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(30, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }),
-  );
-  sunDisc.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
-  sunDisc.lookAt(0, 0, 0);
-  scene.add(sunDisc);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: sunGlowTexture(), transparent: true, opacity: 0.5, fog: false, depthWrite: false,
-  }));
-  glow.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
-  glow.scale.set(220, 220, 1);
-  scene.add(glow);
-  const streakTex = sunStreakTexture();
-  const streaks = [];
-  for (const [w, h, op] of [[300, 10, 0.35], [200, 5, 0.28]]) {
-    const streak = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, h),
-      new THREE.MeshBasicMaterial({
-        map: streakTex, transparent: true, opacity: op, fog: false,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      }),
-    );
-    streak.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
-    streak.lookAt(0, 0, 0);
-    scene.add(streak);
-    streaks.push(streak);
-  }
-  const camera = new THREE.PerspectiveCamera(72, 1280 / 720, 0.1, 1400);
-  scene.add(camera);
-  window.__r8sun = { disc: sunDisc, glow, camera, streaks };
-  // Per-shot lighting: re-tints the whole scene from LIGHTING_PRESETS
-  // (config.js): sky dome texture (or hidden), sun disc position/colour/
-  // size, halo + streaks, the shadow sun, rim/rear/hemi/fill lights, fog
-  // (the weather), background, exposure and env-map strength. Called once
-  // by shots.js before the first frame; plain play never calls it.
-  function setLighting(name) {
-    const p = LIGHTING_PRESETS[name] || LIGHTING_PRESETS.day;
-    if (p.sky) {
-      skyDome.visible = true;
-      skyDome.material.map = skyTexes[p.sky] || skyTex;
-      skyDome.material.needsUpdate = true;
-    } else {
-      skyDome.visible = false;
-    }
-    const [dx, dy, dz] = p.sunPos;
-    sunDisc.visible = p.sunDisc[2];
-    sunDisc.position.set(dx, dy, dz);
-    sunDisc.material.color.setHex(p.sunDisc[0]);
-    sunDisc.scale.set(p.sunDisc[1], p.sunDisc[1], 1);
-    sunDisc.lookAt(0, 0, 0);
-    glow.visible = p.glow[1] > 0;
-    glow.position.set(dx, dy, dz);
-    glow.material.color.setHex(p.glow[0]);
-    glow.material.opacity = p.glow[1];
-    glow.scale.set(p.glow[2], p.glow[2], 1);
-    for (const s of streaks) {
-      s.visible = p.streakOpacity > 0;
-      s.position.set(dx, dy, dz);
-      s.material.opacity = p.streakOpacity;
-      s.lookAt(0, 0, 0);
-    }
-    sun.color.setHex(p.sunLight[0]);
-    sun.intensity = p.sunLight[1];
-    sun.position.set(p.sunLight[2], p.sunLight[3], p.sunLight[4]);
-    rim.color.setHex(p.rim[0]);
-    rim.intensity = p.rim[1];
-    rearFill.intensity = p.rearFill;
-    hemi.color.setHex(p.hemi[0]);
-    hemi.groundColor.setHex(p.hemi[1]);
-    hemi.intensity = p.hemi[2];
-    fill.intensity = p.fill;
-    scene.fog.color.setHex(p.fog[0]);
-    scene.fog.near = p.fog[1];
-    scene.fog.far = p.fog[2];
-    scene.background.setHex(p.bg);
-    renderer.toneMappingExposure = p.exposure;
-    if ('environmentIntensity' in scene) scene.environmentIntensity = p.envIntensity;
-    return p.clock;
-  }
-  return { renderer, scene, camera, sun, skyDome, setLighting };
+  renderer.toneMappingExposure = 1.15;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  return renderer;
 }
 
-export function resizeRenderer(r, w, h) {
-  r.renderer.setSize(w, h, false);
-  r.camera.aspect = w / h;
-  r.camera.updateProjectionMatrix();
+function skyMaterial(top, mid, bottom) {
+  return new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      top: { value: new THREE.Color(top) },
+      mid: { value: new THREE.Color(mid) },
+      bottom: { value: new THREE.Color(bottom) },
+    },
+    vertexShader: `
+      varying vec3 vPos;
+      void main() {
+        vPos = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 top; uniform vec3 mid; uniform vec3 bottom;
+      varying vec3 vPos;
+      void main() {
+        float h = normalize(vPos).y;
+        vec3 c = h > 0.12 ? mix(mid, top, smoothstep(0.12, 0.7, h))
+                          : mix(bottom, mid, smoothstep(-0.08, 0.12, h));
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  });
 }
 
-/** Chase camera: CLOSE and LOW so the hero car is poster-big — dist 9.5 /
- height 3.2 on foot 8 / 3.0. The hero mesh is 1.35x poster-scaled, so the
- two together land it near ~30% of frame width like the top entries. */
-export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, speed, nosBurning, dt, shotCam) {
-  const dist = shotCam && shotCam.dist != null ? shotCam.dist : (inCar ? 9.5 : 8);
-  const height = shotCam && shotCam.height != null ? shotCam.height : (inCar ? 3.2 : 3.0);
-  const yaw = camYaw;
-  const tx = px - Math.sin(yaw) * dist;
-  const tz = pz - Math.cos(yaw) * dist;
-  const ty = height + camPitch * 4;
-  camera.position.x += (tx - camera.position.x) * Math.min(1, dt * 8);
-  camera.position.y += (ty - camera.position.y) * Math.min(1, dt * 8);
-  camera.position.z += (tz - camera.position.z) * Math.min(1, dt * 8);
-  camera.lookAt(px + Math.sin(heading) * 1.0, 1.6, pz + Math.cos(heading) * 1.0);
-  const targetFov = nosBurning ? 76 : 72;
-  if (Math.abs(camera.fov - targetFov) > 0.2) {
-    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
+export function makeSky(THREE, preset) {
+  const group = new THREE.Group();
+  group.name = 'sky';
+  const geo = new THREE.SphereGeometry(900, 24, 16);
+  const mat = skyMaterial(preset.skyTop, preset.skyMid, preset.skyBottom);
+  const dome = new THREE.Mesh(geo, mat);
+  group.add(dome);
+
+  // Sun disc + halo.
+  const sunMat = new THREE.MeshBasicMaterial({ color: preset.sunColour, fog: false });
+  const sun = new THREE.Mesh(new THREE.CircleGeometry(preset.sunSize, 32), sunMat);
+  sun.position.set(preset.sunX, preset.sunY, preset.sunZ);
+  sun.lookAt(0, 0, 0);
+  sun.name = 'sun';
+  group.add(sun);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(preset.sunSize * 2.4, 32),
+    new THREE.MeshBasicMaterial({
+      color: preset.sunColour, transparent: true, opacity: preset.halo !== undefined ? preset.halo : 0.22, fog: false }));
+  halo.position.copy(sun.position).multiplyScalar(0.995);
+  halo.lookAt(0, 0, 0);
+  group.add(halo);
+
+  // A few soft cloud sprites, high up, drifting slowly.
+  const cloudMat = new THREE.MeshBasicMaterial({
+    color: preset.cloudColour, transparent: true, opacity: 0.5, fog: false, depthWrite: false });
+  const clouds = [];
+  const seeds = [11, 47, 83, 129, 171, 203, 251, 307];
+  for (let i = 0; i < 8; i += 1) {
+    const s = seeds[i];
+    const cloud = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), cloudMat);
+    cloud.scale.set(60 + (s % 50), 7 + (s % 6), 22 + (s % 20));
+    cloud.position.set(-500 + s * 2.2, 180 + (s % 90), -350 + (s % 500));
+    cloud.name = 'cloud';
+    group.add(cloud);
+    clouds.push(cloud);
+  }
+  group.userData = { clouds, sun, dome };
+  return group;
+}
+
+export const PRESETS = {
+  night: {
+    name: 'night', skyTop: 0x060a18, skyMid: 0x101c3a, skyBottom: 0x1c2a4a,
+    sunColour: 0xf5ead0, sunSize: 16, sunX: 500, sunY: 260, sunZ: -300, cloudColour: 0x2a3a5a,
+    sunLight: { color: 0x8fb0ff, intensity: 0.45, pos: [-60, 120, -40] },
+    hemi: { sky: 0x3a4a6a, ground: 0x1a1410, intensity: 0.6 },
+    fog: 0x0a1020, fogNear: 120, fogFar: 700, exposure: 1.2, ambient: 0.42,
+  },
+  sunset: {
+    name: 'sunset', skyTop: 0x2a1e5a, skyMid: 0xff7a4a, skyBottom: 0xffb36a,
+    sunColour: 0xffc860, sunSize: 12, sunX: 480, sunY: 190, sunZ: 380, halo: 0.12, cloudColour: 0xff9a7a,
+    sunLight: { color: 0xffa050, intensity: 2.2, pos: [180, 90, 120] },
+    hemi: { sky: 0xff9a6a, ground: 0x5a3a28, intensity: 0.9 },
+    fog: 0xd88a5a, fogNear: 150, fogFar: 800, exposure: 1.1, ambient: 0.55,
+  },
+  dawn: {
+    name: 'dawn', skyTop: 0x7a9ac8, skyMid: 0xffb38a, skyBottom: 0xffd9a0,
+    sunColour: 0xffa030, sunSize: 42, sunX: 380, sunY: 70, sunZ: 420, cloudColour: 0xffc8a0,
+    sunLight: { color: 0xffc080, intensity: 2.0, pos: [160, 80, 140] },
+    hemi: { sky: 0xffc8a0, ground: 0x6a5a48, intensity: 0.95 },
+    fog: 0xe8b088, fogNear: 160, fogFar: 850, exposure: 1.15, ambient: 0.6,
+  },
+  day: {
+    name: 'day', skyTop: 0x2a6ac8, skyMid: 0x7ab8e8, skyBottom: 0xc8e8f2,
+    sunColour: 0xfff8d0, sunSize: 26, sunX: 300, sunY: 320, sunZ: 200, cloudColour: 0xffffff,
+    sunLight: { color: 0xfff2d0, intensity: 2.6, pos: [120, 200, 80] },
+    hemi: { sky: 0x9ac8e8, ground: 0x5a6a4a, intensity: 1.0 },
+    fog: 0x9ac8e8, fogNear: 200, fogFar: 900, exposure: 1.05, ambient: 0.7,
+  },
+};
+
+export function applyPreset(scene, renderer, camera, presetName, rig) {
+  const preset = PRESETS[presetName] || PRESETS.night;
+  // Swap the sky dome.
+  const old = scene.getObjectByName('sky');
+  if (old) scene.remove(old);
+  const sky = makeSky(THREE, preset);
+  scene.add(sky);
+  if (rig) rig.sky = sky;
+  // Sun + hemisphere.
+  if (!rig.sun) {
+    rig.sun = new THREE.DirectionalLight(0xffffff, 2);
+    rig.sun.castShadow = true;
+    rig.sun.shadow.mapSize.set(2048, 2048);
+    rig.sun.shadow.camera.left = -160;
+    rig.sun.shadow.camera.right = 160;
+    rig.sun.shadow.camera.top = 160;
+    rig.sun.shadow.camera.bottom = -160;
+    rig.sun.shadow.camera.far = 600;
+    rig.sun.shadow.bias = -0.0004;
+    scene.add(rig.sun);
+    scene.add(rig.sun.target);
+    rig.hemi = new THREE.HemisphereLight(0xffffff, 0x333333, 1);
+    scene.add(rig.hemi);
+    rig.amb = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(rig.amb);
+  }
+  rig.sun.color.set(preset.sunLight.color);
+  rig.sun.intensity = preset.sunLight.intensity;
+  rig.sun.position.set(...preset.sunLight.pos);
+  rig.sun.target.position.set(130, 0, 210);
+  rig.hemi.color.set(preset.hemi.sky);
+  rig.hemi.groundColor.set(preset.hemi.ground);
+  rig.hemi.intensity = preset.hemi.intensity;
+  rig.amb.intensity = preset.ambient;
+  scene.fog = new THREE.Fog(preset.fog, preset.fogNear, preset.fogFar);
+  scene.background = new THREE.Color(preset.fog);
+  renderer.toneMappingExposure = preset.exposure;
+  if (camera) {
+    camera.far = 2000;
     camera.updateProjectionMatrix();
   }
-}
-
-/** A glowing beacon pillar at the current objective, visible across the city. */
-export function makeBeacon(scene) {
-  const geo = new THREE.CylinderGeometry(2.2, 2.2, 60, 12, 1, true);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0xffd23f, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = 30;
-  mesh.visible = false;
-  scene.add(mesh);
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(6, 0.4, 8, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffd23f }),
-  );
-  ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.3;
-  ring.visible = false;
-  scene.add(ring);
-  return { mesh, ring };
-}
-
-export function setBeacon(beacon, pos) {
-  if (!pos) {
-    beacon.mesh.visible = false;
-    beacon.ring.visible = false;
-    return;
-  }
-  beacon.mesh.visible = true;
-  beacon.ring.visible = true;
-  beacon.mesh.position.x = pos[0];
-  beacon.mesh.position.z = pos[1];
-  beacon.ring.position.x = pos[0];
-  beacon.ring.position.z = pos[1];
-}
-
-/** A tracer line from the muzzle to the hit point, fading in 80 ms. */
-export function spawnTracer(scene, from, to) {
-  const geo = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(from[0], from[1], from[2]),
-    new THREE.Vector3(to[0], to[1], to[2]),
-  ]);
-  const line = new THREE.Line(
-    geo,
-    new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95 }),
-  );
-  scene.add(line);
-  setTimeout(() => { scene.remove(line); geo.dispose(); }, 90);
-  return line;
-}
-
-/** A muzzle flash: a small bright sprite at the gun, gone in 60 ms. */
-export function spawnMuzzle(scene, pos) {
-  const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.35, 8, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
-  );
-  flash.position.set(pos[0], pos[1], pos[2]);
-  scene.add(flash);
-  setTimeout(() => scene.remove(flash), 60);
-}
-
-/** A damage number that floats up and fades over the hit point. */
-export function spawnDamageNumber(layer, camera, x, y, z, text, colour) {
-  if (!layer) return;
-  const v = new THREE.Vector3(x, y, z).project(camera);
-  if (v.z > 1) return;
-  const sx = (v.x * 0.5 + 0.5) * window.innerWidth;
-  const sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
-  const div = document.createElement('div');
-  div.className = 'dmg';
-  div.textContent = text;
-  div.style.left = `${sx}px`;
-  div.style.top = `${sy}px`;
-  div.style.color = colour || '#ffd23f';
-  layer.appendChild(div);
-  setTimeout(() => div.remove(), 900);
+  return preset;
 }
