@@ -1,166 +1,113 @@
-// LUMEN BAY — procedural canvas textures. Every building face, road and
-// patch of sand is painted at load time from a seeded generator, so the
-// game ships zero image assets and still reads as a real place.
+// LUMEN BAY — procedural canvas textures. No image assets: every surface
+// (building facades, road, sand, signs) is painted on a canvas at load,
+// seeded so the same seed paints the same city.
+import * as THREE from 'three';
+import { makeRng } from './random.js';
 
-import { makeRng, range, intRange, pick } from './random.js';
-
-function canvas(w, h) {
+function canvasTexture(w, h, draw) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
-  return c;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
 }
 
-// A building facade: warm plaster, a grid of windows (some lit gold for
-// night), a darker ground floor with a shopfront band.
+// A building facade: base colour, lit window grid, darker ground floor.
 export function buildingTexture(seed, base) {
   const rng = makeRng(seed);
-  const c = canvas(256, 256);
-  const g = c.getContext('2d');
-  g.fillStyle = base;
-  g.fillRect(0, 0, 256, 256);
-  // plaster noise
-  for (let i = 0; i < 900; i += 1) {
-    g.fillStyle = rng() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-    g.fillRect(Math.floor(rng() * 256), Math.floor(rng() * 256), 2, 2);
-  }
-  const floors = intRange(rng, 4, 7);
-  const cols = intRange(rng, 4, 6);
-  const cw = 256 / cols, ch = 200 / floors;
-  for (let f = 0; f < floors; f += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const x = col * cw + cw * 0.22, y = 12 + f * ch + ch * 0.2;
-      const lit = rng() < 0.42;
-      g.fillStyle = lit ? '#ffd98a' : (rng() < 0.5 ? '#1d2733' : '#2b3a4a');
-      g.fillRect(x, y, cw * 0.56, ch * 0.55);
-      g.fillStyle = 'rgba(255,255,255,0.18)';
-      g.fillRect(x, y, cw * 0.56, 3);
-      if (lit) {
-        g.fillStyle = 'rgba(255,217,138,0.25)';
-        g.fillRect(x - 3, y - 3, cw * 0.56 + 6, ch * 0.55 + 6);
-      }
+  // lit-window layout is decided once so the map and the emissive agree
+  const windows = [];
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 5; c++) {
+      const lit = rng.chance(0.42);
+      windows.push({ x: 10 + c * 22, y: 14 + r * 26, lit, warm: lit ? rng.chance(0.6) : false });
     }
   }
-  // ground-floor shopfront
-  g.fillStyle = 'rgba(0,0,0,0.35)';
-  g.fillRect(0, 212, 256, 44);
-  g.fillStyle = pick(rng, ['#ff5a3c', '#2ec4b6', '#f2b705', '#7a4a8a']);
-  g.fillRect(0, 212, 256, 8);
-  g.fillStyle = 'rgba(255,255,255,0.75)';
-  g.font = 'bold 15px sans-serif';
-  g.textAlign = 'center';
-  g.fillText(pick(rng, ['MERCADO', 'TALLER', 'CAFÉ SOL', 'CASINO', 'FARMACIA', 'TACOS']), 128, 240);
-  return { canvas: c };
+  const map = canvasTexture(128, 256, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    // subtle vertical shading so flat boxes read as shaded volumes
+    const grad = g.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, 'rgba(0,0,0,0.28)'); grad.addColorStop(0.5, 'rgba(255,255,255,0.10)'); grad.addColorStop(1, 'rgba(0,0,0,0.30)');
+    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    for (const win of windows) {
+      g.fillStyle = win.lit ? (win.warm ? '#ffd98a' : '#bfe3ff') : 'rgba(10,14,22,0.85)';
+      g.fillRect(win.x, win.y, 14, 16);
+    }
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, h - 26, w, 26);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, w, 3);
+  });
+  // emissive twin: black except the lit windows, so they glow at night
+  const emissive = canvasTexture(128, 256, (g, w, h) => {
+    g.fillStyle = '#000000'; g.fillRect(0, 0, w, h);
+    for (const win of windows) {
+      if (!win.lit) continue;
+      g.fillStyle = win.warm ? '#ffd98a' : '#bfe3ff';
+      g.fillRect(win.x, win.y, 14, 16);
+    }
+  });
+  return { map, emissive };
 }
 
-// Asphalt with a worn centre and faint tyre tracks. Lane paint is drawn
-// as geometry in city.js so it stays crisp at any distance.
-export function roadTexture(seed) {
-  const rng = makeRng(seed);
-  const c = canvas(256, 256);
-  const g = c.getContext('2d');
-  g.fillStyle = '#33363d';
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 1400; i += 1) {
-    g.fillStyle = rng() < 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.08)';
-    g.fillRect(Math.floor(rng() * 256), Math.floor(rng() * 256), 2, 2);
+// Shared speckle pass: dusts a canvas with light/dark 2px grains.
+function speckle(g, w, h, rng, n, light, dark) {
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = rng.chance(0.5) ? light : dark;
+    g.fillRect(rng.range(0, w), rng.range(0, h), 2, 2);
   }
-  g.fillStyle = 'rgba(0,0,0,0.15)';
-  for (let i = 0; i < 6; i += 1) {
-    const y = 30 + i * 38 + rng() * 8;
-    g.fillRect(0, y, 256, 5);
-  }
-  return { canvas: c };
 }
 
+// Asphalt with a faint centre wear line; lane markings are separate meshes.
+export function roadTexture() {
+  return canvasTexture(128, 128, (g, w, h) => {
+    g.fillStyle = '#3a3d44'; g.fillRect(0, 0, w, h);
+    speckle(g, w, h, makeRng(99), 900, 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.10)');
+  });
+}
+
+// Warm beach sand with speckle.
 export function sandTexture(seed) {
   const rng = makeRng(seed);
-  const c = canvas(256, 256);
-  const g = c.getContext('2d');
-  g.fillStyle = '#d9b380';
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 2200; i += 1) {
-    g.fillStyle = rng() < 0.5 ? 'rgba(255,240,210,0.16)' : 'rgba(120,85,40,0.12)';
-    g.fillRect(Math.floor(rng() * 256), Math.floor(rng() * 256), 2, 2);
-  }
-  return { canvas: c };
+  return canvasTexture(128, 128, (g, w, h) => {
+    g.fillStyle = '#d9b380'; g.fillRect(0, 0, w, h);
+    speckle(g, w, h, rng, 700, 'rgba(255,240,210,0.20)', 'rgba(120,80,40,0.16)');
+  });
 }
 
-export function grassTexture(seed) {
-  const rng = makeRng(seed);
-  const c = canvas(256, 256);
-  const g = c.getContext('2d');
-  g.fillStyle = '#3f6b3a';
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 1800; i += 1) {
-    g.fillStyle = rng() < 0.5 ? 'rgba(120,180,90,0.15)' : 'rgba(20,50,20,0.15)';
-    g.fillRect(Math.floor(rng() * 256), Math.floor(rng() * 256), 2, 3);
-  }
-  return { canvas: c };
+// A shop sign board ("CAFÉ SOL", "TALLER LUMEN", ...).
+export function signTexture(text, bg, fg) {
+  return canvasTexture(256, 64, (g, w, h) => {
+    g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.strokeStyle = fg; g.lineWidth = 4; g.strokeRect(4, 4, w - 8, h - 8);
+    g.fillStyle = fg; g.font = 'bold 30px Arial, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, w / 2, h / 2 + 1);
+  });
 }
 
-// Round soft glow sprite (headlights, lamps, muzzle flash core).
-export function glowTexture() {
-  const c = canvas(128, 128);
-  const g = c.getContext('2d');
-  const grad = g.createRadialGradient(64, 64, 2, 64, 64, 62);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.35, 'rgba(255,240,190,0.55)');
-  grad.addColorStop(1, 'rgba(255,240,190,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 128, 128);
-  return { canvas: c };
-}
-
-// Muzzle flash starburst: 8 thin rays on a transparent canvas.
-export function flashTexture() {
-  const c = canvas(128, 128);
-  const g = c.getContext('2d');
-  g.translate(64, 64);
-  for (let i = 0; i < 8; i += 1) {
-    g.rotate(Math.PI / 4);
-    const grad = g.createLinearGradient(0, 0, 62, 0);
-    grad.addColorStop(0, 'rgba(255,250,200,1)');
-    grad.addColorStop(1, 'rgba(255,160,0,0)');
-    g.fillStyle = grad;
-    g.beginPath();
-    g.moveTo(0, -3.5); g.lineTo(62, 0); g.lineTo(0, 3.5);
-    g.closePath(); g.fill();
-  }
-  g.fillStyle = '#fff8d0';
-  g.beginPath(); g.arc(0, 0, 12, 0, Math.PI * 2); g.fill();
-  return { canvas: c };
-}
-
-// Clock face for the Torre Lumen tower.
+// The Torre Lumen clock face.
 export function clockTexture() {
-  const c = canvas(128, 128);
-  const g = c.getContext('2d');
-  g.fillStyle = '#f5efdd';
-  g.beginPath(); g.arc(64, 64, 60, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = '#222'; g.lineWidth = 5;
-  g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.stroke();
-  g.fillStyle = '#222';
-  for (let i = 0; i < 12; i += 1) {
-    const a = (i / 12) * Math.PI * 2;
-    g.beginPath();
-    g.arc(64 + Math.sin(a) * 48, 64 - Math.cos(a) * 48, i % 3 === 0 ? 5 : 3, 0, Math.PI * 2);
-    g.fill();
-  }
-  g.strokeStyle = '#222'; g.lineWidth = 5;
-  g.beginPath(); g.moveTo(64, 64); g.lineTo(64 + 26, 64 - 30); g.stroke();
-  g.lineWidth = 3;
-  g.beginPath(); g.moveTo(64, 64); g.lineTo(64 - 34, 64 + 8); g.stroke();
-  return { canvas: c };
+  return canvasTexture(128, 128, (g, w, h) => {
+    g.fillStyle = '#f5ecd0'; g.beginPath(); g.arc(64, 64, 60, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#1a1a1a'; g.lineWidth = 5; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#1a1a1a';
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      g.beginPath(); g.arc(64 + Math.sin(a) * 48, 64 - Math.cos(a) * 48, 4, 0, Math.PI * 2); g.fill();
+    }
+    // hands: 6:10, the dawn hour of the finale
+    g.lineWidth = 6; g.beginPath(); g.moveTo(64, 64); g.lineTo(64 + 26, 64 + 8); g.stroke();
+    g.lineWidth = 4; g.beginPath(); g.moveTo(64, 64); g.lineTo(64 - 6, 64 - 40); g.stroke();
+    g.fillStyle = '#d2001a'; g.beginPath(); g.arc(64, 64, 6, 0, Math.PI * 2); g.fill();
+  });
 }
 
-// Turn a painted canvas into a THREE.CanvasTexture. The THREE namespace
-// is passed in by the caller so this module stays renderer-agnostic.
-export function toTexture(THREE, painted, repeatX = 1, repeatY = 1) {
-  const tex = new THREE.CanvasTexture(painted.canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(repeatX, repeatY);
-  tex.anisotropy = 4;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+// A soft radial glow sprite (headlights, muzzle flash halo, sun glare).
+export function glowTexture(inner, outer) {
+  return canvasTexture(128, 128, (g, w, h) => {
+    const grad = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+    grad.addColorStop(0, inner); grad.addColorStop(1, outer);
+    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+  });
 }

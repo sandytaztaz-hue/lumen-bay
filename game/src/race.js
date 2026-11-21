@@ -1,61 +1,75 @@
-// LUMEN BAY — street races. A race is a loop of checkpoints down the
-// boulevard and back; each one is a glowing ring on the road and a marker
-// on the minimap. Mission 12 (Street King) is an 8-checkpoint race.
-
+// LUMEN BAY — street race (Job 12: STREET KING).
+// 8 checkpoints down Torre Boulevard; each one is a glowing ring in the
+// world. Hit them in order, beat the clock, take the crown.
+import * as THREE from 'three';
 import { WORLD } from './config.js';
-import { makeRng, range } from './random.js';
 
-export class Race {
-  constructor(game) {
-    this.game = game;
-    this.active = false;
-    this.checkpoints = [];
-    this.index = 0;
-    this.markers = [];
+export function createRace(G) {
+  const checkpoints = [];
+  for (let i = 0; i < 8; i++) {
+    checkpoints.push({ x: 30 + i * 42, z: WORLD.boulevardZ, done: false });
   }
-
-  buildCheckpoints(count) {
-    const rng = makeRng(900 + count);
-    const pts = [];
-    const legs = [
-      { x: 260, z: 215 }, { x: 200, z: 215 }, { x: 120, z: 215 }, { x: 40, z: 215 },
-      { x: 40, z: 185 }, { x: 120, z: 185 }, { x: 200, z: 185 }, { x: 260, z: 185 },
-      { x: 260, z: 250 }, { x: 120, z: 250 },
-    ];
-    for (let i = 0; i < count; i += 1) {
-      const base = legs[i % legs.length];
-      pts.push({ x: base.x + range(rng, -3, 3), z: base.z + range(rng, -2, 2) });
-    }
-    return pts;
-  }
-
-  start(count = 8) {
-    this.checkpoints = this.buildCheckpoints(count);
-    this.index = 0;
-    this.active = true;
-    this.game.hud.toast('STREET RACE', count + ' checkpoints — first to the last one wins.', 'job');
-    this.game.log('Race started: ' + count + ' checkpoints');
-    return this.checkpoints;
-  }
-
-  update(player) {
-    if (!this.active) return false;
-    const cp = this.checkpoints[this.index];
-    if (!cp) return false;
-    if (Math.hypot(player.x - cp.x, player.z - cp.z) < 7) {
-      this.index += 1;
-      this.game.hud.toast('CHECKPOINT ' + this.index + '/' + this.checkpoints.length,
-        'Next checkpoint marked.', 'good');
-      if (this.index >= this.checkpoints.length) {
-        this.active = false;
-        this.game.hud.banner('RACE WON', 'Street King — +$3,600');
-        return true;
+  const group = new THREE.Group();
+  group.name = 'race';
+  const ringGeo = new THREE.TorusGeometry(3.2, 0.22, 8, 24);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd23e });
+  const rings = checkpoints.map((cp) => {
+    const ring = new THREE.Mesh(ringGeo, ringMat.clone());
+    ring.position.set(cp.x, 2.2, cp.z);
+    ring.rotation.y = Math.PI / 2;
+    ring.visible = false;
+    group.add(ring);
+    return ring;
+  });
+  G.scene.add(group);
+  return {
+    checkpoints,
+    rings,
+    group,
+    active: false,
+    index: 0,
+    timeLeft: 90,
+    // one-line HUD text for the race state
+    hudText() {
+      if (!this.active) return '';
+      return `CHECKPOINT ${this.index}/8 \u2014 ${Math.ceil(this.timeLeft)}s`;
+    },
+    start() {
+      this.active = true;
+      this.index = 0;
+      this.timeLeft = 90;
+      this.checkpoints.forEach((c) => { c.done = false; });
+      this.rings.forEach((r, i) => { r.visible = i === 0; });
+      G.log('Street race started \u2014 8 checkpoints, 90 seconds');
+    },
+    update(dt) {
+      if (!this.active) return;
+      this.timeLeft -= dt;
+      const cp = this.checkpoints[this.index];
+      const ring = this.rings[this.index];
+      if (ring) ring.rotation.x += dt * 1.5;
+      if (!cp) return;
+      const dx = G.player.pos.x - cp.x, dz = G.player.pos.z - cp.z;
+      if (dx * dx + dz * dz < 36) {
+        cp.done = true;
+        if (ring) ring.visible = false;
+        this.index++;
+        G.audio.stinger();
+        if (this.index >= this.checkpoints.length) {
+          this.active = false;
+          this.rings.forEach((r) => { r.visible = false; });
+          G.completeMission(12);
+        } else {
+          this.rings[this.index].visible = true;
+          G.log(`Checkpoint ${this.index}/8 \u2014 ${Math.ceil(this.timeLeft)}s left`);
+        }
       }
-    }
-    return false;
-  }
-
-  get next() {
-    return this.active ? this.checkpoints[this.index] : null;
-  }
+      if (this.timeLeft <= 0) {
+        this.active = false;
+        this.rings.forEach((r) => { r.visible = false; });
+        G.log('Race lost \u2014 the crown waits. Try again (M)');
+        G.toast('bad', 'RACE LOST', 'Out of time \u2014 the crown waits');
+      }
+    },
+  };
 }

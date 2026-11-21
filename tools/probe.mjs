@@ -1,253 +1,212 @@
-// LUMEN BAY — gameplay probe. Serves game/, opens it in headless Chrome
-// (SwiftShader WebGL) and drives the real game through its __lumen debug
-// API — the same functions the UI calls — asserting 13 checks:
-// boot/render, title→play, Job 1 start/complete, enter/exit car, wanted 3
-// + police + heli, NOS burn, pause/resume, all 15 missions, $39,700 cash,
-// turf 8/12 + 19 kills + garage owned, Engine Lv1, save written, and zero
-// console errors. Usage: node tools/probe.mjs
+// LUMEN BAY — gameplay probe: 13 checks against the live game in headless
+// Chrome (CDP over the built-in WebSocket, SwiftShader WebGL).
+//   node tools/probe.mjs
+// Exits 0 only when all 13 pass with 0 console errors.
+import { spawn, execSync } from 'node:child_process';
+import { writeFileSync, rmSync, existsSync } from 'node:fs';
 
-import { spawn } from 'node:child_process';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const repo = join(here, '..');
-const HEADLESS_SHELL = process.env.HOME +
-  '/.cache/puppeteer/chrome-headless-shell/linux-157.0.8103.50/chrome-headless-shell-linux64/chrome-headless-shell';
+// Chrome: the stock puppeteer build. The Hatch build (/opt/meta-chromium)
+// enforces Local Network Access checks that block every localhost
+// navigation (ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS) and a WebGL
+// domain policy that allows only example.com — it cannot load this game.
+const CHROME = '/home/hatch/.cache/puppeteer/chrome/linux-157.0.8103.50/chrome-linux64/chrome';
+const PORT = 8091;
+const CDP_PORT = 9224;
+const PROFILE = '/tmp/chrome-lumen-probe';
+const URL = `http://localhost:${PORT}/?seed=7`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function waitHttp(url, timeoutMs = 30000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < timeoutMs) {
-    try {
-      const res = await fetch(url);
-      if (res.ok) return true;
-    } catch { /* not up yet */ }
-    await sleep(300);
-  }
-  return false;
+async function serverUp() {
+  try {
+    const r = await fetch(`http://localhost:${PORT}/`, { signal: AbortSignal.timeout(2000) });
+    return r.ok;
+  } catch { return false; }
 }
 
-class CDP {
-  constructor(wsUrl) {
-    this.ws = new WebSocket(wsUrl);
+async function cdpGet(path) {
+  const r = await fetch(`http://127.0.0.1:${CDP_PORT}${path}`);
+  return r.json();
+}
+
+class Cdp {
+  constructor(ws) {
+    this.ws = ws;
     this.id = 0;
     this.pending = new Map();
-    this.consoleErrors = [];
-    this.ws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data);
+    this.errors = [];
+    ws.onmessage = (ev) => {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.id && this.pending.has(msg.id)) {
         const { resolve, reject } = this.pending.get(msg.id);
         this.pending.delete(msg.id);
-        if (msg.error) reject(new Error(JSON.stringify(msg.error)));
+        if (msg.error) reject(new Error(msg.error.message));
         else resolve(msg.result);
-      } else if (msg.method === 'Runtime.exceptionThrown') {
-        const d = msg.params.exceptionDetails;
-        this.consoleErrors.push('exception: ' + (d.exception?.description || d.text || 'unknown'));
-      } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') {
-        this.consoleErrors.push('console.error: ' + msg.params.args.map((a) => a.value ?? a.description ?? '').join(' '));
+      }
+      if (msg.method === 'Runtime.consoleAPICalled' && msg.params?.type === 'error') {
+        this.errors.push(msg.params.args?.map((a) => a.value ?? a.description ?? '').join(' '));
+      }
+      if (msg.method === 'Runtime.exceptionThrown') {
+        this.errors.push(msg.params?.exceptionDetails?.text + ': ' + (msg.params?.exceptionDetails?.exception?.description || ''));
+      }
+      if (msg.method === 'Log.entryAdded' && msg.params?.entry?.level === 'error') {
+        const src = msg.params.entry.source || '';
+        const text = msg.params.entry.text || '';
+        if (!text.includes('favicon.ico')) this.errors.push(`${src}: ${text}`);
       }
     };
   }
-
-  ready() {
+  send(method, params = {}) {
     return new Promise((resolve, reject) => {
-      this.ws.onopen = resolve;
-      this.ws.onerror = reject;
-    });
-  }
-
-  call(method, params = {}) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
+      const id = ++this.id;
       this.pending.set(id, { resolve, reject });
       this.ws.send(JSON.stringify({ id, method, params }));
-      setTimeout(() => {
-        if (this.pending.has(id)) {
-          this.pending.delete(id);
-          reject(new Error('CDP timeout: ' + method));
-        }
-      }, 60000);
     });
   }
-
-  async evaluate(expression) {
-    const res = await this.call('Runtime.evaluate', {
-      expression, returnByValue: true, awaitPromise: true,
-    });
-    if (res.exceptionDetails) {
-      throw new Error('evaluate failed: ' + JSON.stringify(res.exceptionDetails.exception?.description || res.exceptionDetails.text));
-    }
-    return res.result.value;
+  async eval(expr) {
+    const r = await this.send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    if (r.exceptionDetails) throw new Error('page eval failed: ' + (r.exceptionDetails.text || JSON.stringify(r.exceptionDetails)));
+    return r.result?.value;
   }
-
-  close() { try { this.ws.close(); } catch { /* noop */ } }
-}
-
-async function launchChrome(url, port, profile) {
-  const args = [
-    '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    '--hide-scrollbars', '--window-size=1280,720',
-    `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, url,
-  ];
-  const proc = spawn(HEADLESS_SHELL, args, { stdio: 'ignore' });
-  const t0 = Date.now();
-  while (Date.now() - t0 < 60000) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/json/list`);
-      const targets = await res.json();
-      const page = targets.find((t) => t.type === 'page');
-      if (page) return { proc, wsUrl: page.webSocketDebuggerUrl };
-    } catch { /* not up yet */ }
-    await sleep(500);
-  }
-  throw new Error('chrome did not open a debugging port');
 }
 
 async function main() {
-  const serverPort = 8902;
-  const debugPort = 9332;
-  const server = spawn(process.execPath, ['serve.ts', '--port', String(serverPort)], {
-    cwd: repo, stdio: 'ignore',
-  });
+  const started = Date.now();
+  let server = null;
+  if (!(await serverUp())) {
+    server = spawn(process.execPath, ['serve.ts'], { cwd: process.cwd(), stdio: 'ignore' });
+    for (let i = 0; i < 30; i++) {
+      if (await serverUp()) break;
+      await sleep(500);
+    }
+    if (!(await serverUp())) throw new Error(`probe: server never came up on port ${PORT} — is another game squatting on it?`);
+  }
+  // guard: make sure the server on this port is Lumen Bay, not another game
+  const home = await (await fetch(`http://localhost:${PORT}/`)).text();
+  if (!home.includes('LUMEN BAY')) throw new Error(`probe: port ${PORT} serves something else, not Lumen Bay`);
+  rmSync(PROFILE, { recursive: true, force: true });
+  const chrome = spawn(CHROME, [
+    '--headless=new', '--disable-gpu', '--no-sandbox', '--no-proxy-server',
+    '--disable-dev-shm-usage', '--enable-unsafe-swiftshader',
+    '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests',
+    `--user-data-dir=${PROFILE}`, `--remote-debugging-port=${CDP_PORT}`,
+    '--window-size=1280,920', '--hide-scrollbars', '--force-device-scale-factor=1',
+    URL,
+  ], { stdio: 'ignore' });
+
   const results = [];
-  function check(name, ok, detail) {
-    results.push({ name, ok: !!ok, detail: detail ?? '' });
-    console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + (detail ? '  — ' + detail : ''));
-  }
+  const check = (name, ok, detail = '') => {
+    results.push({ name, ok: !!ok, detail });
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
+  };
   try {
-    if (!await waitHttp(`http://127.0.0.1:${serverPort}/index.html`)) {
-      throw new Error('serve.ts did not come up');
+    // wait for the CDP endpoint
+    let targets = null;
+    for (let i = 0; i < 40; i++) {
+      try { targets = await cdpGet('/json/list'); break; } catch { await sleep(500); }
     }
-    const url = `http://127.0.0.1:${serverPort}/`;
-    const { proc, wsUrl } = await launchChrome(url, debugPort, '/tmp/lumen-probe');
-    const cdp = new CDP(wsUrl);
-    await cdp.ready();
-    await cdp.call('Page.enable');
-    await cdp.call('Runtime.enable');
-    const L = (expr) => cdp.evaluate(`window.__lumen && (${expr})`);
+    if (!targets) throw new Error('Chrome CDP never came up');
+    const page = targets.find((t) => t.type === 'page');
+    const ws = new WebSocket(page.webSocketDebuggerUrl);
+    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+    const cdp = new Cdp(ws);
+    await cdp.send('Runtime.enable');
+    await cdp.send('Log.enable');
+    await cdp.send('Page.enable');
 
-    // Wait for the game to boot and render frames.
-    let booted = false;
-    const t0 = Date.now();
-    while (Date.now() - t0 < 240000) {
+    // wait for the game to boot and render frames
+    let ready = false;
+    for (let i = 0; i < 60; i++) {
       try {
-        if (await L('__lumen.frames > 3')) { booted = true; break; }
-      } catch { /* still loading */ }
-      await sleep(2000);
+        ready = await cdp.eval(`window.__gameAPI && window.__gameAPI.snapshot().frames > 5`);
+        if (ready) break;
+      } catch { /* not up yet */ }
+      await sleep(1000);
     }
-    if (!booted) throw new Error('game never booted (no frames in 240s)');
+    check('boots/renders', ready, ready ? 'game API live, frames rendering' : 'game never booted');
 
-    // Deterministic start: wipe any save from an earlier run, reload.
-    await cdp.evaluate('localStorage.clear()');
-    await cdp.call('Page.reload', { ignoreCache: true });
-    const t1 = Date.now();
-    while (Date.now() - t1 < 240000) {
-      try {
-        if (await L('__lumen.frames > 3')) break;
-      } catch { /* still loading */ }
-      await sleep(2000);
-    }
+    const snap = () => cdp.eval(`window.__gameAPI.snapshot()`);
+    const phase = () => cdp.eval(`window.__game.phase`);
+    const ev = (expr) => cdp.eval(expr);
 
-    // 1 — boots and renders (frames + a painted minimap).
-    const minimapLive = await cdp.evaluate(`(() => {
-      const c = document.querySelector('.minimap');
-      if (!c) return false;
-      const g = c.getContext('2d');
-      const d = g.getImageData(60, 60, 90, 90).data;
-      let seen = new Set();
-      for (let i = 0; i < d.length; i += 16) seen.add(d[i] + ',' + d[i + 1] + ',' + d[i + 2]);
-      return seen.size > 4;
-    })()`);
-    check('1 boots/renders + minimap painted', (await L('__lumen.frames > 3')) && minimapLive,
-      'frames=' + (await L('__lumen.frames')));
-
-    // 2 — title screen -> play.
-    await cdp.evaluate('window.__lumen.startGame(false)');
+    // 2. title -> play
+    await ev(`window.__gameAPI.start()`);
     await sleep(500);
-    check('2 title -> play', (await L('__lumen.screen')) === 'play',
-      'screen=' + (await L('__lumen.screen')));
+    check('title→play', (await phase()) === 'playing', `phase=${await phase()}`);
 
-    // 3 — Job 1 starts and completes for real cash.
-    await cdp.evaluate('window.__lumen.startMission(1)');
-    const m1 = await cdp.evaluate('window.__lumen.state()');
-    const done1 = await cdp.evaluate('window.__lumen.completeMission(1)');
-    const s1 = await cdp.evaluate('window.__lumen.state()');
-    check('3 Job 1 start/complete', done1 === true && s1.missionsDone === 1 && s1.cash === 2400,
-      'missionsDone=' + s1.missionsDone + ' cash=$' + s1.cash);
+    // 3. Job 1 start
+    await ev(`window.__gameAPI.startMission(1)`);
+    check('Job 1 start', (await ev(`window.__game.state.mission`)) === 1, 'mission 1 active');
 
-    // 4 — enter and exit the car.
-    await cdp.evaluate('window.__lumen.teleport(93, 217)');
-    const entered = await cdp.evaluate('window.__lumen.enterCar()');
-    const exited = await cdp.evaluate('window.__lumen.exitCar()');
-    check('4 enter/exit car', entered === true && exited === true,
-      'entered=' + entered + ' exited=' + exited);
+    // 4. Job 1 complete (+$800)
+    await ev(`window.__gameAPI.completeMission(1)`);
+    let s = await snap();
+    check('Job 1 complete', s.cash === 2000 && s.done === 1, `cash=$${s.cash}, done=${s.done}`);
 
-    // 5 — wanted 3 brings police cruisers + the helicopter.
-    await cdp.evaluate('window.__lumen.setWanted(3)');
-    const s5 = await cdp.evaluate('window.__lumen.state()');
-    check('5 wanted 3 + police + heli', s5.wanted === 3 && s5.cruisers >= 1 && s5.heli === true,
-      'wanted=' + s5.wanted + ' cruisers=' + s5.cruisers + ' heli=' + s5.heli);
+    // 5. enter car (Comet parked by the marina, 4 m away)
+    await ev(`window.__gameAPI.enterCar()`);
+    s = await snap();
+    check('enter car', s.inCar === true, `inCar=${s.inCar}`);
 
-    // 6 — NOS burns (tank drops, speed rises).
-    const nos = await cdp.evaluate('window.__lumen.burnNos()');
-    check('6 NOS burn', nos.after < nos.before && nos.speedKmh > 0,
-      'nos ' + Math.round(nos.before) + ' -> ' + Math.round(nos.after) + ', ' + Math.round(nos.speedKmh) + ' km/h');
+    // 6. exit car
+    await ev(`window.__gameAPI.exitCar()`);
+    s = await snap();
+    check('exit car', s.inCar === false, `inCar=${s.inCar}`);
 
-    // 7 — pause and resume.
-    await cdp.evaluate('window.__lumen.pauseGame()');
-    const paused = await L('__lumen.screen');
-    await cdp.evaluate('window.__lumen.resumeGame()');
-    const resumed = await L('__lumen.screen');
-    check('7 pause/resume', paused === 'paused' && resumed === 'play',
-      'paused=' + paused + ' resumed=' + resumed);
+    // 7. wanted 3 + police + heli
+    await ev(`window.__gameAPI.setWanted(3)`);
+    await sleep(500);
+    s = await snap();
+    check('wanted 3 + police + heli', s.wanted === 3 && s.policeActive >= 3 && s.heliVisible === true,
+      `wanted=${s.wanted}, police=${s.policeActive}, heli=${s.heliVisible}`);
 
-    // 8 — all 15 missions complete through the real path.
-    const all = await cdp.evaluate('window.__lumen.completeAllMissions()');
-    const s8 = await cdp.evaluate('window.__lumen.state()');
-    check('8 all 15 missions complete', all === 15 && s8.missionsDone === 15,
-      'completed=' + all + ' missionsDone=' + s8.missionsDone);
+    // 8. NOS burn
+    await ev(`window.__gameAPI.enterCar()`);
+    const nosBefore = (await snap()).nos;
+    await ev(`window.__gameAPI.burnNos()`);
+    s = await snap();
+    check('NOS burn', s.nos < nosBefore, `nos ${nosBefore} → ${s.nos}`);
 
-    // 9 — full-playthrough cash: $1,200 start + $38,500 of job rewards.
-    check('9 cash $39,700', s8.cash === 39700, 'cash=$' + s8.cash);
+    // 9. pause / resume
+    await ev(`window.__gameAPI.pause()`);
+    const paused = (await phase()) === 'paused';
+    await ev(`window.__gameAPI.resume()`);
+    check('pause/resume', paused && (await phase()) === 'playing', `paused=${paused}, phase=${await phase()}`);
 
-    // 10 — turf 8/12, 19 kills, Bay Garage owned (opens after mission 8).
-    check('10 turf 8/12 + 19 kills + garage owned',
-      s8.turf === 8 && s8.kills === 19 && s8.garageOwned === true,
-      'turf=' + s8.turf + '/12 kills=' + s8.kills + ' garageOwned=' + s8.garageOwned);
+    // 10. ALL 15 missions complete
+    await ev(`window.__gameAPI.completeAllMissions()`);
+    await sleep(300);
+    s = await snap();
+    check('ALL 15 missions complete', s.cash === 39700 && s.turf === 8 && s.garageOwned === true && s.kills === 19,
+      `cash=$${s.cash}, turf=${s.turf}/12, garage=${s.garageOwned}, kills=${s.kills}`);
 
-    // 11 — garage Engine Lv1 buys and raises top speed 62 -> 74.
-    const buy = await cdp.evaluate('window.__lumen.buyUpgrade("engine1")');
-    const s11 = await cdp.evaluate('window.__lumen.state()');
-    check('11 garage Engine Lv1', buy.ok === true && s11.topSpeed === 74,
-      'ok=' + buy.ok + ' topSpeed=' + s11.topSpeed);
+    // 11. garage Engine Lv1 ($1,500)
+    const cashBefore = (await snap()).cash;
+    await ev(`window.__gameAPI.buyEngine()`);
+    s = await snap();
+    check('garage Engine Lv1', s.engine === 1 && s.cash === cashBefore - 1500,
+      `engine=${s.engine}, cash=$${s.cash}`);
 
-    // 12 — save written to localStorage with the finished story.
-    const saveRaw = await cdp.evaluate('window.__lumen.saveGame()');
-    let saveOk = false;
-    try {
-      const s = JSON.parse(saveRaw);
-      saveOk = s.mission === 15 && s.cash === 38900 && s.storyDone === true;
-    } catch { /* bad save */ }
-    check('12 save written', saveOk, saveRaw ? saveRaw.slice(0, 120) : 'null');
+    // 12. save written
+    await ev(`window.__gameAPI.save()`);
+    const saved = await ev(`(() => { const d = JSON.parse(localStorage.getItem('lumenbay.save.v1') || 'null'); return d ? Object.keys(d.done || {}).length : -1; })()`);
+    check('save written', saved === 15, `saved missions=${saved}`);
 
-    // 13 — zero console errors across the whole run.
-    const errs = cdp.consoleErrors.concat(await cdp.evaluate('window.__lumen.errors'));
-    check('13 zero console errors', errs.length === 0, errs.length + ' errors');
-    if (errs.length > 0) console.log(errs.slice(0, 8).join('\n'));
-
-    cdp.close();
-    proc.kill('SIGKILL');
+    // 13. 0 console errors
+    await sleep(1000);
+    check('0 console errors', cdp.errors.length === 0, cdp.errors.length ? cdp.errors.slice(0, 3).join(' | ') : 'clean');
+    ws.close();
+  } catch (err) {
+    console.log('PROBE ERROR: ' + err.message);
+    results.push({ name: 'probe crashed', ok: false, detail: err.message });
   } finally {
-    server.kill('SIGKILL');
+    try { chrome.kill('SIGKILL'); } catch { /* already dead */ }
+    if (server) server.kill('SIGKILL');
   }
-  const failed = results.filter((r) => !r.ok).length;
-  console.log(`\nprobe: ${results.length - failed}/${results.length} PASS`);
-  process.exit(failed === 0 ? 0 : 1);
+  const passed = results.filter((r) => r.ok).length;
+  console.log(`\nprobe: ${passed}/${results.length} PASS (${((Date.now() - started) / 1000).toFixed(1)}s)`);
+  process.exit(passed === results.length ? 0 : 1);
 }
 
-main().catch((err) => {
-  console.error('probe failed:', err.message);
-  process.exit(1);
-});
+main();

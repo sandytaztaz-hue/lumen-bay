@@ -1,164 +1,205 @@
-// LUMEN BAY — renderer, sky and lighting. One WebGLRenderer with soft
-// shadows and ACES tone mapping; a gradient sky dome with a sun disc and
-// drifting cloud sprites; four lighting presets (bright night for the
-// chase, sunset for the shootout, night map, dawn for the boat) that set
-// the sun, the hemisphere light, the fog and the exposure together.
-
-import * as THREE from '../vendor/three/three.module.min.js';
-
-export function createRenderer(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(1);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-  return renderer;
-}
-
-function skyMaterial(top, mid, bottom) {
-  return new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    depthWrite: false,
-    uniforms: {
-      top: { value: new THREE.Color(top) },
-      mid: { value: new THREE.Color(mid) },
-      bottom: { value: new THREE.Color(bottom) },
-    },
-    vertexShader: `
-      varying vec3 vPos;
-      void main() {
-        vPos = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }`,
-    fragmentShader: `
-      uniform vec3 top; uniform vec3 mid; uniform vec3 bottom;
-      varying vec3 vPos;
-      void main() {
-        float h = normalize(vPos).y;
-        vec3 c = h > 0.12 ? mix(mid, top, smoothstep(0.12, 0.7, h))
-                          : mix(bottom, mid, smoothstep(-0.08, 0.12, h));
-        gl_FragColor = vec4(c, 1.0);
-      }`,
-  });
-}
-
-export function makeSky(THREE, preset) {
-  const group = new THREE.Group();
-  group.name = 'sky';
-  const geo = new THREE.SphereGeometry(900, 24, 16);
-  const mat = skyMaterial(preset.skyTop, preset.skyMid, preset.skyBottom);
-  const dome = new THREE.Mesh(geo, mat);
-  group.add(dome);
-
-  // Sun disc + halo.
-  const sunMat = new THREE.MeshBasicMaterial({ color: preset.sunColour, fog: false });
-  const sun = new THREE.Mesh(new THREE.CircleGeometry(preset.sunSize, 32), sunMat);
-  sun.position.set(preset.sunX, preset.sunY, preset.sunZ);
-  sun.lookAt(0, 0, 0);
-  sun.name = 'sun';
-  group.add(sun);
-  const halo = new THREE.Mesh(new THREE.CircleGeometry(preset.sunSize * 2.4, 32),
-    new THREE.MeshBasicMaterial({
-      color: preset.sunColour, transparent: true, opacity: preset.halo !== undefined ? preset.halo : 0.22, fog: false }));
-  halo.position.copy(sun.position).multiplyScalar(0.995);
-  halo.lookAt(0, 0, 0);
-  group.add(halo);
-
-  // A few soft cloud sprites, high up, drifting slowly.
-  const cloudMat = new THREE.MeshBasicMaterial({
-    color: preset.cloudColour, transparent: true, opacity: 0.5, fog: false, depthWrite: false });
-  const clouds = [];
-  const seeds = [11, 47, 83, 129, 171, 203, 251, 307];
-  for (let i = 0; i < 8; i += 1) {
-    const s = seeds[i];
-    const cloud = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), cloudMat);
-    cloud.scale.set(60 + (s % 50), 7 + (s % 6), 22 + (s % 20));
-    cloud.position.set(-500 + s * 2.2, 180 + (s % 90), -350 + (s % 500));
-    cloud.name = 'cloud';
-    group.add(cloud);
-    clouds.push(cloud);
-  }
-  group.userData = { clouds, sun, dome };
-  return group;
-}
+// LUMEN BAY — renderer: WebGL, sky dome, sun, clouds, lighting presets.
+// Three.js 0.170, vendored. One renderer, one scene, ACES tone mapping,
+// soft shadows. Presets: night (22:40 chase), sunset (18:45 shootout),
+// dawn (06:10 finale) and day.
+import * as THREE from 'three';
 
 export const PRESETS = {
   night: {
-    name: 'night', skyTop: 0x060a18, skyMid: 0x101c3a, skyBottom: 0x1c2a4a,
-    sunColour: 0xf5ead0, sunSize: 16, sunX: 500, sunY: 260, sunZ: -300, cloudColour: 0x2a3a5a,
-    sunLight: { color: 0x8fb0ff, intensity: 0.45, pos: [-60, 120, -40] },
-    hemi: { sky: 0x3a4a6a, ground: 0x1a1410, intensity: 0.6 },
-    fog: 0x0a1020, fogNear: 120, fogFar: 700, exposure: 1.2, ambient: 0.42,
+    skyTop: 0x060a18, skyMid: 0x0e1626, skyLow: 0x2a1a2e,
+    sunColor: 0xffd9a0, sunIntensity: 0.55, sunPos: [300, 60, 215],
+    hemiSky: 0x1a2440, hemiGround: 0x0a0a0c, hemiIntensity: 0.75,
+    fog: 0x0a0e18, fogNear: 120, fogFar: 480, exposure: 1.05, lampGlow: true,
+    sunDisc: false, // night: no sun disc in the sky (the old giant pale disc)
+    sunGlow: 0.12, cloudColor: 0x2a3450, cloudOpacity: 0.35,
   },
   sunset: {
-    name: 'sunset', skyTop: 0x2a1e5a, skyMid: 0xff7a4a, skyBottom: 0xffb36a,
-    sunColour: 0xffc860, sunSize: 12, sunX: 480, sunY: 190, sunZ: 380, halo: 0.12, cloudColour: 0xff9a7a,
-    sunLight: { color: 0xffa050, intensity: 2.2, pos: [180, 90, 120] },
-    hemi: { sky: 0xff9a6a, ground: 0x5a3a28, intensity: 0.9 },
-    fog: 0xd88a5a, fogNear: 150, fogFar: 800, exposure: 1.1, ambient: 0.55,
+    skyTop: 0x2a1a4a, skyMid: 0xd84a1e, skyLow: 0xff8a3c,
+    sunColor: 0xffb36b, sunIntensity: 1.6, sunPos: [360, 26, 215],
+    hemiSky: 0xff9a5a, hemiGround: 0x3a2a20, hemiIntensity: 0.85,
+    fog: 0xe87a3a, fogNear: 140, fogFar: 520, exposure: 1.15, lampGlow: false,
+    sunGlow: 1.0, cloudColor: 0xffd9b0, cloudOpacity: 0.6,
   },
   dawn: {
-    name: 'dawn', skyTop: 0x7a9ac8, skyMid: 0xffb38a, skyBottom: 0xffd9a0,
-    sunColour: 0xffa030, sunSize: 42, sunX: 380, sunY: 70, sunZ: 420, cloudColour: 0xffc8a0,
-    sunLight: { color: 0xffc080, intensity: 2.0, pos: [160, 80, 140] },
-    hemi: { sky: 0xffc8a0, ground: 0x6a5a48, intensity: 0.95 },
-    fog: 0xe8b088, fogNear: 160, fogFar: 850, exposure: 1.15, ambient: 0.6,
+    skyTop: 0x3a4a7a, skyMid: 0xff8a5a, skyLow: 0xffc98a,
+    sunColor: 0xffd9a0, sunIntensity: 1.5, sunPos: [62, 57, 351],
+    hemiSky: 0xffb98a, hemiGround: 0x4a3a30, hemiIntensity: 1.4,
+    fog: 0xf2a06a, fogNear: 150, fogFar: 560, exposure: 1.25, lampGlow: false,
+    sunGlow: 1.0, cloudColor: 0xffe8c8, cloudOpacity: 0.6,
   },
   day: {
-    name: 'day', skyTop: 0x2a6ac8, skyMid: 0x7ab8e8, skyBottom: 0xc8e8f2,
-    sunColour: 0xfff8d0, sunSize: 26, sunX: 300, sunY: 320, sunZ: 200, cloudColour: 0xffffff,
-    sunLight: { color: 0xfff2d0, intensity: 2.6, pos: [120, 200, 80] },
-    hemi: { sky: 0x9ac8e8, ground: 0x5a6a4a, intensity: 1.0 },
-    fog: 0x9ac8e8, fogNear: 200, fogFar: 900, exposure: 1.05, ambient: 0.7,
+    skyTop: 0x2a7ac8, skyMid: 0x7ab8e8, skyLow: 0xcfe8f5,
+    sunColor: 0xfff2d0, sunIntensity: 2.2, sunPos: [200, 220, 60],
+    hemiSky: 0x9ac8e8, hemiGround: 0x6a7a5a, hemiIntensity: 1.0,
+    fog: 0xa8c8e0, fogNear: 180, fogFar: 700, exposure: 1.0, lampGlow: false,
+    sunGlow: 0.6, cloudColor: 0xffffff, cloudOpacity: 0.55,
   },
 };
 
-export function applyPreset(scene, renderer, camera, presetName, rig) {
-  const preset = PRESETS[presetName] || PRESETS.night;
-  // Swap the sky dome.
-  const old = scene.getObjectByName('sky');
-  if (old) scene.remove(old);
-  const sky = makeSky(THREE, preset);
+export function initRenderer(G) {
+  const canvas = document.getElementById('c3d');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(1);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0a0e18, 120, 480);
+
+  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1200);
+  camera.position.set(80, 4, 215);
+
+  // gradient sky dome with a sun glow baked in
+  const skyUniforms = {
+    topColor: { value: new THREE.Color(0x060a18) },
+    midColor: { value: new THREE.Color(0x0e1626) },
+    lowColor: { value: new THREE.Color(0x2a1a2e) },
+    sunDir: { value: new THREE.Vector3(1, 0.1, 0).normalize() },
+    sunColor: { value: new THREE.Color(0xffd9a0) },
+    sunGlow: { value: 0.12 }, // per-preset strength of the sky sun glow
+  };
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(900, 24, 16),
+    new THREE.ShaderMaterial({
+      uniforms: skyUniforms,
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
+      vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: `
+        uniform vec3 topColor; uniform vec3 midColor; uniform vec3 lowColor;
+        uniform vec3 sunDir; uniform vec3 sunColor; uniform float sunGlow; varying vec3 vDir;
+        void main(){
+          float h = clamp(vDir.y, -0.1, 1.0);
+          vec3 col = h > 0.45 ? mix(midColor, topColor, (h-0.45)/0.55) : mix(lowColor, midColor, h/0.45);
+          float s = max(dot(normalize(vDir), normalize(sunDir)), 0.0);
+          col += sunColor * sunGlow * (pow(s, 220.0)*1.6 + pow(s, 18.0)*0.45 + pow(s, 4.0)*0.18);
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    })
+  );
   scene.add(sky);
-  if (rig) rig.sky = sky;
-  // Sun + hemisphere.
-  if (!rig.sun) {
-    rig.sun = new THREE.DirectionalLight(0xffffff, 2);
-    rig.sun.castShadow = true;
-    rig.sun.shadow.mapSize.set(2048, 2048);
-    rig.sun.shadow.camera.left = -160;
-    rig.sun.shadow.camera.right = 160;
-    rig.sun.shadow.camera.top = 160;
-    rig.sun.shadow.camera.bottom = -160;
-    rig.sun.shadow.camera.far = 600;
-    rig.sun.shadow.bias = -0.0004;
-    scene.add(rig.sun);
-    scene.add(rig.sun.target);
-    rig.hemi = new THREE.HemisphereLight(0xffffff, 0x333333, 1);
-    scene.add(rig.hemi);
-    rig.amb = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(rig.amb);
+
+  // sun disc + halo, repositioned per preset (DoubleSide: the disc must
+  // read from any camera angle the shot staging uses)
+  const sunGroup = new THREE.Group();
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 32),
+    new THREE.MeshBasicMaterial({ color: 0xfff2c8, fog: false, side: THREE.DoubleSide }));
+  sunGroup.add(disc);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const grad = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+      grad.addColorStop(0, 'rgba(255,230,160,0.9)'); grad.addColorStop(1, 'rgba(255,230,160,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+    })(), transparent: true, depthWrite: false, fog: false,
+  }));
+  halo.scale.setScalar(260);
+  sunGroup.add(halo);
+  scene.add(sunGroup);
+
+  // clouds: flat white ellipsoids drifting slowly
+  const clouds = new THREE.Group();
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, fog: false });
+  const rng = { s: 12345, next() { this.s = (this.s * 1103515245 + 12345) & 0x7fffffff; return this.s / 0x7fffffff; } };
+  for (let i = 0; i < 14; i++) {
+    const cl = new THREE.Group();
+    const puffs = 2 + Math.floor(rng.next() * 3);
+    for (let j = 0; j < puffs; j++) {
+      const p = new THREE.Mesh(new THREE.SphereGeometry(6 + rng.next() * 9, 8, 6), cloudMat);
+      p.scale.y = 0.32;
+      p.position.set(j * 9 - puffs * 4, rng.next() * 2, rng.next() * 4 - 2);
+      cl.add(p);
+    }
+    cl.position.set(-40 + rng.next() * 440, 62 + rng.next() * 46, -40 + rng.next() * 300);
+    clouds.add(cl);
   }
-  rig.sun.color.set(preset.sunLight.color);
-  rig.sun.intensity = preset.sunLight.intensity;
-  rig.sun.position.set(...preset.sunLight.pos);
-  rig.sun.target.position.set(130, 0, 210);
-  rig.hemi.color.set(preset.hemi.sky);
-  rig.hemi.groundColor.set(preset.hemi.ground);
-  rig.hemi.intensity = preset.hemi.intensity;
-  rig.amb.intensity = preset.ambient;
-  scene.fog = new THREE.Fog(preset.fog, preset.fogNear, preset.fogFar);
-  scene.background = new THREE.Color(preset.fog);
-  renderer.toneMappingExposure = preset.exposure;
-  if (camera) {
-    camera.far = 2000;
+  scene.add(clouds);
+
+  // lights
+  const sun = new THREE.DirectionalLight(0xffd9a0, 0.55);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
+  sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 500;
+  sun.shadow.bias = -0.002;
+  scene.add(sun);
+  scene.add(sun.target);
+  const hemi = new THREE.HemisphereLight(0x1a2440, 0x0a0a0c, 0.5);
+  scene.add(hemi);
+  // hero fill light: a soft point light that follows the hero car
+  const heroLight = new THREE.PointLight(0xffe9b0, 60, 26, 1.6);
+  heroLight.position.set(90, 3, 215);
+  scene.add(heroLight);
+
+  G.renderer = renderer; G.scene = scene; G.camera = camera;
+  G.lights = { sun, hemi, heroLight };
+  G.sky = { mesh: sky, uniforms: skyUniforms, sunGroup, clouds, cloudMat };
+  G.renderFrames = 0;
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  return { renderer, scene, camera };
+}
+
+export function applyPreset(G, name) {
+  const p = PRESETS[name] || PRESETS.day;
+  const u = G.sky.uniforms;
+  u.topColor.value.setHex(p.skyTop);
+  u.midColor.value.setHex(p.skyMid);
+  u.lowColor.value.setHex(p.skyLow);
+  u.sunColor.value.setHex(p.sunColor);
+  const dir = new THREE.Vector3(p.sunPos[0] - 160, p.sunPos[1], p.sunPos[2] - 155).normalize();
+  u.sunDir.value.copy(dir);
+  G.sky.sunGroup.position.set(p.sunPos[0], p.sunPos[1], p.sunPos[2]);
+  G.sky.sunGroup.lookAt(G.camera.position);
+  G.sky.sunGroup.visible = p.sunDisc !== false;
+  u.sunGlow.value = p.sunGlow ?? 0.6;
+  if (G.sky.cloudMat) {
+    G.sky.cloudMat.color.setHex(p.cloudColor ?? 0xffffff);
+    G.sky.cloudMat.opacity = p.cloudOpacity ?? 0.55;
   }
-  return preset;
+  G.lights.sun.color.setHex(p.sunColor);
+  G.lights.sun.intensity = p.sunIntensity;
+  G.lights.sun.position.set(p.sunPos[0], p.sunPos[1] + 40, p.sunPos[2]);
+  G.lights.sun.target.position.set(160, 0, 200);
+  G.lights.hemi.color.setHex(p.hemiSky);
+  G.lights.hemi.groundColor.setHex(p.hemiGround);
+  G.lights.hemi.intensity = p.hemiIntensity;
+  G.scene.fog.color.setHex(p.fog);
+  G.scene.fog.near = p.fogNear; G.scene.fog.far = p.fogFar;
+  G.renderer.toneMappingExposure = p.exposure;
+  G.preset = name;
+}
+
+// Chase camera: behind-and-above a target that faces `heading` (radians,
+// 0 = +x east). dist back, height up, look a little ahead of the target.
+export function chaseCam(G, pos, heading, dist, height, lookAhead = 8) {
+  const back = new THREE.Vector3(-Math.cos(heading), 0, -Math.sin(heading));
+  const cam = G.camera;
+  cam.position.set(
+    pos.x + back.x * dist,
+    height,
+    pos.z + back.z * dist,
+  );
+  cam.lookAt(pos.x + Math.cos(heading) * lookAhead, 1.4, pos.z + Math.sin(heading) * lookAhead);
+}
+
+// Orbit camera for on-foot play: yaw/pitch around the player.
+export function orbitCam(G, pos, yaw, pitch, dist) {
+  const cam = G.camera;
+  const cx = pos.x - Math.cos(yaw) * Math.cos(pitch) * dist;
+  const cz = pos.z - Math.sin(yaw) * Math.cos(pitch) * dist;
+  const cy = pos.y + 1.6 + Math.sin(pitch) * dist;
+  cam.position.set(cx, Math.max(cy, 0.6), cz);
+  cam.lookAt(pos.x, pos.y + 1.4, pos.z);
 }
