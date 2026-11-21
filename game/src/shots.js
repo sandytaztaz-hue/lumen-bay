@@ -104,6 +104,14 @@ export function stageShot1(G) {
   G.spawnTrafficNear(180, 215, 5); // traffic down the boulevard behind the hero, in frame
   G.clearTrafficNear(90, 215, 40); // NO stray car may overlap the hero
   G.clearPedsNear(90, 215, 15); // clear the hero's foreground
+  // RESTORED (take-2 finding): deleting this line did NOT remove the 2
+  // circled people — take 1 kept both, only recoloured. The ped spawns
+  // draw from one sequential rng, so deleting it shifted every later
+  // spawn and the right-sidewalk keepers scattered (takes 1–2: no
+  // readable keepers on the sidewalk). Restoring it puts the keepers
+  // back exactly where the v2 preview had them; the road-band +
+  // north-verge clears below remove the strays this group (and every
+  // group) lands on the road / left side.
   G.spawnPedsNear(140, 206, 8); // pedestrians on the north sidewalk behind the hero
   G.spawnPedsNear(170, 228, 5); // beachgoers on the sand behind the hero, south side
   // PEDESTRIANS ON THE RIGHT SIDEWALK (Sand 2026-11-21 ~11:24 WIT, spec
@@ -127,6 +135,31 @@ export function stageShot1(G) {
   // take 5 netted 2 clear sidewalk peds + 1 tiny far one, one short of
   // the 3–5 target.
   G.spawnPedsNear(104, 228, 2);
+  // ROAD BAND + NORTH VERGE CLEAR (Sand 2026-11-21 ~15:44 WIT ped
+  // cleanup): spawnPedsNear scatters ±20 m around its centre, so the
+  // sidewalk/sand spawns land ON the road and on the left side, and
+  // peds wander during the settle. Clear AFTER every spawn, along the
+  // whole visible road: r 9 centred on the centreline z 215 reaches
+  // z 206–224 and NEVER the right sidewalk (z 225+), so the 3 keepers
+  // survive; a second row at z 200 clears the north verge (z 191–209),
+  // where a stray green ped survived take 2. Centres 15 m apart so
+  // the 9 m circles overlap with no gap. No keeper is ever in either
+  // band (keepers spawn z 225–228, x 84–128).
+  G.clearPedsNear(92, 215, 9);
+  G.clearPedsNear(107, 215, 9);
+  G.clearPedsNear(122, 215, 9);
+  G.clearPedsNear(137, 215, 9);
+  G.clearPedsNear(152, 215, 9);
+  G.clearPedsNear(167, 215, 9);
+  G.clearPedsNear(182, 215, 9);
+  G.clearPedsNear(197, 215, 9);
+  G.clearPedsNear(212, 215, 9);
+  G.clearPedsNear(92, 200, 9);
+  G.clearPedsNear(107, 200, 9);
+  G.clearPedsNear(122, 200, 9);
+  G.clearPedsNear(137, 200, 9);
+  G.clearPedsNear(152, 200, 9);
+  G.clearPedsNear(167, 200, 9);
   // Warm bounce light over the hero so the pink-red paint + chrome glow
   // under the lamps. 60, not 100: at bright night the old 100 + the beam
   // pool washed the pink to pale white — the paint still glows at 60.
