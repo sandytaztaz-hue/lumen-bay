@@ -203,11 +203,18 @@ function stageShot2(G) {
   // no umbrella anywhere in this shot — clear the beach dressing near the duel
   G.clearUmbrellasNear(110, 222, 45);
 
-  // camera: pulled back, dist 9, looking east-southeast down the boulevard
+  // camera: west on the beach, low, looking east-southeast across the sand
+  // with a NARROWED fov (48 vs the default 62) so the cordon reads ~35px
+  // tall like HEAD: cordon mid-frame, Mara large right, downed cop
+  // foreground centre, heli top-centre. fov is set here only — the main
+  // loop re-pins pos/lookAt every frame but never touches fov, and each
+  // shot loads a fresh page, so shots 1/3/4 are unaffected.
   const cam = G.camera;
-  cam.position.set(86, 3.4, 229);
-  cam.lookAt(118, 1.2, 216);
-  G.shotCam = { fixed: true, pos: [86, 3.4, 229], look: [118, 1.2, 216] };
+  cam.position.set(87, 2.6, 230);
+  cam.lookAt(118, 2.0, 219);
+  cam.fov = 48;
+  cam.updateProjectionMatrix();
+  G.shotCam = { fixed: true, pos: [87, 2.6, 230], look: [118, 2.0, 219] };
 }
 
 // --- SHOT 3: full city map --------------------------------------------------------
