@@ -1,4 +1,4 @@
-// LUMEN BAY r12 — input: keyboard state, one-shot action flags, mouse orbit
+// LUMEN BAY r13 — input: keyboard state, one-shot action flags, mouse orbit
 // and click-to-fire. Held keys steer; presses are queued once and taken by the
 // loop, so a press between frames is never lost or double-counted.
 export const ACTION_CONFIRM = 1;

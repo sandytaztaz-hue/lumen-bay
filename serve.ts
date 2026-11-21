@@ -1,10 +1,11 @@
-// LUMEN BAY r12 — a tiny static server for game/ (Node 22, standard library
+// LUMEN BAY r13 — a tiny static server for game/ (Node 22, standard library
 // only), so the entry can be played locally without a build step:
-// `node serve.ts` serves game/ on http://localhost:8080. r12 is a fresh
-// rebuild: night boulevard chase cover (22:40, six cruisers + heli), night
-// pier shootout (23:20), vault interior (21:40), dawn marina escape (06:10,
-// boat clear of the title and toasts). It sends the MIME types a browser
-// game needs, refuses any path outside game/, and otherwise does nothing clever.
+// `node serve.ts` serves game/ on http://localhost:8080. r13 is a fresh
+// rebuild: bright-night beachfront chase cover (22:40, eight cruisers +
+// heli), bright-night street shootout (23:20), full city map (21:40), dawn
+// marina escape (06:10, boat clear of the title and toasts). It sends the
+// MIME types a browser game needs, refuses any path outside game/, and
+// otherwise does nothing clever.
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';

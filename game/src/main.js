@@ -1,20 +1,14 @@
-// LUMEN BAY r12 — boot and the one loop. Third-person on foot and by car in
+// LUMEN BAY — boot and the one loop. Third-person on foot and by car in
 // Puerto Lumen: 15 story missions, turf war, garage upgrades, NOS, robberies,
 // properties, street races, wanted police with roadblocks and line-of-sight
 // chases, a helicopter with a visible searchlight, combat, radio, saves.
 // ?shot=1..4 stages a fixed scene and sets window.__shotReady for
-// screenshots. r12: every shot gets its OWN weather + time + camera angle —
-// the COVER is now a SUNSET beach-front chase (18:45, eight cruisers + heli,
-// camera ahead so the FRONTS of the cars face the lens), shot 2 the sunset
-// beach shootout (18:45, Mara + cordon in a two-handed aiming stance),
-// shot 3 the FULL CITY MAP (21:40), shot 4 the dawn marina escape (06:10)
-// with the boat big in the water, clear of the title and the toasts.
-// Gameplay is the proven r11 game; r12 rebuilds the LOOK per shot
-// (per-shot lighting presets in config.js/render.js, staged sets in
-// shots.js) toward the top-3 layout, with our city/story/missions.
-// r12 revision: shot 3 is now a FULL CITY MAP (not the vault), the cover
-// runs EIGHT cruisers, and both action shots are golden hour with the heli
-// visible in frame.
+// screenshots. Every shot gets its OWN weather + time + camera angle —
+// the COVER is a BRIGHT-NIGHT beach-front chase (22:40, eight cruisers +
+// heli, camera ahead so the FRONTS of the cars face the lens), shot 2 the
+// bright-night beach shootout (23:20, Mara + cordon in a two-handed aiming
+// stance), shot 3 the FULL CITY MAP (21:40), shot 4 the dawn marina escape
+// (06:10) with the boat big in the water, clear of the title and the toasts.
 import * as THREE from 'three';
 import { WORLD, STEP, SAVE_KEY, CLOCK, DISTRICTS, ROB_TARGETS, PROPERTIES, WEAPONS, CARS, LANDMARKS, POLICE_ROSTER, freshSave, clamp, dist2, streetNameAt, districtAt } from './config.js';
 import { createRandom } from './random.js';
@@ -59,8 +53,11 @@ function loadSave() {
     const s = JSON.parse(raw);
     if (!s || typeof s.cash !== 'number') return null;
     return s;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
+
 let save = loadSave() || freshSave();
 const garage = new Garage(save);
 const turf = new Turf(save);
@@ -68,9 +65,17 @@ const turf = new Turf(save);
 // ---- player ---------------------------------------------------------------
 const playerMesh = makePlayerMesh(R.scene);
 const player = {
-  mesh: playerMesh, x: save.px || -180, z: save.pz || 60, heading: 0,
-  health: save.health || 100, armour: save.armour || 0,
-  weapon: 'pistol', inCar: false, car: null, fireT: 0, dead: false,
+  mesh: playerMesh,
+  x: save.px || -180,
+  z: save.pz || 60,
+  heading: 0,
+  health: save.health || 100,
+  armour: save.armour || 0,
+  weapon: 'pistol',
+  inCar: false,
+  car: null,
+  fireT: 0,
+  dead: false,
 };
 playerMesh.group.position.set(player.x, 0, player.z);
 
@@ -84,17 +89,28 @@ const roadblocks = [];
 const pickups = [];
 let enemiesKilled = 0;
 let policeSeq = 0;
+
 function addPickup(kind, x, z) {
   const colour = kind === 'health' ? 0x37c978 : kind === 'armour' ? 0x4d8dff : 0xffd23f;
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4),
-    new THREE.MeshBasicMaterial({ color: colour }));
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.4, 1.4, 1.4),
+    new THREE.MeshBasicMaterial({ color: colour }),
+  );
   mesh.position.set(x, 0.9, z);
   R.scene.add(mesh);
   pickups.push({ kind, x, z, mesh, taken: false });
 }
-addPickup('health', -170, 10); addPickup('health', -40, -160); addPickup('health', 40, -160);
-addPickup('health', 170, 20); addPickup('armour', -170, -60); addPickup('armour', 60, 20);
-addPickup('smg', -60, -140); addPickup('health', 180, 180); addPickup('armour', -120, 180);
+
+addPickup('health', -170, 10);
+addPickup('health', -40, -160);
+addPickup('health', 40, -160);
+addPickup('health', 170, 20);
+addPickup('armour', -170, -60);
+addPickup('armour', 60, 20);
+addPickup('smg', -60, -140);
+addPickup('health', 180, 180);
+addPickup('armour', -120, 180);
+
 // Parked stealable cars around the city.
 const parked = [];
 const parkedSpots = [
@@ -108,14 +124,29 @@ for (const [type, x, z, h] of parkedSpots) {
   parked.push(car);
 }
 const cometCar = parked[0];
+
 // ---- game state -------------------------------------------------------------
 const state = {
-  screen: 'title', cash: save.cash, wanted: 0, heat: 0,
-  speed: 0, nos: garage.nos, nosMax: garage.nosCapacity(),
-  radio: 'RADIO SOL 101.9 — Sol Hits', timerText: '',
-  bustedT: 0, roadblockT: 8, saveT: 0, festival: false,
-  garageOpen: false, robberyPrompt: false, hour: 18, seen: false,
-  extraAlerts: [], nosReadyNotified: false, lastWanted: 0,
+  screen: 'title',
+  cash: save.cash,
+  wanted: 0,
+  heat: 0,
+  speed: 0,
+  nos: garage.nos,
+  nosMax: garage.nosCapacity(),
+  radio: 'RADIO SOL 101.9 — Sol Hits',
+  timerText: '',
+  bustedT: 0,
+  roadblockT: 8,
+  saveT: 0,
+  festival: false,
+  garageOpen: false,
+  robberyPrompt: false,
+  hour: 18,
+  seen: false,
+  extraAlerts: [],
+  nosReadyNotified: false,
+  lastWanted: 0,
 };
 let camYaw = 0;
 let camPitch = 0.2;
@@ -130,14 +161,20 @@ let boughtPropEvent = null;
 let raceWonEvent = false;
 let raceLostEvent = false;
 let dialogue = null;
+
 function setDialogue(name, text) {
-  if (!name || !text) { dialogue = null; return; }
+  if (!name || !text) {
+    dialogue = null;
+    return;
+  }
   dialogue = { name, text, initial: name.trim().charAt(0) || '?' };
 }
+
 function dialogueFromLine(line) {
   const m = /^([A-Z ]+):\s*"([^"]*)"/.exec(line || '');
   if (m) setDialogue(m[1].trim(), m[2]);
 }
+
 function saveGame() {
   try {
     save.cash = state.cash;
@@ -147,11 +184,16 @@ function saveGame() {
     save.nos = garage.nos;
     save.owned = turf.owned;
     save.turf = turf.owners;
-    save.px = player.x; save.pz = player.z;
-    save.health = player.health; save.armour = player.armour;
+    save.px = player.x;
+    save.pz = player.z;
+    save.health = player.health;
+    save.armour = player.armour;
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-  } catch { /* storage off: progress lasts this visit only */ }
+  } catch {
+    // Storage off: progress lasts this visit only.
+  }
 }
+
 // ---- wanted / police --------------------------------------------------------
 function starsForHeat(heat) {
   if (heat < 10) return 0;
@@ -161,21 +203,25 @@ function starsForHeat(heat) {
   if (heat < 85) return 4;
   return 5;
 }
+
 function addHeat(n) {
   state.heat = clamp(state.heat + n * turf.heatFactorAt(player.x, player.z), 0, 100);
   state.wanted = starsForHeat(state.heat);
 }
+
 function setWanted(n) {
   state.wanted = clamp(n, 0, 5);
   state.heat = n === 0 ? 0 : [0, 15, 35, 55, 75, 92][n];
   state.lastWanted = state.wanted;
 }
+
 /** Next LCPD call-sign from the roster (top-3 style unit names). */
 function nextUnitName() {
   const name = POLICE_ROSTER[policeSeq % POLICE_ROSTER.length];
   policeSeq += 1;
   return name;
 }
+
 function spawnPoliceNear(count) {
   for (let i = 0; i < count; i += 1) {
     if (police.length >= 6) break;
@@ -184,20 +230,22 @@ function spawnPoliceNear(count) {
     police.push(car);
   }
 }
+
 /** Stage cruisers for the shot-1 cover: an eight-cruiser pack around the hero.
- The cover camera now sits AHEAD of the hero (front-three-quarter, Sand's
- order), so every cruiser in the pack faces the SAME way as the hero —
- east, toward the lens — at staggered depths behind him, and the autopilot
- in shots.js re-pins them there every frame. Slots (back = metres behind
- the hero, lat = lateral, + = north / camera side): one tight chaser
- (3, -5), a second chaser (6, +5), three flankers (10, -8), (13, +8),
- (18, -2), and three closers down the middle (9, -2.5), (15, +4),
- (22, +1). No head-on cruisers any more: from a front camera a head-on
- car shows its REAR to the lens. */
+ The cover camera now sits AHEAD of the hero (front-three-quarter), so every
+ cruiser in the pack faces the SAME way as the hero — east, toward the lens
+ — at staggered depths behind him, and the autopilot in shots.js re-pins
+ them there every frame. Slots (back = metres behind the hero, lat =
+ lateral, + = north / camera side): one tight chaser (3, -5), a second
+ chaser (6, +5), three flankers (10, -8), (13, +8), (18, -2), and three
+ closers down the middle (9, -2.5), (15, +4), (22, +1). No head-on cruisers
+ any more: from a front camera a head-on car shows its REAR to the lens. */
 function spawnPoliceBehind(count) {
   const heading = player.inCar && player.car ? player.car.heading : player.heading;
-  const fx = Math.sin(heading), fz = Math.cos(heading);
-  const rx = Math.cos(heading), rz = -Math.sin(heading);
+  const fx = Math.sin(heading);
+  const fz = Math.cos(heading);
+  const rx = Math.cos(heading);
+  const rz = -Math.sin(heading);
   const slots = [
     { kind: 'chase', back: 7, lat: -6, face: heading },
     { kind: 'chase2', back: 11, lat: 6, face: heading },
@@ -221,6 +269,7 @@ function spawnPoliceBehind(count) {
     police.push(car);
   }
 }
+
 function spawnRoadblockAhead() {
   if (roadblocks.length >= 2) return;
   const heading = player.inCar && player.car ? player.car.heading : player.heading;
@@ -228,10 +277,14 @@ function spawnRoadblockAhead() {
   hud.log('POLICE ROADBLOCK ahead — ram through or dodge around it.');
   if (!shotMode) hud.notify('ROADBLOCK AHEAD', 'Ram it or dodge — LCPD set a trap', 'danger');
 }
+
 function updateWanted(dt) {
   let seen = false;
   for (const c of police) {
-    if (hasLineOfSight(colliders, c.x, c.z, player.x, player.z)) { seen = true; break; }
+    if (hasLineOfSight(colliders, c.x, c.z, player.x, player.z)) {
+      seen = true;
+      break;
+    }
   }
   state.seen = seen;
   // Staged shots pin their wanted level: in shot 3 Mara is on foot at the
@@ -253,7 +306,7 @@ function updateWanted(dt) {
   }
   const wantCount = Math.min(state.wanted, 4);
   while (police.length < wantCount) spawnPoliceNear(1);
-  // r12: in shot mode the staged pack is sacred — never trim it back to the
+  // In shot mode the staged pack is sacred — never trim it back to the
   // wanted cap, or the six-cruiser cover collapses to four mid-settle.
   while (police.length > wantCount && !shotMode) {
     const c = police.pop();
@@ -278,6 +331,7 @@ function updateWanted(dt) {
     }
   }
 }
+
 // ---- combat -----------------------------------------------------------------
 function shootAt(targetX, targetY, targetZ, fromX, fromY, fromZ) {
   spawnTracer(R.scene, [fromX, fromY, fromZ], [targetX, targetY, targetZ]);
@@ -285,6 +339,7 @@ function shootAt(targetX, targetY, targetZ, fromX, fromY, fromZ) {
   audio.gunshot();
   lastGunPos = [fromX, fromZ];
 }
+
 function playerShoot() {
   const w = WEAPONS[player.weapon];
   if (player.fireT > 0) return;
@@ -302,7 +357,10 @@ function playerShoot() {
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
     if (Math.abs(diff) > 0.7) continue;
-    if (d < bd) { bd = d; best = e; }
+    if (d < bd) {
+      bd = d;
+      best = e;
+    }
   }
   if (best) {
     shootAt(best.x, 1.4, best.z, fx, 1.4, fz);
@@ -320,6 +378,7 @@ function playerShoot() {
   }
   if (player.weapon !== 'fists') addHeat(2);
 }
+
 function enemyShoot(e) {
   if (!hasLineOfSight(colliders, e.x, e.z, player.x, player.z)) return;
   shootAt(player.x, 1.3, player.z, e.x, 1.4, e.z);
@@ -334,6 +393,7 @@ function enemyShoot(e) {
   spawnDamageNumber(document.getElementById('fx'), R.camera, player.x, 2.4, player.z, `-${Math.round(dmg)}`, '#ff5252');
   if (player.health <= 0) endRun('wasted');
 }
+
 function endRun(kind) {
   state.screen = kind;
   document.getElementById('screen-busted').style.display = 'flex';
@@ -345,6 +405,7 @@ function endRun(kind) {
   audio.setSiren(false);
   audio.stopRadio();
 }
+
 // ---- enemies / pickups --------------------------------------------------------
 function spawnEnemiesAt(x, z, count, kind) {
   const made = [];
@@ -357,26 +418,41 @@ function spawnEnemiesAt(x, z, count, kind) {
   }
   return made; // shot staging poses the returned squad (aim stance)
 }
+
 function spawnPatrols(count) {
   for (let i = 0; i < count; i += 1) {
-    const car = makeCar('police', clamp(player.x + (rng() - 0.5) * 80, -220, 220), clamp(player.z + (rng() - 0.5) * 80, -220, 220), rng() * Math.PI * 2, { kind: 'patrol' });
+    const car = makeCar('police',
+      clamp(player.x + (rng() - 0.5) * 80, -220, 220),
+      clamp(player.z + (rng() - 0.5) * 80, -220, 220),
+      rng() * Math.PI * 2, { kind: 'patrol' });
     R.scene.add(car.mesh.group);
     car.unit = nextUnitName();
     police.push(car);
   }
 }
+
 function updatePickups() {
   for (const p of pickups) {
     if (p.taken) continue;
     if (dist2([player.x, player.z], [p.x, p.z]) < 2.5) {
       p.taken = true;
       R.scene.remove(p.mesh);
-      if (p.kind === 'health') { player.health = Math.min(100, player.health + 40); hud.log('Health +40.'); }
-      if (p.kind === 'armour') { player.armour = Math.min(100, player.armour + 50); hud.log('Armour +50.'); }
-      if (p.kind === 'smg') { player.weapon = 'smg'; hud.log('Picked up the SMG — press 3.'); }
+      if (p.kind === 'health') {
+        player.health = Math.min(100, player.health + 40);
+        hud.log('Health +40.');
+      }
+      if (p.kind === 'armour') {
+        player.armour = Math.min(100, player.armour + 50);
+        hud.log('Armour +50.');
+      }
+      if (p.kind === 'smg') {
+        player.weapon = 'smg';
+        hud.log('Picked up the SMG — press 3.');
+      }
     }
   }
 }
+
 // ---- missions -----------------------------------------------------------------
 const ctx = {
   get playerX() { return player.x; },
@@ -398,7 +474,8 @@ const ctx = {
   spawnPatrols: (n) => spawnPatrols(n),
   spawnEnemies: (x, z, n, k) => spawnEnemiesAt(x, z, n, k),
   startRace: (pts) => {
-    raceWonEvent = false; raceLostEvent = false;
+    raceWonEvent = false;
+    raceLostEvent = false;
     race.start(pts);
     hud.log('RACE — beat the Tiburones driver through every checkpoint!');
   },
@@ -426,19 +503,24 @@ const ctx = {
   },
 };
 const missions = new MissionEngine(ctx);
+
 // ---- cars: enter / exit ---------------------------------------------------------
 function nearestCar(maxD) {
   let best = null;
   let bd = maxD;
-  // r12 FIX: police cruisers are stealable too (mission 8, "The Swap") —
-  // the old nearestCar only searched parked + traffic, so a cruiser could
-  // never be entered and the mission was uncompletable.
+  // Police cruisers are stealable too (mission 8, "The Swap") — the old
+  // nearestCar only searched parked + traffic, so a cruiser could never
+  // be entered and the mission was uncompletable.
   for (const c of [...parked, ...traffic, ...police]) {
     const d = dist2([player.x, player.z], [c.x, c.z]);
-    if (d < bd) { bd = d; best = c; }
+    if (d < bd) {
+      bd = d;
+      best = c;
+    }
   }
   return best;
 }
+
 function enterCar(car) {
   if (player.inCar) return;
   player.inCar = true;
@@ -462,6 +544,7 @@ function enterCar(car) {
   const k = police.indexOf(car);
   if (k >= 0) police.splice(k, 1);
 }
+
 function exitCar() {
   if (!player.inCar || !player.car) return;
   const car = player.car;
@@ -474,6 +557,7 @@ function exitCar() {
   playerMesh.group.position.set(player.x, 0, player.z);
   parked.push(car);
 }
+
 // ---- festival -------------------------------------------------------------------
 function setFestival(on) {
   state.festival = on;
@@ -482,13 +566,17 @@ function setFestival(on) {
     for (const p of extra) {
       const x = 150 + (rng() - 0.5) * 70;
       const z = (rng() - 0.5) * 70;
-      p.x = x; p.z = z; p.wx = x; p.wz = z;
+      p.x = x;
+      p.z = z;
+      p.wx = x;
+      p.wz = z;
       p.mesh.position.set(x, 0, z);
       peds.push(p);
     }
     hud.log('Festival de las Luces — lanterns, music, crowds.');
   }
 }
+
 // ---- interactions (E) -------------------------------------------------------------
 function doInteract() {
   if (state.garageOpen) {
@@ -522,10 +610,14 @@ function doInteract() {
     hud.log(`Robbing ${target.name}… stay close, 5 seconds.`);
     return;
   }
-  if (player.inCar) { exitCar(); return; }
+  if (player.inCar) {
+    exitCar();
+    return;
+  }
   const car = nearestCar(4.5);
   if (car) enterCar(car);
 }
+
 function refreshGarageMenu() {
   const rows = GARAGE_MENU.map((g) => {
     const lvl = garage.levels[g.kind];
@@ -536,12 +628,14 @@ function refreshGarageMenu() {
   rows.push(garage.summary());
   hud.showGarage(rows, Math.floor(state.cash));
 }
+
 function garageKey(action) {
   if (action & ACTION_WEAPON1) return 'engine';
   if (action & ACTION_WEAPON2) return 'armour';
   if (action & ACTION_WEAPON3) return 'nos';
   return null;
 }
+
 // ---- the game object the shot stager and probes drive ---------------------------
 const G = {
   shotMode,
@@ -605,36 +699,35 @@ const G = {
       }
     }
   },
-  /** Remove EVERY beach umbrella (shot staging only): Sand 2026-11-21
-   ~02:08 WIT — "payung ilangin", NO umbrella visible in shots 1, 2, 4.
-   The city keeps its umbrellas in gameplay; staging hides them all. */
+  /** Remove EVERY beach umbrella (shot staging only): NO umbrella visible
+   in shots 1, 2, 4. The city keeps its umbrellas in gameplay; staging
+   hides them all. */
   clearUmbrellasAll() {
     for (const u of (city.umbrellas || [])) {
       for (const m of u.meshes) city.group.remove(m);
     }
     city.umbrellas.length = 0;
   },
-  /** Spawn the two shot-1 police motorcycles flanking the hero car
-   (Sand 2026-11-21 ~02:12 WIT): one on the camera side, one on the far
-   side, a few metres back, facing the hero's heading. The shot-1
-   autopilot re-pins them there every frame, like the cruiser pack. */
+  /** Spawn the two shot-1 police motorcycles flanking the hero car: one
+   on the camera side, one on the far side, a few metres back, facing the
+   hero's heading. The shot-1 autopilot re-pins them there every frame,
+   like the cruiser pack. */
   spawnPoliceBikes() {
     const heading = player.inCar && player.car ? player.car.heading : player.heading;
-    const fx = Math.sin(heading), fz = Math.cos(heading);
-    const rx = Math.cos(heading), rz = -Math.sin(heading);
-    // ALONGSIDE the hero — ONE on EACH SIDE, both IN LANE (Sand
-    // 2026-11-21 ~06:20 WIT: "motor kanan kiri"): bike 1 rides the south
-    // lane beside the hero's nose (lat −4, back −1), bike 2 the north lane
-    // beside the hero's REAR HALF (lat +3, back +2) — in formation, in
-    // the road lanes next to the car, never both on one side. The north
-    // slot is tight because this front camera sits on the north side:
-    // back 0 looms in the near foreground, back +2.5 sits at the right
-    // frame edge half cut off, back +5 falls off the frame entirely
-    // (three takes proved it). At [2, 3] the north bike sits ~7.9 m from
-    // the lens — the hero's own distance — fully in frame, side profile
-    // with rider + white helmet, clear of the toasts. The old
-    // [[-1,-10],[0,-8]] put BOTH bikes on the south side, 8–10 m out
-    // (out of lane, both on the left).
+    const fx = Math.sin(heading);
+    const fz = Math.cos(heading);
+    const rx = Math.cos(heading);
+    const rz = -Math.sin(heading);
+    // ALONGSIDE the hero — ONE on EACH SIDE, both IN LANE: bike 1 rides
+    // the south lane beside the hero's nose (lat −4, back −1), bike 2 the
+    // north lane beside the hero's REAR HALF (lat +3, back +2) — in
+    // formation, in the road lanes next to the car, never both on one
+    // side. The north slot is tight because this front camera sits on the
+    // north side: back 0 looms in the near foreground, back +2.5 sits at
+    // the right frame edge half cut off, back +5 falls off the frame
+    // entirely (three takes proved it). At [2, 3] the north bike sits
+    // ~7.9 m from the lens — the hero's own distance — fully in frame,
+    // side profile with rider + white helmet, clear of the toasts.
     const slots = [[-1, -4], [2, 3]];
     for (const [back, lat] of slots) {
       const b = makePoliceBike(
@@ -647,14 +740,15 @@ const G = {
   },
   /** Aim the heli's spotlight beam (heli.beam + heli.beamPool, see
    vehicles.js makeHelicopter) from the heli belly down onto (x, y, z) —
-   Sand 2026-11-21 ~02:12 WIT, shot 1: the beam must visibly REACH/TOUCH
-   the hero car. Unit cone scaled (R, L, R), +Y pointed from target to
-   source so the apex sits at the lamp and the wide base lands on the
-   car; the pool disc lands on the ground around the car. Called every
-   frame by the shot-1 autopilot (the heli + car both hold position, but
-   the aim must follow the live positions, not the staging snapshot). */
+   the beam must visibly REACH/TOUCH the hero car. Unit cone scaled
+   (R, L, R), +Y pointed from target to source so the apex sits at the
+   lamp and the wide base lands on the car; the pool disc lands on the
+   ground around the car. Called every frame by the shot-1 autopilot (the
+   heli + car both hold position, but the aim must follow the live
+   positions, not the staging snapshot). */
   aimSpotlight(x, y, z) {
-    const beam = heli.beam, pool = heli.beamPool;
+    const beam = heli.beam;
+    const pool = heli.beamPool;
     if (!beam) return;
     const from = new THREE.Vector3(heli.group.position.x, heli.group.position.y - 1.2, heli.group.position.z);
     const to = new THREE.Vector3(x, y, z);
@@ -681,29 +775,28 @@ const G = {
    8-POINT STARBURST, not a soft blob: two crossed emissive blade pairs
    (one axis-aligned, one diagonal) + a hot core + a big glow sprite + a
    real point light, so the flash reads as a gunshot at a glance.
-   Round-2 targeted pass: the old 4-blade star read as a small white glow
-   blob at 5–7 m — blades are now longer AND thicker, the sprite bigger,
-   the light stronger. */
+   The flash glow + point light are TONED DOWN — sprite opacity 0.75,
+   sprite scale s*0.2, light 12 with distance 10. Five flashes at full
+   power + the sunset sun were bleaching the whole beach white. The
+   starburst blades still read; the wash does not come back. */
   addMuzzleFlash(x, y, z, scale) {
     const s = scale || 2.2;
-    // Shot-2 rebuild (Sand 2026-11-21 ~02:10 WIT: the whole scene was a
-    // white-out): the flash glow + point light are TONED DOWN — sprite
-    // opacity 0.75 (was 0.95), sprite scale s*0.2 (was s*0.25), light
-    // 12 (was 70, then 35) with distance 10 (was 16). Five flashes at
-    // full power + the sunset sun were bleaching the whole beach white,
-    // and even at 35 the foreground sand under the duel still washed
-    // pale. The starburst blades still read; the wash does not come back.
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({
       map: sunGlowTexture(), color: 0xffc21a, transparent: true, opacity: 0.75, depthWrite: false,
     }));
     flash.position.set(x, y, z);
     flash.scale.set(s * 0.2, s * 0.2, 1);
     R.scene.add(flash);
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.25 * (s / 2.2), 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(0.25 * (s / 2.2), 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xfff6d8 }),
+    );
     core.position.set(x, y, z);
     R.scene.add(core);
-    const starMat = new THREE.MeshBasicMaterial({ color: 0xffb400, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+    const starMat = new THREE.MeshBasicMaterial({
+      color: 0xffb400, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
     // An 8-point star: blades facing both axes AND the diagonals, so the
     // flash reads as a starburst from any camera side (shot 2's camera
     // sits north of the duel looking south). Blades are THIN with gaps
@@ -775,17 +868,17 @@ const G = {
     e.mesh.position.y = 0.3;
     return e;
   },
-  /** A DOWNED POLICE OFFICER for shot 2 (Sand 2026-11-21 ~07:33 WIT):
-   one cop flat on the sand with a BLOOD SPLATTER around him, so the
-   shootout reads as a fight already won in part. STATIC prop, like the
-   parked cruiser: built from spawnDowned('police') — which never pushes
-   it into the enemies array, so updateEnemy never moves or shoots it —
-   then laid flat with the head toward the WEST (toward the cordon) and
-   the blood pooled around the torso/head. The body's own pistol is
-   hidden: laid flat it would float 0.65 m up beside the torso. Blood is
-   flat dark-red circles on the sand (MeshBasicMaterial, unlit so the
-   dusk light cannot wash it pale), y 0.09–0.12 — above the sand patch
-   (0.06), below the body's underside — plus droplets radiating out. */
+  /** A DOWNED POLICE OFFICER for shot 2: one cop flat on the sand with a
+   BLOOD SPLATTER around him, so the shootout reads as a fight already won
+   in part. STATIC prop, like the parked cruiser: built from
+   spawnDowned('police') — which never pushes it into the enemies array,
+   so updateEnemy never moves or shoots it — then laid flat with the head
+   toward the WEST (toward the cordon) and the blood pooled around the
+   torso/head. The body's own pistol is hidden: laid flat it would float
+   0.65 m up beside the torso. Blood is flat dark-red circles on the sand
+   (MeshBasicMaterial, unlit so the dusk light cannot wash it pale),
+   y 0.09–0.12 — above the sand patch (0.06), below the body's underside
+   — plus droplets radiating out. */
   spawnDownedOfficer(x, z) {
     const e = this.spawnDowned(x, z, 'police');
     // Head WEST (toward the cordon): rotation.set(0, PI/2, 0) then
@@ -870,7 +963,8 @@ const G = {
    dawn beach is deterministically TAN. */
   spawnSandPatch(tint) {
     const tex = sandTexture(createRandom(20261120));
-    const patch = new THREE.Mesh(new THREE.PlaneGeometry(480, 60),
+    const patch = new THREE.Mesh(
+      new THREE.PlaneGeometry(480, 60),
       // envMapIntensity 0.25: the bright sunset sky reflected off the sand
       // at a grazing camera angle was blowing the beach white (shot 2's
       // wash-out). The patch keeps its tan texture; it just stops
@@ -878,7 +972,8 @@ const G = {
       // #f0d49a texture down to a solid tan — the pale-cream foreground
       // survived the dusk preset + dimmed lights, so the texture itself
       // needed darkening where the camera looks down the beach at it.
-      new THREE.MeshStandardMaterial({ map: tex, roughness: 1, envMapIntensity: 0.25, color: tint || 0xffffff }));
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 1, envMapIntensity: 0.25, color: tint || 0xffffff }),
+    );
     patch.rotation.x = -Math.PI / 2;
     patch.position.set(0, 0.06, 210);
     patch.receiveShadow = true;
@@ -893,13 +988,15 @@ const G = {
   spawnBeachRoad(x0, x1, z) {
     const len = x1 - x0;
     const cx = (x0 + x1) / 2;
-    // COOLER GREY asphalt (3D-boulevard polish 2026-11-21): the old
-    // 0x2e2f33 under the warm sunset sun + warm hemi read BROWN/muddy
-    // like dirt, not a road — top 1 Karimbu's road is cool grey. The
-    // lighter blue-grey 0x60646d holds grey under the same warm light,
-    // and the sidewalks go greyer too (0xb8a88e was warm tan).
-    const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(len, 14),
-      new THREE.MeshStandardMaterial({ color: 0x60646d, roughness: 0.9 }));
+    // COOLER GREY asphalt: the old 0x2e2f33 under the warm sunset sun +
+    // warm hemi read BROWN/muddy like dirt, not a road — top 1 Karimbu's
+    // road is cool grey. The lighter blue-grey 0x60646d holds grey under
+    // the same warm light, and the sidewalks go greyer too (0xb8a88e was
+    // warm tan).
+    const asphalt = new THREE.Mesh(
+      new THREE.PlaneGeometry(len, 14),
+      new THREE.MeshStandardMaterial({ color: 0x60646d, roughness: 0.9 }),
+    );
     asphalt.rotation.x = -Math.PI / 2;
     asphalt.position.set(cx, 0.07, z);
     asphalt.receiveShadow = true;
@@ -951,21 +1048,25 @@ const G = {
    heli spotlight + lamp glows as bright streaks, so the night street reads
    WET (recent rain), not just dark. */
   spawnPuddle(x, z, w, d) {
-    const puddle = new THREE.Mesh(new THREE.PlaneGeometry(w || 6, d || 3),
-      new THREE.MeshStandardMaterial({ color: 0x0a1a2e, roughness: 0.08, metalness: 0.9, emissive: 0x14344d, emissiveIntensity: 0.3 }));
+    const puddle = new THREE.Mesh(
+      new THREE.PlaneGeometry(w || 6, d || 3),
+      new THREE.MeshStandardMaterial({ color: 0x0a1a2e, roughness: 0.08, metalness: 0.9, emissive: 0x14344d, emissiveIntensity: 0.3 }),
+    );
     puddle.rotation.x = -Math.PI / 2;
     puddle.position.set(x, 0.05, z);
     R.scene.add(puddle);
     return puddle;
   },
   /** A soft sun-glitter path on the water (shot 4): a long additive
-   * radial-glow ellipse lying on the sea between the boat and the low
-   * dawn sun, so the water reads as reflecting the sunrise instead of
-   * a flat teal plane. sunGlowTexture() is a radial gradient, so the
-   * stretched ellipse fades at the edges — no hard stripe. */
+   radial-glow ellipse lying on the sea between the boat and the low
+   dawn sun, so the water reads as reflecting the sunrise instead of
+   a flat teal plane. sunGlowTexture() is a radial gradient, so the
+   stretched ellipse fades at the edges — no hard stripe. */
   spawnSunGlitter(x, z, w, len) {
-    const g = new THREE.Mesh(new THREE.PlaneGeometry(w || 14, len || 40),
-      new THREE.MeshBasicMaterial({ map: sunGlowTexture(), color: 0xffc98a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const g = new THREE.Mesh(
+      new THREE.PlaneGeometry(w || 14, len || 40),
+      new THREE.MeshBasicMaterial({ map: sunGlowTexture(), color: 0xffc98a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
     g.rotation.x = -Math.PI / 2;
     g.position.set(x, 0.09, z);
     R.scene.add(g);
@@ -1022,7 +1123,8 @@ const G = {
     }
     hullGeo.computeVertexNormals();
     const hull = new THREE.Mesh(hullGeo, white);
-    hull.position.y = 0.3; group.add(hull);
+    hull.position.y = 0.3;
+    group.add(hull);
     const stripeGeo = new THREE.BoxGeometry(3.3, 0.25, 9.1);
     const spos = stripeGeo.attributes.position;
     for (let i = 0; i < spos.count; i += 1) {
@@ -1031,19 +1133,16 @@ const G = {
     }
     stripeGeo.computeVertexNormals();
     const stripe = new THREE.Mesh(stripeGeo, red);
-    stripe.position.y = 0.55; group.add(stripe);
+    stripe.position.y = 0.55;
+    group.add(stripe);
     const deck = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 5.5), white);
-    deck.position.set(0, 0.85, -0.8); group.add(deck);
-    // Windshield (3D-boulevard fix 2026-11-21): the old single pale
-    // slab (2.6x1.0 glass 0xd8ecf5) blew WHITE in the dawn light and
-    // read as a sail/fin sticking out of the boat, not a windshield.
-    // Now TWO raked DARK-tinted panes in a shallow V (centre crease,
-    // like a real speedboat screen) with a white frame + centre post,
-    // lower profile — the glass reads as glass, the white frame reads
-    // take used a near-mirror physical glass (metalness 0.9) that
-    // reflected the bright dawn env and blew WHITE again — this one
-    // is low-metal, low-env dark glass, so it stays a dark screen
-    // against the sunrise.
+    deck.position.set(0, 0.85, -0.8);
+    group.add(deck);
+    // Windshield: TWO raked DARK-tinted panes in a shallow V (centre
+    // crease, like a real speedboat screen) with a white frame + centre
+    // post, lower profile — the glass reads as glass, the white frame
+    // reads as a frame. Low-metal, low-env dark glass, so it stays a
+    // dark screen against the sunrise instead of blowing white.
     const boatGlass = new THREE.MeshStandardMaterial({ color: 0x14202c, roughness: 0.25, metalness: 0.3, envMapIntensity: 0.3 });
     for (const s of [-1, 1]) {
       const pane = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.72, 0.08), boatGlass);
@@ -1062,18 +1161,26 @@ const G = {
     const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.45, 1.8), white);
     cabin.position.set(0, 1.2, -0.6);
     group.add(cabin);
-    const cabinGlass = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 1.6),
-      new THREE.MeshStandardMaterial({ color: 0x14202c, roughness: 0.25, metalness: 0.3, envMapIntensity: 0.3 }));
+    const cabinGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.25, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x14202c, roughness: 0.25, metalness: 0.3, envMapIntensity: 0.3 }),
+    );
     cabinGlass.position.set(-1.12, 1.2, -0.6);
     group.add(cabinGlass);
     for (const sx of [-0.7, 0.7]) {
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8),
-        new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.8 }));
-      seat.position.set(sx, 1.0, -1.2); group.add(seat);
+      const seat = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.6, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.8 }),
+      );
+      seat.position.set(sx, 1.0, -1.2);
+      group.add(seat);
     }
-    const motor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.4),
-      new THREE.MeshStandardMaterial({ color: 0x333336, roughness: 0.6 }));
-    motor.position.set(0, 0.1, -4.8); group.add(motor);
+    const motor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.8, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x333336, roughness: 0.6 }),
+    );
+    motor.position.set(0, 0.1, -4.8);
+    group.add(motor);
     group.position.set(x, -0.2, z);
     group.rotation.y = heading || 0;
     R.scene.add(group);
@@ -1088,8 +1195,10 @@ const G = {
    dome is hidden for this shot, so the world outside reads as dark void. */
   spawnVaultRoom(cx, cz) {
     const group = new THREE.Group();
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 20),
-      new THREE.MeshStandardMaterial({ color: 0x2a2438, roughness: 0.4, metalness: 0.3 }));
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(26, 20),
+      new THREE.MeshStandardMaterial({ color: 0x2a2438, roughness: 0.4, metalness: 0.3 }),
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(cx, 0.03, cz);
     group.add(floor);
@@ -1101,15 +1210,20 @@ const G = {
     }
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a2a3a, roughness: 0.8 });
     const north = new THREE.Mesh(new THREE.BoxGeometry(26, 13, 0.8), wallMat);
-    north.position.set(cx, 6.5, cz - 10); group.add(north);
+    north.position.set(cx, 6.5, cz - 10);
+    group.add(north);
     const west = new THREE.Mesh(new THREE.BoxGeometry(0.8, 13, 20), wallMat);
-    west.position.set(cx - 13, 6.5, cz); group.add(west);
+    west.position.set(cx - 13, 6.5, cz);
+    group.add(west);
     const east = new THREE.Mesh(new THREE.BoxGeometry(0.8, 13, 20), wallMat);
-    east.position.set(cx + 13, 6.5, cz); group.add(east);
+    east.position.set(cx + 13, 6.5, cz);
+    group.add(east);
     const door = new THREE.Mesh(new THREE.CircleGeometry(3.5, 24), gold);
-    door.position.set(cx, 3.5, cz - 9.5); group.add(door);
+    door.position.set(cx, 3.5, cz - 9.5);
+    group.add(door);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.3, 8, 32), gold);
-    ring.position.set(cx, 3.5, cz - 9.5); group.add(ring);
+    ring.position.set(cx, 3.5, cz - 9.5);
+    group.add(ring);
     for (const a of [0, Math.PI / 3, (2 * Math.PI) / 3]) {
       const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.35, 7, 0.15), gold);
       spoke.position.set(cx, 3.5, cz - 9.4);
@@ -1125,8 +1239,13 @@ const G = {
     enemies.length = 0;
   },
   warpTo(x, z) {
-    player.x = x; player.z = z;
-    if (player.inCar && player.car) { player.car.x = x; player.car.z = z; player.car.mesh.group.position.set(x, 0, z); }
+    player.x = x;
+    player.z = z;
+    if (player.inCar && player.car) {
+      player.car.x = x;
+      player.car.z = z;
+      player.car.mesh.group.position.set(x, 0, z);
+    }
     playerMesh.group.position.set(x, 0, z);
   },
   enterCar,
@@ -1149,10 +1268,13 @@ const G = {
     hud.log('Welcome to Puerto Lumen. Press M to start Job 1.');
   },
 };
+
 // ---- screens ----------------------------------------------------------------------
 document.getElementById('btn-new').addEventListener('click', () => {
   save = freshSave();
-  try { window.localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+  try {
+    window.localStorage.removeItem(SAVE_KEY);
+  } catch { /* ignore */ }
   state.cash = save.cash;
   missions.missionIdx = 0;
   G.startPlay();
@@ -1177,15 +1299,20 @@ document.getElementById('btn-resume').addEventListener('click', () => {
 if (!loadSave()) document.getElementById('btn-continue').style.display = 'none';
 window.addEventListener('pointerdown', () => { if (state.screen === 'play') audio.ensure(); }, { once: true });
 window.addEventListener('keydown', () => { if (state.screen === 'play') audio.ensure(); }, { once: true });
+
 // ---- main loop ----------------------------------------------------------------------
 let last = performance.now();
 let acc = 0;
 let frames = 0;
 let shotReadySent = false;
 window.__t0 = performance.now();
+
 function handleActions() {
   const actions = input.takeActions();
-  if (state.screen === 'title' && (actions & ACTION_CONFIRM)) { G.startPlay(); return; }
+  if (state.screen === 'title' && (actions & ACTION_CONFIRM)) {
+    G.startPlay();
+    return;
+  }
   if (state.screen === 'busted' || state.screen === 'wasted') return;
   if (actions & ACTION_PAUSE) {
     if (state.screen === 'play') {
@@ -1202,8 +1329,13 @@ function handleActions() {
     const kind = garageKey(actions);
     if (kind) {
       const res = garage.buy(kind, state.cash);
-      if (res.ok) { state.cash -= res.price; hud.log(res.msg); audio.cashSting(); }
-      else hud.log(res.msg);
+      if (res.ok) {
+        state.cash -= res.price;
+        hud.log(res.msg);
+        audio.cashSting();
+      } else {
+        hud.log(res.msg);
+      }
       refreshGarageMenu();
       saveGame();
       return;
@@ -1218,9 +1350,18 @@ function handleActions() {
     }
   }
   if (actions & ACTION_INTERACT) doInteract();
-  if (actions & ACTION_WEAPON1) { player.weapon = 'fists'; playerMesh.gun.visible = false; }
-  if (actions & ACTION_WEAPON2) { player.weapon = 'pistol'; playerMesh.gun.visible = true; }
-  if (actions & ACTION_WEAPON3) { player.weapon = 'smg'; playerMesh.gun.visible = true; }
+  if (actions & ACTION_WEAPON1) {
+    player.weapon = 'fists';
+    playerMesh.gun.visible = false;
+  }
+  if (actions & ACTION_WEAPON2) {
+    player.weapon = 'pistol';
+    playerMesh.gun.visible = true;
+  }
+  if (actions & ACTION_WEAPON3) {
+    player.weapon = 'smg';
+    playerMesh.gun.visible = true;
+  }
   if (actions & ACTION_RADIO) {
     audio.ensure();
     const name = audio.nextStation();
@@ -1228,6 +1369,7 @@ function handleActions() {
     hud.log(`Radio: ${name}`);
   }
 }
+
 function update(dt) {
   const mouse = input.takeMouse();
   camYaw -= mouse.dx * 0.004;
@@ -1246,7 +1388,10 @@ function update(dt) {
     player.z = player.car.z;
     player.heading = player.car.heading;
     player.car.mesh.flame.visible = nosBurning;
-    if (shotMode === 1) { nosBurning = true; player.car.mesh.flame.visible = true; }
+    if (shotMode === 1) {
+      nosBurning = true;
+      player.car.mesh.flame.visible = true;
+    }
     if (input.held.brake) player.car.speed *= Math.max(0, 1 - 3 * dt);
     if (!shotMode && garage.nosFull() && !state.nosReadyNotified) {
       state.nosReadyNotified = true;
@@ -1283,7 +1428,10 @@ function update(dt) {
     const d = updatePolice(c, dt, player.x, player.z, colliders);
     if (!player.inCar && d < 2.5) {
       state.bustedT += dt;
-      if (state.bustedT > 2) { endRun('busted'); return; }
+      if (state.bustedT > 2) {
+        endRun('busted');
+        return;
+      }
     }
   }
   if (police.length === 0) state.bustedT = 0;
@@ -1293,8 +1441,17 @@ function update(dt) {
   race.update(dt, player.x, player.z, colliders, (done, total) => {
     hud.log(`Checkpoint ${done}/${total}`);
   });
-  if (race.won) { raceWonEvent = true; race.won = false; hud.log('RACE WON — you beat the Tiburones driver!'); audio.missionSting(true); }
-  if (race.lost) { raceLostEvent = true; race.lost = false; hud.log('Race lost — the shark driver beat you. Press M to retry.'); }
+  if (race.won) {
+    raceWonEvent = true;
+    race.won = false;
+    hud.log('RACE WON — you beat the Tiburones driver!');
+    audio.missionSting(true);
+  }
+  if (race.lost) {
+    raceLostEvent = true;
+    race.lost = false;
+    hud.log('Race lost — the shark driver beat you. Press M to retry.');
+  }
   if (turf.robbery) {
     const t = turf.robbery.target;
     if (dist2([player.x, player.z], t.pos) > 9) {
@@ -1353,36 +1510,58 @@ function update(dt) {
     { key: 3, name: 'SMG', ammo: '30/120', active: player.weapon === 'smg' },
   ];
   updateHud(hud, {
-    wanted: state.wanted, cash: state.cash, health: player.health, armour: player.armour,
-    speed: state.speed, inCar: player.inCar, nos: garage.nos, nosMax: garage.nosCapacity(),
-    weapon: WEAPONS[player.weapon].name, ammo: '∞',
-    objective: missions.objective, radio: state.radio, turf, timerText: state.timerText,
-    px: player.x, pz: player.z, heading: player.inCar ? player.heading : camYaw,
+    wanted: state.wanted,
+    cash: state.cash,
+    health: player.health,
+    armour: player.armour,
+    speed: state.speed,
+    inCar: player.inCar,
+    nos: garage.nos,
+    nosMax: garage.nosCapacity(),
+    weapon: WEAPONS[player.weapon].name,
+    ammo: '∞',
+    objective: missions.objective,
+    radio: state.radio,
+    turf,
+    timerText: state.timerText,
+    px: player.x,
+    pz: player.z,
+    heading: player.inCar ? player.heading : camYaw,
     missionTarget: missions.stageTarget(),
-    properties: PROPERTIES, robTargets: ROB_TARGETS,
+    properties: PROPERTIES,
+    robTargets: ROB_TARGETS,
     raceCheckpoints: race.active ? race.checkpoints : null,
     policeBlips: police.map((c) => [c.x, c.z]),
     roadblocks: roadblocks.map((r) => [r.x, r.z]),
     heli: heli.active ? [heli.group.position.x, heli.group.position.z] : null,
     missionPanel: missions.missionPanel(),
-    policeUnits, roadblockAhead: roadblocks.length > 0,
+    policeUnits,
+    roadblockAhead: roadblocks.length > 0,
     dialogue,
     streetLabel: `${district ? district.name.toUpperCase() : 'PUERTO LUMEN'} — ${streetNameAt(player.x, player.z)}`,
-    gear, vehicleName: player.inCar && player.car ? CARS[player.car.type].name : 'ON FOOT',
+    gear,
+    vehicleName: player.inCar && player.car ? CARS[player.car.type].name : 'ON FOOT',
     condition: player.inCar && player.car ? player.car.health : 100,
     inSight: state.wanted > 0 && state.seen,
     searchZone: state.wanted > 0,
     mapMode: G.mapMode,
     mapRoute: G.mapMode ? { from: [player.x, player.z], to: [-180, 180] } : null,
-    alerts, weapons, respect: rep, respectRank,
+    alerts,
+    weapons,
+    respect: rep,
+    respectRank,
   });
   if (!G.noBeacon) setBeacon(beacon, missions.stageTarget() || (race.active ? race.nextCheckpoint() : null));
   state.saveT += dt;
-  if (state.saveT > 15) { state.saveT = 0; saveGame(); }
+  if (state.saveT > 15) {
+    state.saveT = 0;
+    saveGame();
+  }
   if (city.landmarks.beam) city.landmarks.beam.rotation.y += dt * 0.5;
   if (city.landmarks.ferrisWheel) city.landmarks.ferrisWheel.rotation.z += dt * 0.15;
   if (city.landmarks.lighthouseLamp) city.landmarks.lighthouseLamp.visible = Math.sin(performance.now() * 0.004) > -0.2;
 }
+
 function contextPrompt() {
   if (player.inCar) return '';
   if (dist2([player.x, player.z], LANDMARKS.garage.pos) < 14) return 'Taller Lumen — press E for upgrades & repair';
@@ -1394,6 +1573,7 @@ function contextPrompt() {
   if (car) return `Press E to ${car.kind === 'traffic' ? 'steal' : 'enter'} the ${CARS[car.type].name}`;
   return '';
 }
+
 function frame(now) {
   requestAnimationFrame(frame);
   const dtMs = Math.min(now - last, 250);
@@ -1404,7 +1584,11 @@ function frame(now) {
     if (shotMode) shotAutopilot(G, dtMs / 1000);
     acc += dtMs / 1000;
     let n = 0;
-    while (acc >= STEP && n < 5) { update(STEP); acc -= STEP; n += 1; }
+    while (acc >= STEP && n < 5) {
+      update(STEP);
+      acc -= STEP;
+      n += 1;
+    }
     if (n === 5) acc = 0;
     if (shotMode && G.anchor) G.warpTo(G.anchor[0], G.anchor[1]);
   } else if (state.screen === 'title') {
@@ -1424,24 +1608,32 @@ function frame(now) {
     window.__shotReady = true;
   }
 }
+
 let lastW = 0;
 let lastH = 0;
+
 function resizeIfNeeded() {
   const w = window.innerWidth;
   const h = window.innerHeight;
   if (w !== lastW || h !== lastH) {
-    lastW = w; lastH = h;
+    lastW = w;
+    lastH = h;
     resizeRenderer(R, w, h);
   }
 }
+
 resizeIfNeeded();
+
 // ---- probe / debug API (used by scripted playtests, harmless in play) --------
 window.__r8bMeasure = () => {
   const car = player.car;
   if (!car) return { heroFrac: null, reason: 'not-in-car' };
   const box3 = new THREE.Box3().setFromObject(car.mesh.group);
   const cam = R.camera;
-  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  let minX = 1e9;
+  let maxX = -1e9;
+  let minY = 1e9;
+  let maxY = -1e9;
   for (const [x, y, z] of [
     [box3.min.x, box3.min.y, box3.min.z], [box3.max.x, box3.min.y, box3.min.z],
     [box3.min.x, box3.max.y, box3.min.z], [box3.max.x, box3.max.y, box3.min.z],
@@ -1457,7 +1649,8 @@ window.__r8bMeasure = () => {
   const heroFrac = (maxX - minX) / 2;
   const policeFracs = police.map((c) => {
     const b = new THREE.Box3().setFromObject(c.mesh.group);
-    let a = 1e9, d = -1e9;
+    let a = 1e9;
+    let d = -1e9;
     for (const [x, y, z] of [[b.min.x, b.min.y, b.min.z], [b.max.x, b.max.y, b.max.z]]) {
       const v = new THREE.Vector3(x, y, z).project(cam);
       if (v.x < a) a = v.x;
@@ -1469,17 +1662,23 @@ window.__r8bMeasure = () => {
     heroFrac: Math.round(heroFrac * 1000) / 10,
     heroHeightFrac: Math.round(((maxY - minY) / 2) * 1000) / 10,
     heroCentreX: Math.round(((minX + maxX) / 4) * 1000) / 10,
-    policeFracs, policeCount: police.length,
+    policeFracs,
+    policeCount: police.length,
     camPos: [Math.round(cam.position.x), Math.round(cam.position.y), Math.round(cam.position.z)],
   };
 };
+
 window.__game = {
   G, state, player, missions, turf, garage, race, enemies, police, audio,
   warpTo: (x, z) => G.warpTo(x, z),
   setCash: (n) => { state.cash = n; },
   setWanted: (n) => setWanted(n),
   startMission: (i) => missions.startMission(i),
-  enterNearestCar: () => { const c = nearestCar(30); if (c) enterCar(c); return !!c; },
+  enterNearestCar: () => {
+    const c = nearestCar(30);
+    if (c) enterCar(c);
+    return !!c;
+  },
   exitCar: () => exitCar(),
   interact: () => doInteract(),
   shoot: () => playerShoot(),
@@ -1491,29 +1690,54 @@ window.__game = {
     if (s.at) G.warpTo(s.at[0], s.at[1]);
     if (s.t === 'wait') missions.waitT = s.seconds || 12; // simulate standing the full hack
     if (s.t === 'combat' || s.t === 'defend') {
-      for (const e of enemies) { e.alive = false; R.scene.remove(e.mesh); enemiesKilled += 1; }
+      for (const e of enemies) {
+        e.alive = false;
+        R.scene.remove(e.mesh);
+        enemiesKilled += 1;
+      }
     }
     if (s.t === 'evade') setWanted(0);
     if (s.t === 'rob') {
       const t = ROB_TARGETS.find((x) => x.id === s.target);
-      if (t) { G.warpTo(t.pos[0], t.pos[1]); turf.startRobbery(t); turf.robbery.t = 4.9; robbedTargetEvent = t.id; turf.cancelRobbery(); }
+      if (t) {
+        G.warpTo(t.pos[0], t.pos[1]);
+        turf.startRobbery(t);
+        turf.robbery.t = 4.9;
+        robbedTargetEvent = t.id;
+        turf.cancelRobbery();
+      }
     }
-    if (s.t === 'race') { raceWonEvent = true; }
-    if (s.t === 'buy') { state.cash = Math.max(state.cash, 10000); G.warpTo(-210, -40); doInteract(); }
+    if (s.t === 'race') {
+      raceWonEvent = true;
+    }
+    if (s.t === 'buy') {
+      state.cash = Math.max(state.cash, 10000);
+      G.warpTo(-210, -40);
+      doInteract();
+    }
     if (s.t === 'enterCar') {
       if (player.inCar) exitCar();
       if (s.police) {
         // Mission 8: steal a real cruiser — find the nearest police car at any
         // distance, warp to it, and take it (the live chase may be far away).
-        let best = null; let bd = Infinity;
+        let best = null;
+        let bd = Infinity;
         for (const c of police) {
           const d = dist2([player.x, player.z], [c.x, c.z]);
-          if (d < bd) { bd = d; best = c; }
+          if (d < bd) {
+            bd = d;
+            best = c;
+          }
         }
-        if (best) { G.warpTo(best.x, best.z); enterCar(best); }
-        else setWanted(2); // no cruiser on the street yet — raise the heat so one spawns
+        if (best) {
+          G.warpTo(best.x, best.z);
+          enterCar(best);
+        } else {
+          setWanted(2); // no cruiser on the street yet — raise the heat so one spawns
+        }
       } else {
-        const c = nearestCar(60); if (c) enterCar(c);
+        const c = nearestCar(60);
+        if (c) enterCar(c);
       }
     }
     return s.t;
@@ -1527,14 +1751,25 @@ window.__game = {
     return missions.missionIdx;
   },
   stateSummary: () => ({
-    screen: state.screen, cash: Math.floor(state.cash), wanted: state.wanted,
-    mission: missions.missionIdx, active: missions.active, stage: missions.stageIdx,
-    objective: missions.objective, turf: turf.held(), health: Math.round(player.health),
-    inCar: player.inCar, nos: Math.round(garage.nos), upgrades: garage.levels,
-    owned: turf.owned.slice(), enemies: enemies.length, police: police.length,
+    screen: state.screen,
+    cash: Math.floor(state.cash),
+    wanted: state.wanted,
+    mission: missions.missionIdx,
+    active: missions.active,
+    stage: missions.stageIdx,
+    objective: missions.objective,
+    turf: turf.held(),
+    health: Math.round(player.health),
+    inCar: player.inCar,
+    nos: Math.round(garage.nos),
+    upgrades: garage.levels,
+    owned: turf.owned.slice(),
+    enemies: enemies.length,
+    police: police.length,
     kills: enemiesKilled,
   }),
 };
+
 // ---- boot -----------------------------------------------------------------------
 if (shotMode) {
   stageShot(shotMode, G);

@@ -1,12 +1,12 @@
-// LUMEN BAY r12 — the entry program (Node 22, standard library only).
-// r12 is a FULL FRESH REBUILD on an empty slate (branch rebuild-r12):
-// the cover is now a NIGHT boulevard chase (22:40, six cruisers + heli +
-// dispatch dialogue), shot 2 the wet-night pier shootout (23:20), shot 3
-// the vault interior (21:40), shot 4 the dawn marina escape (06:10) with
-// the boat finally clear of the title and the toasts. Every game file was
-// written fresh inside the r12 recording; nothing was copied in from r11.
-// It hands the game in: copies game/ and screenshots/ from beside this file
-// to /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
+// LUMEN BAY r13 — the entry program (Node 22, standard library only).
+// r13 is a FULL FRESH REBUILD under a single recording (branch rebuild-r12):
+// the cover is now a BRIGHT-NIGHT beachfront chase (22:40, eight cruisers +
+// heli + dispatch dialogue), shot 2 the bright-night street shootout (23:20),
+// shot 3 the FULL CITY MAP (21:40), shot 4 the dawn marina escape (06:10)
+// with the boat finally clear of the title and the toasts. Every game file
+// was written fresh inside the r13 recording; nothing was copied in from
+// r12. It hands the game in: copies game/ and screenshots/ from beside
+// this file to /output (or MAKEFUN_OUTPUT_DIR outside the grader) and writes
 // /output/dossier.json with the vendored make.fun library, exactly as the
 // kit's starter does. No build step, no network, no install.
 //

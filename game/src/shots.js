@@ -1,4 +1,4 @@
-// LUMEN BAY r12 — the screenshot scenes behind ?shot=1..4. All dialogue
+// LUMEN BAY — the screenshot scenes behind ?shot=1..4. All dialogue
 // boxes show drawn character portraits (see hud.js), never letter circles.
 // Lighting per shot comes from config.js LIGHTING_PRESETS via G.setLighting(),
 // which also stamps the HUD clock to that shot's time. These stage REAL
@@ -7,12 +7,10 @@
 // once the scene has rendered.
 //
 // Shot 1 is the BRIGHT-NIGHT beach-front chase (22:40) — the top-1
-// Karimbu composition, shot at NIGHT (Sand 2026-11-21 ~10:36 WIT:
-// "malam hari terang", then ~10:39: "buat kaya rank 1 harus 99% mirip
-// dan 3D jelas"): LOW camera AHEAD of the hero, so the FRONT of the
-// Comet RS + the fronts of the eight cruisers face the lens (front
-// three-quarter, hero driving TOWARD the camera down a palm boulevard),
-// the road vanishing to the horizon BEHIND the car, white police
+// Karimbu composition, shot at NIGHT: LOW camera AHEAD of the hero, so the
+// FRONT of the Comet RS + the fronts of the eight cruisers face the lens
+// (front three-quarter, hero driving TOWARD the camera down a palm
+// boulevard), the road vanishing to the horizon BEHIND the car, police
 // cruisers on the road around/behind the hero, heli ahead/above with a
 // clear spotlight beam slanting down onto the hero, palms lining both
 // sides, beach + sea on one side, buildings on the other, dense HUD.
@@ -24,27 +22,25 @@
 // Shot 3 is the FULL CITY MAP of Puerto Lumen (21:40) — APPROVED by Sand,
 // DO NOT TOUCH. Shot 4 is the dawn marina escape (06:10) — the boat now
 // sits IN THE WATER, big and side-on, white hull + red stripe, warm dawn
-// light + visible sea (the sea planes used to sit under the grass and never
-// showed).
+// light + visible sea.
 import { ROB_TARGETS } from './config.js';
 import { poseAim } from './people.js';
 
-// BRIGHT-NIGHT FRONT-VIEW CHASE (Sand 2026-11-21 ~10:36 + 10:39 WIT):
-// top-1 Karimbu "Isle of Embers" composition, copied pixel by pixel, not
-// imagined — LOW camera AHEAD of the hero looking BACK at its front
-// three-quarter as it drives TOWARD the lens down a palm boulevard: the
-// road (asphalt + double-yellow + white dashes) runs 290 m EAST to the
-// horizon BEHIND the car, palms lining BOTH sides, beach + sea on the
-// south (right) side, city buildings framing the north (left) side,
-// the eight-cruiser pack + roadblock BEHIND the hero down the road,
-// heli ahead-east over the road with its spotlight beam slanting back
-// down onto the hero car. The hero drives WEST (heading -PI/2) so the
-// camera, sitting west of the hero looking east, sees buildings on the
-// LEFT and beach + sea on the RIGHT — exactly like Karimbu shot 1.
-// NIGHT but BRIGHT: the 'brightnight' preset (dark sky, bright ambient)
-// + a row of lit street lamps down both sides of the road + wet
-// puddles catching the light + the aimed heli beam, so the heli beam,
-// the sirens and the cars all read clearly at night.
+// BRIGHT-NIGHT FRONT-VIEW CHASE: top-1 Karimbu "Isle of Embers"
+// composition, copied pixel by pixel, not imagined — LOW camera AHEAD of
+// the hero looking BACK at its front three-quarter as it drives TOWARD
+// the lens down a palm boulevard: the road (asphalt + double-yellow +
+// white dashes) runs 290 m EAST to the horizon BEHIND the car, palms
+// lining BOTH sides, beach + sea on the south (right) side, city
+// buildings framing the north (left) side, the eight-cruiser pack +
+// roadblock BEHIND the hero down the road, heli ahead-east over the road
+// with its spotlight beam slanting back down onto the hero car. The hero
+// drives WEST (heading -PI/2) so the camera, sitting west of the hero
+// looking east, sees buildings on the LEFT and beach + sea on the RIGHT
+// — exactly like Karimbu shot 1. NIGHT but BRIGHT: the 'brightnight'
+// preset (dark sky, bright ambient) + a row of lit street lamps down both
+// sides of the road + wet puddles catching the light + the aimed heli
+// beam, so the heli beam, the sirens and the cars all read clearly at night.
 export function stageShot1(G) {
   G.setLighting('brightnight'); // 22:40 bright night — also stamps the HUD clock
   G.spawnSandPatch(0x8a7a62); // DARK-tinted sand for night: the untinted
@@ -64,8 +60,8 @@ export function stageShot1(G) {
   G.nosBurning = true;
   G.setWanted(5);
   G.spawnPoliceBehind(8); // the eight-cruiser pack, pinned BEHIND the hero by the autopilot
-  G.spawnPoliceBikes(); // two police motorcycles flanking the hero (Sand 02:12)
-  G.clearUmbrellasAll(); // Sand 02:08 — NO umbrella anywhere in shot 1
+  G.spawnPoliceBikes(); // two police motorcycles flanking the hero
+  G.clearUmbrellasAll(); // NO umbrella anywhere in shot 1
   G.heli.active = true;
   G.heli.hover = 2; // body at y=10, orbit 24: the 14 m rotor fits the frame
   G.heli.orbit = 24;
@@ -74,24 +70,23 @@ export function stageShot1(G) {
   // SPOTLIGHT BEAM below is the aimed one that touches the car.
   G.heli.cone.visible = false;
   G.heli.pool.visible = false;
-  // HELI SPOTLIGHT BEAM (Sand 2026-11-21 ~02:12 WIT): the heli shines a
-  // visible beam DOWN onto the hero car — a tapered cone from the heli
-  // belly to the car + a bright pool around the car (heli.beam, aimed by
-  // the shot-1 autopilot every frame). At BRIGHT NIGHT the beam is the
-  // shot's centrepiece: it must slant visibly across the frame and land
-  // ON the hero, so the heli reads as hunting the car, not parked in
-  // the sky. The heli sits EAST of the hero (angle 0.15, pinned by the
-  // autopilot), so the beam slants west-down onto the car.
+  // HELI SPOTLIGHT BEAM: the heli shines a visible beam DOWN onto the
+  // hero car — a tapered cone from the heli belly to the car + a bright
+  // pool around the car (heli.beam, aimed by the shot-1 autopilot every
+  // frame). At BRIGHT NIGHT the beam is the shot's centrepiece: it must
+  // slant visibly across the frame and land ON the hero, so the heli
+  // reads as hunting the car, not parked in the sky. The heli sits EAST
+  // of the hero (angle 0.15, pinned by the autopilot), so the beam slants
+  // west-down onto the car.
   G.aimSpotlight(90, 1.0, 215);
-  // LIT STREET LAMPS down both sides of the visible road (bright night,
-  // Sand 10:36): warm lamp glow + halo at each head, so the boulevard
-  // reads as a lamp-lit night street, not a dark plane. THREE lamps,
-  // spaced wide: six overlapping pools washed the whole road pale in
-  // the first takes — with three, the road falls DARK between bright
-  // pools and the night reads as night, lit, not floodlit. The west
-  // lamp sits on the BEACH side (45, 224), not the north sidewalk:
-  // the north-side lamp sat 7 m off the camera axis and its pool
-  // washed the whole foreground sand pale.
+  // LIT STREET LAMPS down both sides of the visible road (bright night):
+  // warm lamp glow + halo at each head, so the boulevard reads as a
+  // lamp-lit night street, not a dark plane. THREE lamps, spaced wide:
+  // six overlapping pools washed the whole road pale in the first takes
+  // — with three, the road falls DARK between bright pools and the night
+  // reads as night, lit, not floodlit. The west lamp sits on the BEACH
+  // side (45, 224), not the north sidewalk: the north-side lamp sat 7 m
+  // off the camera axis and its pool washed the whole foreground sand pale.
   G.addLampGlow(45, 224);
   G.addLampGlow(130, 224);
   G.addLampGlow(190, 206);
@@ -104,30 +99,22 @@ export function stageShot1(G) {
   G.spawnTrafficNear(180, 215, 5); // traffic down the boulevard behind the hero, in frame
   G.clearTrafficNear(90, 215, 40); // NO stray car may overlap the hero
   G.clearPedsNear(90, 215, 15); // clear the hero's foreground
-  // RESTORED (take-2 finding): deleting this line did NOT remove the 2
-  // circled people — take 1 kept both, only recoloured. The ped spawns
-  // draw from one sequential rng, so deleting it shifted every later
-  // spawn and the right-sidewalk keepers scattered (takes 1–2: no
-  // readable keepers on the sidewalk). Restoring it puts the keepers
-  // back exactly where the v2 preview had them; the road-band +
-  // north-verge clears below remove the strays this group (and every
-  // group) lands on the road / left side.
+  // The (140,206) spawn STAYS: it anchors the sequential rng, so every
+  // later spawn lands where the approved preview had it. Deleting it
+  // shifted the rng and scattered the right-sidewalk keepers. The road
+  // strays this group lands are removed by the road-band + north-verge
+  // clears below, which run AFTER every spawn.
   G.spawnPedsNear(140, 206, 8); // pedestrians on the north sidewalk behind the hero
   G.spawnPedsNear(170, 228, 5); // beachgoers on the sand behind the hero, south side
-  // PEDESTRIANS ON THE RIGHT SIDEWALK (Sand 2026-11-21 ~11:24 WIT, spec
-  // 7): 5 people WALKING on the beach-side sidewalk just east of the
-  // hero, mid-ground so they READ in the frame — the far peds at x
-  // 140–170 are too small to read as pedestrians. z 225 is the sidewalk
-  // line; spawned AFTER clearPedsNear above, so this group survives.
-  // x 102 (not 108): the first take scattered two peds behind the
-  // right-side HUD panels — closer to the hero keeps the whole group
-  // in the open frame, left of the panels. TWO groups (8 total):
-  // the take-1 config (108,225,5) alone netted 2 readable sidewalk
-  // peds; the westward moves (102/100/98) only scattered a green ped
-  // onto the road by the hero, so the base group REVERTS to 108,225
-  // and a second group at the same x on the sand side (z 228) adds
-  // 1–2 more — peds wander during the slow SwiftShader settle, so 8
-  // spawned nets 3–5 on the sidewalk in frame.
+  // PEDESTRIANS ON THE RIGHT SIDEWALK: people WALKING on the beach-side
+  // sidewalk just east of the hero, mid-ground so they READ in the frame
+  // — the far peds at x 140–170 are too small to read as pedestrians.
+  // z 225 is the sidewalk line; spawned AFTER clearPedsNear above, so
+  // this group survives. TWO groups (8 total): the take-1 config
+  // (108,225,5) alone netted 2 readable sidewalk peds; a second group
+  // at the same x on the sand side (z 228) adds 1–2 more — peds wander
+  // during the slow SwiftShader settle, so 8 spawned nets 3–5 on the
+  // sidewalk in frame.
   G.spawnPedsNear(108, 225, 5);
   G.spawnPedsNear(108, 228, 3);
   // Third pair (same x, sand side): the rng is sequential, so the 8
@@ -135,16 +122,15 @@ export function stageShot1(G) {
   // take 5 netted 2 clear sidewalk peds + 1 tiny far one, one short of
   // the 3–5 target.
   G.spawnPedsNear(104, 228, 2);
-  // ROAD BAND + NORTH VERGE CLEAR (Sand 2026-11-21 ~15:44 WIT ped
-  // cleanup): spawnPedsNear scatters ±20 m around its centre, so the
-  // sidewalk/sand spawns land ON the road and on the left side, and
-  // peds wander during the settle. Clear AFTER every spawn, along the
-  // whole visible road: r 9 centred on the centreline z 215 reaches
-  // z 206–224 and NEVER the right sidewalk (z 225+), so the 3 keepers
-  // survive; a second row at z 200 clears the north verge (z 191–209),
-  // where a stray green ped survived take 2. Centres 15 m apart so
-  // the 9 m circles overlap with no gap. No keeper is ever in either
-  // band (keepers spawn z 225–228, x 84–128).
+  // ROAD BAND + NORTH VERGE CLEAR (ped cleanup): spawnPedsNear scatters
+  // ±20 m around its centre, so the sidewalk/sand spawns land ON the road
+  // and on the left side, and peds wander during the settle. Clear AFTER
+  // every spawn, along the whole visible road: r 9 centred on the
+  // centreline z 215 reaches z 206–224 and NEVER the right sidewalk
+  // (z 225+), so the 3 keepers survive; a second row at z 200 clears the
+  // north verge (z 191–209), where a stray green ped survived take 2.
+  // Centres 15 m apart so the 9 m circles overlap with no gap. No keeper
+  // is ever in either band (keepers spawn z 225–228, x 84–128).
   G.clearPedsNear(92, 215, 9);
   G.clearPedsNear(107, 215, 9);
   G.clearPedsNear(122, 215, 9);
@@ -194,14 +180,12 @@ export function stageShot1(G) {
   // framing drifts. The anchor snaps it back every frame (staging hold).
   G.anchor = [90, 215];
 }
+
 // NIGHT STREET SHOOTOUT on the boulevard (23:20, bright night).
-// Round-3 re-stage (Sand 2026-11-21 ~10:36 WIT: shot 2 at NIGHT, like
-// Karimbu's second image — a character on a night sidewalk, city
-// lights, a downed body on the ground): the SAME staging as the
-// boulevard shootout — Mara further back, the duel on a PROFILE firing
-// line, Mara facing WEST in full profile, the cordon WEST of her
-// facing EAST toward her, the camera NORTH of Mara looking SOUTH,
-// perpendicular to the firing line — but re-lit for BRIGHT NIGHT:
+// The SAME staging as the boulevard shootout — Mara further back, the duel
+// on a PROFILE firing line, Mara facing WEST in full profile, the cordon
+// WEST of her facing EAST toward her, the camera NORTH of Mara looking
+// SOUTH, perpendicular to the firing line — but re-lit for BRIGHT NIGHT:
 // dark sky, lit street lamps + lit windows, wet puddles, the heli's
 // spotlight beam slanting down onto the duel, sirens visible. The
 // camera sees Mara's profile (with a nose now, so she reads as a
@@ -211,30 +195,25 @@ export function stageShot1(G) {
 // street + palms + beach + sea + night sky — NO building anywhere in
 // the frame (the Playa Drive towers sit 30 m north, behind the camera,
 // and the only direction with no building at all is south, toward the
-// water — the v2 north-looking take proved the towers fill the frame).
-// Mara holds a PISTOL (not an SMG): G.player.weapon = 'pistol' and the
-// gun mesh is the short pistol model, centred in front of her chest by
-// poseAim so it reads in profile from either side. Mara + officers are
-// scaled up (1.3 / 1.15) so the shootout reads at a glance, not as toy
-// figures.
+// water). Mara holds a PISTOL (not an SMG): G.player.weapon = 'pistol'
+// and the gun mesh is the short pistol model, centred in front of her
+// chest by poseAim so it reads in profile from either side. Mara +
+// officers are scaled up (1.3 / 1.15) so the shootout reads at a glance,
+// not as toy figures.
 export function stageShot2(G) {
-  // BRIGHT NIGHT (Sand 2026-11-21 ~10:36 WIT: "malam hari terang"):
-  // the 'brightnight' preset (dark sky, bright ambient) + the clock
-  // re-stamped to 23:20, the night-shootout hour. The old dusk preset
-  // (golden hour, toned down) is kept in config.js for reference.
+  // BRIGHT NIGHT: the 'brightnight' preset (dark sky, bright ambient) +
+  // the clock re-stamped to 23:20, the night-shootout hour.
   G.setLighting('brightnight'); // also stamps the HUD clock to 22:40…
   G.setClock('23:20'); // …re-stamped here to the shootout hour
   G.spawnSandPatch(0xd8c098); // tan-tinted sand: the pale-cream foreground
   // survived the dusk preset + dimmed lights, so the light #f0d49a texture
   // itself is darkened here (shot 2 only — shots 1 + 4 keep the untinted patch).
-  // 3D-BOULEVARD DENSITY (2026-11-21): the 3a5f34a take staged the duel
-  // on EMPTY sand — a tan plane, a pink sky, a thin sea strip, nothing
-  // else. The shootout now happens ON the same boulevard as shot 1:
-  // the asphalt road with double-yellow + white dashes runs east-west
-  // straight through the duel (Mara at z 214, cordon z 214–218, downed
-  // cop at z 209 on the road's north edge — the blood pool at y 0.09+
-  // sits above the asphalt at 0.07, so it still reads), and two palm
-  // rows stand SOUTH of the duel (z 224 + 232) behind the cordon, so
+  // 3D-BOULEVARD DENSITY: the shootout now happens ON the same boulevard
+  // as shot 1: the asphalt road with double-yellow + white dashes runs
+  // east-west straight through the duel (Mara at z 214, cordon z 214–218,
+  // downed cop at z 209 on the road's north edge — the blood pool at
+  // y 0.09+ sits above the asphalt at 0.07, so it still reads), and two
+  // palm rows stand SOUTH of the duel (z 224 + 232) behind the cordon, so
   // the background is palms + beach + sea + night sky, not void. The
   // north row is skipped on purpose: the camera sits at z ~205 looking
   // south, so a z 206 row would loom over the lens. Traffic east down
@@ -243,14 +222,13 @@ export function stageShot2(G) {
   G.spawnPalmRow(-20, 360, 224, 30);
   G.spawnPalmRow(40, 360, 232, 30);
   G.spawnTrafficNear(170, 215, 3);
-  // LIT STREET LAMPS + WET PUDDLES (bright night, Sand 10:36): the
-  // lamps light the duel from both sidewalks and the puddles catch the
-  // lamp glows + the heli beam as bright streaks, so the night street
-  // reads WET and lit, not dark. TWO lamps: four overlapping pools
-  // washed the street pale in the first takes — with two, the street
-  // falls dark between the pools and the beam + dress lights carry the
-  // duel. Lamps alternate sides, clear of the firing line; puddles sit
-  // on the road under the duel.
+  // LIT STREET LAMPS + WET PUDDLES (bright night): the lamps light the
+  // duel from both sidewalks and the puddles catch the lamp glows + the
+  // heli beam as bright streaks, so the night street reads WET and lit,
+  // not dark. TWO lamps: four overlapping pools washed the street pale in
+  // the first takes — with two, the street falls dark between the pools
+  // and the beam + dress lights carry the duel. Lamps alternate sides,
+  // clear of the firing line; puddles sit on the road under the duel.
   G.addLampGlow(70, 206);
   G.addLampGlow(110, 224);
   G.spawnPuddle(85, 213, 10, 4);
@@ -265,7 +243,7 @@ export function stageShot2(G) {
   G.player.heading = -Math.PI / 2;
   G.player.mesh.group.rotation.y = -Math.PI / 2;
   G.player.mesh.group.scale.setScalar(1.4); // Mara reads BIG
-  G.player.weapon = 'pistol'; // PISTOL, not SMG — Sand's order
+  G.player.weapon = 'pistol'; // PISTOL, not SMG
   poseAim(G.player.mesh.group); // two-handed aim, pistol out in front
   // Police cordon closing in ahead (WEST), tight and close, firing back
   // — four groups widening it north and south so the shootout reads
@@ -291,47 +269,42 @@ export function stageShot2(G) {
   // light bar glowing, front facing EAST toward Mara and the lens. The
   // south flanker is dropped: the hero Comet parks there instead.
   G.parkPoliceCar(78, 206, Math.PI / 2);
-  // ONE DOWNED POLICE OFFICER flat on the sand (Sand 2026-11-21 ~07:33
-  // WIT): a static prop, never in the enemy loop — head toward the
-  // cordon (west), blood pooled around the torso/head. FOREGROUND spot
-  // (89, 210): the first take at (88.5, 216.5) sat INSIDE the cordon
-  // spread and the standing officers hid the body behind their legs —
-  // only the blood pool showed. Here it lies in the open sand between
-  // the camera and the firing line, clear of Mara (91, 214), the cordon
-  // (z 214–218), the cash burst (85, 213) and the loot pile (90, 216.5).
-  // Second take moved it WEST to (87, 210): at (89, 210) its east half
-  // sat behind the right-side dialogue/toast panels. That made it WORSE:
-  // facing south, west is screen-RIGHT, so the head slid to sx 1038,
-  // behind the panels. A three.js projection of the shot-2 camera
-  // (93.23, 2.40, 205.28, fov 72) says feet (91, 209) land at sx 729 /
-  // sy 553 and head at sx 888 / sy 524 — open foreground sand, clear of
-  // the 940+ panels, below Mara (feet sx 589 / sy 448), above the bottom
-  // bar (y 640+), 5 m clear of Mara, the cordon, the cash burst and the
-  // loot pile. Third placement: (91, 209).
+  // ONE DOWNED POLICE OFFICER flat on the sand: a static prop, never in
+  // the enemy loop — head toward the cordon (west), blood pooled around
+  // the torso/head. FOREGROUND spot (91, 209): the first take at
+  // (88.5, 216.5) sat INSIDE the cordon spread and the standing officers
+  // hid the body behind their legs — only the blood pool showed. Here it
+  // lies in the open sand between the camera and the firing line, clear
+  // of Mara (91, 214), the cordon (z 214–218), the cash burst (85, 213)
+  // and the loot pile (90, 216.5). A three.js projection of the shot-2
+  // camera (93.23, 2.40, 205.28, fov 72) says feet (91, 209) land at
+  // sx 729 / sy 553 and head at sx 888 / sy 524 — open foreground sand,
+  // clear of the 940+ panels, below Mara (feet sx 589 / sy 448), above
+  // the bottom bar (y 640+), 5 m clear of Mara, the cordon, the cash
+  // burst and the loot pile.
   G.spawnDownedOfficer(91, 209);
-  // Muzzle flashes — SMALL starbursts (Sand 2026-11-21 ~02:10 WIT: the v3
-  // flash was a giant white blob that whited out the scene): scale 1.0,
-  // not 1.6 — compact 8-point stars with gaps, clearly past the muzzle
-  // tips, never swallowing the pistol. Positions track the 2.0x chunkier
-  // pistol (see people.js poseAim): Mara's tip is 2.60 m west of her
-  // centre (x=88.40 at chest height 1.85), so her flash sits at 87.9 —
-  // 0.5 m past the tip; officers' tips are 2.42 m east, so theirs sit
-  // at e.x+2.9. The full barrel shows between hand and flash.
+  // Muzzle flashes — SMALL starbursts: scale 1.0, not 1.6 — compact
+  // 8-point stars with gaps, clearly past the muzzle tips, never
+  // swallowing the pistol. Positions track the 2.0x chunkier pistol
+  // (see people.js poseAim): Mara's tip is 2.60 m west of her centre
+  // (x=88.40 at chest height 1.85), so her flash sits at 87.9 — 0.5 m
+  // past the tip; officers' tips are 2.42 m east, so theirs sit at
+  // e.x+2.9. The full barrel shows between hand and flash.
   G.addMuzzleFlash(87.9, 1.85, 214.2, 1.0);
   for (const e of squad.slice(0, 4)) G.addMuzzleFlash(e.x + 2.9, 1.72, e.z, 1.0);
-  // Cash flying LOW between Mara and the cordon (knee-to-waist height now
-  // — see spawnCashBurst) + a spill by her feet, set SOUTH of her gun
-  // line so the gold bars never sit under the pistol in frame.
+  // Cash flying LOW between Mara and the cordon (knee-to-waist height now)
+  // + a spill by her feet, set SOUTH of her gun line so the gold bars
+  // never sit under the pistol in frame.
   G.spawnCashBurst(85, 213);
   G.spawnLootPile(90, 216.5);
   // Heli overhead SOUTH-WEST over the waterline (angle pinned by the
   // autopilot). Hover 2 (body at y=10), orbit 16: at orbit 24 + angle PI
   // the heli sat 66° off-axis and out of frame; angle 2.4 puts it 34°
   // right of centre, upper-right, over the cordon.
-  // HELI SPOTLIGHT BEAM (Sand 10:36: the beam must read at night): the
-  // aimed beam + pool land ON Mara and the duel (aimed by the shot-2
-  // autopilot every frame), so the heli hunts the street, not just the
-  // sky. The old vertical cone stays hidden (it reads as a lampshade).
+  // HELI SPOTLIGHT BEAM: the aimed beam + pool land ON Mara and the duel
+  // (aimed by the shot-2 autopilot every frame), so the heli hunts the
+  // street, not just the sky. The old vertical cone stays hidden (it
+  // reads as a lampshade).
   G.heli.active = true;
   G.heli.hover = 2;
   G.heli.orbit = 16;
@@ -361,24 +334,24 @@ export function stageShot2(G) {
   G.state.health = 100;
   G.state.armour = 100; // the cordon shoots back through the whole settle
   // LOW ground-level PROFILE view from the NORTH, looking SOUTH across
-  // the firing line: the camera sits 9 out (Sand 2026-11-21 ~07:33 WIT:
-  // Mara pulled FURTHER BACK — the CAMERA moves out, not her staging,
-  // so she reads smaller and deeper with more beach/cordon/sea visible;
-  // was 6.5, 9 first, 8.5 if the pistol stops reading), 2.6 high, at
-  // camYaw -0.25 (turned slightly west, down the firing line, so the
-  // cordon stays in frame) — Mara faces west in profile with her pistol
-  // + flash toward the cordon, the cordon fills the centre in profile
-  // facing her with its muzzle flashes, the Comet reads at the right
-  // edge, and the background is open beach + sea + night sky. NO
-  // building in the frame. ALL umbrellas are cleared outright below
-  // (Sand 02:08), so none looms in the foreground or behind the duel.
-  // Mara reads BIG in frame.
+  // the firing line: the camera sits 9 out (Mara pulled FURTHER BACK —
+  // the CAMERA moves out, not her staging, so she reads smaller and
+  // deeper with more beach/cordon/sea visible; was 6.5, 9 first, 8.5 if
+  // the pistol stops reading), 2.6 high, at camYaw -0.25 (turned slightly
+  // west, down the firing line, so the cordon stays in frame) — Mara
+  // faces west in profile with her pistol + flash toward the cordon,
+  // the cordon fills the centre in profile facing her with its muzzle
+  // flashes, the Comet reads at the right edge, and the background is
+  // open beach + sea + night sky. NO building in the frame. ALL
+  // umbrellas are cleared outright below, so none looms in the foreground
+  // or behind the duel. Mara reads BIG in frame.
   G.camYaw = -0.25;
   G.setCamDist(9);
   G.setCamHeight(2.6);
   G.camPitch = -0.05;
-  G.clearUmbrellasAll(); // Sand 02:08 — NO umbrella anywhere in shot 2
+  G.clearUmbrellasAll(); // NO umbrella anywhere in shot 2
 }
+
 // FULL CITY MAP of Puerto Lumen (21:40) — the finale's escape plan, not a
 // 3D scene. Sand rejected the vault interior (sparse brown/orange, gold
 // read as debris, figures tiny) and ordered a full denah map kota like the
@@ -430,19 +403,18 @@ export function stageShot3(G) {
   G.setCamHeight(13);
   G.camPitch = 0.25;
 }
+
 // DAWN MARINA ESCAPE / MISSION PASSED on the south beach (06:10, morning
 // mist over the water, pink-orange sunrise low over the sea). The hero car
 // parked on the sand at the water's edge, the speedboat moored just off it,
 // Mara's crew standing by the car, MISSION PASSED banner and the
 // story-progress line (STORY 15/15, SAVE SLOT 1).
-// r12 round-2 targeted pass (Sand: the boat was a thin strip partly
-// hidden behind the car + umbrella, NOT the focal point): the boat is
-// 3.6x and moored FURTHER out (z=252) with a slight three-quarter angle
-// so the WHOLE boat fits in frame with sea + sky around it — the first
-// 4.5x take at z=247 filled the whole width and read as a flat white
-// wall, its deck + windshield + motor cut off at the frame edges. The
-// camera is higher (4.5) so the deck reads as a surface and the
-// windshield sits on it instead of floating as a slab. The beach
+// The boat is 3.6x and moored FURTHER out (z=252) with a slight
+// three-quarter angle so the WHOLE boat fits in frame with sea + sky
+// around it — the first 4.5x take at z=247 filled the whole width and
+// read as a flat white wall, its deck + windshield + motor cut off at the
+// frame edges. The camera is higher (4.5) so the deck reads as a surface
+// and the windshield sits on it instead of floating as a slab. The beach
 // umbrellas around the camera are cleared so none looms over the boat,
 // and the MISSION PASSED banner is lifted to 12% — above the boat's
 // cabin top — so it can never cover the boat. The car stays foreground
@@ -463,27 +435,26 @@ export function stageShot4(G) {
   G.missions.active = false;
   G.missions.objective = 'Story complete — Puerto Lumen is yours. Free roam!';
   // The getaway boat, moored IN THE WATER directly south of the car
-  // (dead-ahead in frame, centre) — 3.6x, THREE-QUARTER angle
-  // (2026-11-21: the old dead side-on take read as a flat white wall —
-  // a 20-degree turn shows the tapered bow + deck + windshield with
-  // depth, like the top-10 beach scenes) so the WHOLE boat fits in
-  // frame with sea + sky around it. White hull + red stripe, 32 m
-  // long. It sits in the centre of the frame, BELOW and CLEAR of the
-  // MISSION PASSED banner — never behind it.
+  // (dead-ahead in frame, centre) — 3.6x, THREE-QUARTER angle (the old
+  // dead side-on take read as a flat white wall — a 20-degree turn shows
+  // the tapered bow + deck + windshield with depth, like the top-10
+  // beach scenes) so the WHOLE boat fits in frame with sea + sky around
+  // it. White hull + red stripe, 32 m long. It sits in the centre of the
+  // frame, BELOW and CLEAR of the MISSION PASSED banner — never behind it.
   G.spawnBoat(-158, 250, Math.PI / 2 - 0.35, 3.6);
-  // Sun glitter on the water behind the boat (see spawnSunGlitter):
-  // the dawn sun sits almost dead ahead (sunPos [-150, 30, 480]), so
-  // a soft warm glow path from the boat toward the sun makes the sea
-  // reflect the sunrise. Starts clear of the stern (z 270+).
+  // Sun glitter on the water behind the boat: the dawn sun sits almost
+  // dead ahead (sunPos [-150, 30, 480]), so a soft warm glow path from
+  // the boat toward the sun makes the sea reflect the sunrise. Starts
+  // clear of the stern (z 270+).
   G.spawnSunGlitter(-158, 290, 12, 40);
   // Framing palms at the waterline, one each side of the boat — in
   // frame at the edges (~46-50 deg off-axis), clear of the boat, so
   // the dawn beach reads as a place, not a void.
   G.spawnPalmRow(-182, -182, 238, 15);
   G.spawnPalmRow(-134, -134, 238, 15);
-  // NO umbrella anywhere in shot 4 (Sand 02:08 — clear them ALL, not
-  // just near the camera; the z=224 row used to loom in the foreground
-  // and hide the boat behind a giant canopy).
+  // NO umbrella anywhere in shot 4 (clear them ALL, not just near the
+  // camera; the z=224 row used to loom in the foreground and hide the
+  // boat behind a giant canopy).
   G.clearUmbrellasAll();
   // Morning mist over the sea, kept SMALL and OFF the boat.
   G.spawnMist(-230, 258, 35);
@@ -519,6 +490,7 @@ export function stageShot4(G) {
   G.camPitch = 0.05;
   G.anchor = [-158, 230]; // on the car — pins the frame; boat sits just south
 }
+
 /** Stage shot N (1..4) on the live game; any other value stages shot 1. */
 export function stageShot(n, G) {
   if (n === 2) stageShot2(G);
@@ -526,6 +498,7 @@ export function stageShot(n, G) {
   else if (n === 4) stageShot4(G);
   else stageShot1(G);
 }
+
 // ---- shot-mode autopilot ----------------------------------------------------
 // In ?shot mode the game plays itself just enough to look alive: traffic and
 // peds keep moving, the camera holds, the player car holds its line and speed.
@@ -547,8 +520,10 @@ export function shotAutopilot(G, dt) {
     const spots = [[-20, -6], [-22, 4], [-24, 0], [-19, 8]];
     (G.police || []).forEach((c, i) => {
       const [bx, bz] = spots[i % spots.length];
-      c.x = G.player.x + bx; c.z = G.player.z + bz;
-      c.heading = Math.PI / 2; c.speed = 0;
+      c.x = G.player.x + bx;
+      c.z = G.player.z + bz;
+      c.heading = Math.PI / 2;
+      c.speed = 0;
       c.mesh.group.position.set(c.x, 0, c.z);
       c.mesh.group.rotation.y = c.heading;
     });
@@ -562,7 +537,9 @@ export function shotAutopilot(G, dt) {
     const spots = [[-30, -180], [150, -120], [30, 30], [-60, -60]];
     (G.police || []).forEach((c, i) => {
       const [x, z] = spots[i % spots.length];
-      c.x = x; c.z = z; c.speed = 0;
+      c.x = x;
+      c.z = z;
+      c.speed = 0;
       c.mesh.group.position.set(x, 0, z);
       c.mesh.group.rotation.y = c.heading;
     });
@@ -578,14 +555,20 @@ export function shotAutopilot(G, dt) {
     // the old 0.45 put it south-east, off-axis toward the beach.
     G.player.car.speed = 34;
     G.player.car.heading += Math.sin(performance.now() * 0.0004) * 0.05 * dt;
-    if (G.heli) { G.heli.angle = 0.15; }
-    const fx = Math.sin(G.player.car.heading), fz = Math.cos(G.player.car.heading);
-    const rx = Math.cos(G.player.car.heading), rz = -Math.sin(G.player.car.heading);
+    if (G.heli) {
+      G.heli.angle = 0.15;
+    }
+    const fx = Math.sin(G.player.car.heading);
+    const fz = Math.cos(G.player.car.heading);
+    const rx = Math.cos(G.player.car.heading);
+    const rz = -Math.sin(G.player.car.heading);
     for (const rb of G.roadblocks || []) {
-      rb.x = G.player.x + fx * 22; rb.z = G.player.z + fz * 22;
+      rb.x = G.player.x + fx * 22;
+      rb.z = G.player.z + fz * 22;
       rb.cars.forEach((c, i) => {
         const off = i === 0 ? -4 : 4;
-        c.x = rb.x + rx * off; c.z = rb.z + rz * off;
+        c.x = rb.x + rx * off;
+        c.z = rb.z + rz * off;
         c.heading = G.player.car.heading + Math.PI / 2;
         c.mesh.group.position.set(c.x, 0, c.z);
         c.mesh.group.rotation.y = c.heading;
@@ -636,14 +619,14 @@ export function shotAutopilot(G, dt) {
       c.mesh.group.position.set(c.x, 0, c.z);
       c.mesh.group.rotation.y = c.heading;
     });
-    // Police bikes flanking the hero (Sand 02:12 + 06:20) + heli spotlight beam
-    // onto the car (Sand 02:12): pinned + aimed every frame, like the
-    // cruiser pack. ONE bike in EACH lane beside the hero — north lane
-    // by the REAR HALF (back +2, lat −4), south lane by the REAR HALF
-    // (back +4, lat +3). BOTH behind the hero's nose line: the first
-    // take pinned the north bike at back −1, ahead of the nose, and it
-    // LOOMED huge in the left foreground, 7 m from the lens. Behind
-    // the nose they flank the hero in frame without looming.
+    // Police bikes flanking the hero + heli spotlight beam onto the car:
+    // pinned + aimed every frame, like the cruiser pack. ONE bike in EACH
+    // lane beside the hero — north lane by the REAR HALF (back +2,
+    // lat −4), south lane by the REAR HALF (back +4, lat +3). BOTH behind
+    // the hero's nose line: the first take pinned the north bike at
+    // back −1, ahead of the nose, and it LOOMED huge in the left
+    // foreground, 7 m from the lens. Behind the nose they flank the hero
+    // in frame without looming.
     const bikeSlots = [[2, -4], [4, 3]];
     (G.bikes || []).forEach((b, i) => {
       const [back, lat] = bikeSlots[i] || bikeSlots[0];
@@ -657,7 +640,10 @@ export function shotAutopilot(G, dt) {
     return;
   }
   if (G.shotMode === 4) {
-    if (G.holdStill) { G.player.car.speed = 0; return; }
+    if (G.holdStill) {
+      G.player.car.speed = 0;
+      return;
+    }
     G.player.car.speed = 20;
     return;
   }

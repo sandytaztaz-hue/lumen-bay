@@ -1,10 +1,10 @@
-// LUMEN BAY r12 — the renderer: three.js scene, PER-SHOT lighting (night
-// chase / wet night / vault interior / dawn — one preset per screenshot,
-// applied by shots.js before the first frame), close low chase camera,
-// muzzle flashes, tracers, damage numbers, mission beacon. The sky is a real
-// gradient dome with a sun disc + light glare; a PMREM environment map baked
-// from that sky makes the hero car's clearcoat paint pick up real daylight
-// reflections, and a cool sky-blue rim light gives the bright edge glow.
+// LUMEN BAY — the renderer: three.js scene, PER-SHOT lighting (one preset
+// per screenshot, applied by shots.js before the first frame), close low
+// chase camera, muzzle flashes, tracers, damage numbers, mission beacon.
+// The sky is a real gradient dome with a sun disc + light glare; a PMREM
+// environment map baked from that sky makes the hero car's clearcoat paint
+// pick up real daylight reflections, and a cool sky-blue rim light gives
+// the bright edge glow.
 import * as THREE from 'three';
 import { WORLD, PALETTE, DAYLIGHT, LIGHTING_PRESETS } from './config.js';
 import { daySkyTexture, sunsetSkyTexture, nightSkyTexture, dawnSkyTexture, sunGlowTexture, sunStreakTexture } from './textures.js';
@@ -21,7 +21,12 @@ export function createRenderer3D(canvas, opts) {
   scene.background = new THREE.Color(0x87bfe8);
   scene.fog = new THREE.Fog(DAYLIGHT.fog, 400, 1100);
   const skyTex = daySkyTexture();
-  const skyTexes = { day: skyTex, sunset: sunsetSkyTexture(), night: nightSkyTexture(), dawn: dawnSkyTexture() };
+  const skyTexes = {
+    day: skyTex,
+    sunset: sunsetSkyTexture(),
+    night: nightSkyTexture(),
+    dawn: dawnSkyTexture(),
+  };
   const skyDome = new THREE.Mesh(
     new THREE.SphereGeometry(950, 24, 16),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }),
@@ -35,8 +40,10 @@ export function createRenderer3D(canvas, opts) {
       new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide }),
     );
     envScene.add(envSky);
-    const sunBall = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const sunBall = new THREE.Mesh(
+      new THREE.SphereGeometry(8, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    );
     sunBall.position.set(55, 28, 20);
     envScene.add(sunBall);
     const pmrem = new THREE.PMREMGenerator(renderer);
@@ -44,13 +51,17 @@ export function createRenderer3D(canvas, opts) {
     scene.environment = envRT.texture;
     if ('environmentIntensity' in scene) scene.environmentIntensity = 1.0;
     pmrem.dispose();
-  } catch { /* env map is a bonus: the game still renders without it */ }
+  } catch {
+    // Env map is a bonus: the game still renders without it.
+  }
   const sun = new THREE.DirectionalLight(DAYLIGHT.sunColour, DAYLIGHT.sunIntensity);
   sun.position.set(320, 260, 170);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -260; sun.shadow.camera.right = 260;
-  sun.shadow.camera.top = 260; sun.shadow.camera.bottom = -260;
+  sun.shadow.camera.left = -260;
+  sun.shadow.camera.right = 260;
+  sun.shadow.camera.top = 260;
+  sun.shadow.camera.bottom = -260;
   sun.shadow.camera.far = 800;
   scene.add(sun);
   const rim = new THREE.DirectionalLight(DAYLIGHT.rimColour, 0.9);
@@ -64,8 +75,10 @@ export function createRenderer3D(canvas, opts) {
   const fill = new THREE.DirectionalLight(0xeaf4ff, 0.5);
   fill.position.set(-120, 80, 140);
   scene.add(fill);
-  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(30, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
+  const sunDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(30, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }),
+  );
   sunDisc.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
   sunDisc.lookAt(0, 0, 0);
   scene.add(sunDisc);
@@ -78,11 +91,13 @@ export function createRenderer3D(canvas, opts) {
   const streakTex = sunStreakTexture();
   const streaks = [];
   for (const [w, h, op] of [[300, 10, 0.35], [200, 5, 0.28]]) {
-    const streak = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+    const streak = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
       new THREE.MeshBasicMaterial({
         map: streakTex, transparent: true, opacity: op, fog: false,
         blending: THREE.AdditiveBlending, depthWrite: false,
-      }));
+      }),
+    );
     streak.position.set(DAYLIGHT.sunPos[0], DAYLIGHT.sunPos[1], DAYLIGHT.sunPos[2]);
     streak.lookAt(0, 0, 0);
     scene.add(streak);
@@ -142,11 +157,13 @@ export function createRenderer3D(canvas, opts) {
   }
   return { renderer, scene, camera, sun, skyDome, setLighting };
 }
+
 export function resizeRenderer(r, w, h) {
   r.renderer.setSize(w, h, false);
   r.camera.aspect = w / h;
   r.camera.updateProjectionMatrix();
 }
+
 /** Chase camera: CLOSE and LOW so the hero car is poster-big — dist 9.5 /
  height 3.2 on foot 8 / 3.0. The hero mesh is 1.35x poster-scaled, so the
  two together land it near ~30% of frame width like the top entries. */
@@ -167,6 +184,7 @@ export function updateCamera(camera, px, pz, heading, camYaw, camPitch, inCar, s
     camera.updateProjectionMatrix();
   }
 }
+
 /** A glowing beacon pillar at the current objective, visible across the city. */
 export function makeBeacon(scene) {
   const geo = new THREE.CylinderGeometry(2.2, 2.2, 60, 12, 1, true);
@@ -174,40 +192,60 @@ export function makeBeacon(scene) {
     color: 0xffd23f, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = 30; mesh.visible = false;
+  mesh.position.y = 30;
+  mesh.visible = false;
   scene.add(mesh);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(6, 0.4, 8, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffd23f }));
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(6, 0.4, 8, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd23f }),
+  );
   ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.3; ring.visible = false;
+  ring.position.y = 0.3;
+  ring.visible = false;
   scene.add(ring);
   return { mesh, ring };
 }
+
 export function setBeacon(beacon, pos) {
-  if (!pos) { beacon.mesh.visible = false; beacon.ring.visible = false; return; }
-  beacon.mesh.visible = true; beacon.ring.visible = true;
-  beacon.mesh.position.x = pos[0]; beacon.mesh.position.z = pos[1];
-  beacon.ring.position.x = pos[0]; beacon.ring.position.z = pos[1];
+  if (!pos) {
+    beacon.mesh.visible = false;
+    beacon.ring.visible = false;
+    return;
+  }
+  beacon.mesh.visible = true;
+  beacon.ring.visible = true;
+  beacon.mesh.position.x = pos[0];
+  beacon.mesh.position.z = pos[1];
+  beacon.ring.position.x = pos[0];
+  beacon.ring.position.z = pos[1];
 }
+
 /** A tracer line from the muzzle to the hit point, fading in 80 ms. */
 export function spawnTracer(scene, from, to) {
   const geo = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(from[0], from[1], from[2]),
     new THREE.Vector3(to[0], to[1], to[2]),
   ]);
-  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95 }));
+  const line = new THREE.Line(
+    geo,
+    new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95 }),
+  );
   scene.add(line);
   setTimeout(() => { scene.remove(line); geo.dispose(); }, 90);
   return line;
 }
+
 /** A muzzle flash: a small bright sprite at the gun, gone in 60 ms. */
 export function spawnMuzzle(scene, pos) {
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffe9a0 }));
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
+  );
   flash.position.set(pos[0], pos[1], pos[2]);
   scene.add(flash);
   setTimeout(() => scene.remove(flash), 60);
 }
+
 /** A damage number that floats up and fades over the hit point. */
 export function spawnDamageNumber(layer, camera, x, y, z, text, colour) {
   if (!layer) return;

@@ -1,23 +1,18 @@
-// LUMEN BAY r12 — vehicles: the car factory, traffic AI, police cruisers,
-// the helicopter and police roadblocks. The hero is a REAL convertible built
+// LUMEN BAY — vehicles: the car factory, traffic AI, police cruisers,
+// the helicopter and police roadblocks. The hero is a REAL sports car built
 // to look metallic, not flat cartoon: MeshPhysicalMaterial paint (metalness
-// 0.85, roughness 0.28, clearcoat 1.0) over the PMREM environment map, so the
-// body picks up sky reflections; glossy black glass cabin, detailed 5-spoke
-// dark-alloy wheels with chrome rings and red calipers, glowing headlights +
-// full-width red taillight strip, rear spoiler and splitter. Police light
-// bars FLASH red/blue (emissive + glow sprites); the helicopter carries a
-// visible additive searchlight cone; dust puffs trail the wheels at speed.
-// r12 shot-1/2/4 revision: the hero's headlights get glow sprites too (the
-// front-three-quarter chase camera lives on the headlights + grille), and
-// the heli gets a white side stripe so its dark-navy body reads against a
-// bright sunset sky instead of vanishing into a silhouette.
-// r12 BRIGHT-NIGHT FRONT-VIEW revision (Sand 2026-11-21 ~10:39 WIT:
-// "3D jelas", 99% like top-1 Karimbu — SMOOTH detailed models, NOT boxy
-// voxel): the hero gets curved bodywork — a rounded nose bumper, a smooth
-// hood bulge, a domed roof and smooth fender haunches, all curved
-// surfaces with smooth normals in the same metallic paint — and the
-// generic cars + cruisers get raked windshields + sloped hoods + a
-// rounded light-bar base, so no car in the frame reads as a flat box.
+// 0.85, roughness 0.28, clearcoat 1.0) over the PMREM environment map, so
+// the body picks up sky reflections; glossy black glass cabin, detailed
+// 5-spoke dark-alloy wheels with chrome rings and red calipers, glowing
+// headlights + full-width red taillight strip, rear spoiler and splitter.
+// Police light bars FLASH red/blue (emissive + glow sprites); the
+// helicopter carries a visible additive searchlight cone; dust puffs trail
+// the wheels at speed.
+//
+// The hero is a low sleek FERRARI-STYLE sports car (Sand 2026-11-21:
+// "ganti mobil ferarri bro") — long low sloped hood, raked cabin, big
+// wheels, spoiler, rosso corsa red paint. Police + traffic stay classic
+// boxy black-white sedans; ONLY the hero is a sports car.
 import * as THREE from 'three';
 import { CARS, TRAFFIC_COUNT } from './config.js';
 import { clamp, dist2 } from './config.js';
@@ -26,6 +21,7 @@ import { sunGlowTexture, dustTexture, policeTextTexture } from './textures.js';
 
 const ROAD_LANES = [-234, -174, -114, -54, 6, 66, 126, 186];
 const TRAFFIC_PAINT = [0xffd23f, 0x19b8c4, 0xffffff, 0x1a1a1e, 0x37c978, 0xff7a1a, 0xc78bff, 0x3fa7ff, 0xff2a5e, 0xd8d8d8, 0xffd23f, 0x2a6b3a];
+
 /** Real-car paint: metallic clearcoat over the environment map. */
 function paintMaterial(colour, opts) {
   const o = opts || {};
@@ -33,23 +29,29 @@ function paintMaterial(colour, opts) {
     color: colour,
     metalness: o.metalness !== undefined ? o.metalness : 0.85,
     roughness: o.roughness !== undefined ? o.roughness : 0.28,
-    clearcoat: 1.0, clearcoatRoughness: 0.08,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.08,
     envMapIntensity: o.envMapIntensity !== undefined ? o.envMapIntensity : 1.3,
   });
 }
+
 /** A detailed wheel: dark tyre, 5-spoke dark-alloy hub, chrome ring, red caliper. */
 function makeWheel() {
   const group = new THREE.Group();
-  // r12 revision: the old 1.24 m tyre on a 4.6 m car was monster-truck
-  // proportions (3.7 wheels long) and the single biggest "toy" read in the
-  // chase shot. A 0.84 m tyre is 5.5 wheels long — a real sports-car stance.
-  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.36, 16),
-    new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 }));
+  // The old 1.24 m tyre on a 4.6 m car was monster-truck proportions
+  // (3.7 wheels long) and the single biggest "toy" read in the chase
+  // shot. A 0.84 m tyre is 5.5 wheels long — a real sports-car stance.
+  const tyre = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.38, 0.38, 0.36, 16),
+    new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 }),
+  );
   tyre.rotation.z = Math.PI / 2;
   tyre.castShadow = true;
   group.add(tyre);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.38, 12),
-    new THREE.MeshStandardMaterial({ color: 0x4a4d55, roughness: 0.3, metalness: 0.9 }));
+  const hub = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.26, 0.26, 0.38, 12),
+    new THREE.MeshStandardMaterial({ color: 0x4a4d55, roughness: 0.3, metalness: 0.9 }),
+  );
   hub.rotation.z = Math.PI / 2;
   group.add(hub);
   const spokeMat = new THREE.MeshStandardMaterial({ color: 0x3a3d44, roughness: 0.25, metalness: 0.9 });
@@ -65,12 +67,15 @@ function makeWheel() {
     ring.position.x = x;
     group.add(ring);
   }
-  const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.16),
-    new THREE.MeshBasicMaterial({ color: 0xd90429 }));
+  const caliper = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.2, 0.16),
+    new THREE.MeshBasicMaterial({ color: 0xd90429 }),
+  );
   caliper.position.set(0, 0.12, 0.08);
   group.add(caliper);
   return group;
 }
+
 /** Wheel arches: dark half-rings over each wheel on both flanks. The old
  cars had nothing between the flat slab side and the wheels, so the flank
  read as one blank pink wall. The arch breaks the slab and ties the wheel
@@ -84,6 +89,7 @@ function addWheelArches(group) {
     group.add(arch);
   }
 }
+
 /** Build a car mesh for a car type. Returns { group, body, flame, wheels, plates, lightBar }. */
 export function buildCarMesh(type, opts) {
   const def = CARS[type] || CARS.sedan;
@@ -104,7 +110,8 @@ export function buildCarMesh(type, opts) {
   // Classic boxy body for every car: taller (0.85) flat-sided slab —
   // the low 0.75 slab + wedge nose were the modern-sports read.
   const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.85, 4.4), paint);
-  body.position.y = 0.8; body.castShadow = true;
+  body.position.y = 0.8;
+  body.castShadow = true;
   group.add(body);
   let lightBar = null;
   if (type === 'comet') {
@@ -157,25 +164,33 @@ export function buildCarMesh(type, opts) {
     // with a green top strip, lying on the hood panel about 2/3 toward
     // the nose (z ~1.9), rotated to the hood rake. Basic materials so
     // the yellow reads bright at night.
-    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.03, 0.30),
-      new THREE.MeshBasicMaterial({ color: 0xffd400 }));
+    const shield = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, 0.03, 0.30),
+      new THREE.MeshBasicMaterial({ color: 0xffd400 }),
+    );
     shield.position.set(0, 0.77, 1.88);
     shield.rotation.x = 0.13;
     group.add(shield);
-    const shieldTop = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 0.08),
-      new THREE.MeshBasicMaterial({ color: 0x009444 }));
+    const shieldTop = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, 0.04, 0.08),
+      new THREE.MeshBasicMaterial({ color: 0x009444 }),
+    );
     shieldTop.position.set(0, 0.79, 1.78);
     shieldTop.rotation.x = 0.13;
     group.add(shieldTop);
     // Front face: ONE wide low dark grille band (a WIDE LOW mouth, spec
     // 6e) + BIG rectangular headlights with dark frames (spec 6c) +
     // a subtle dark splitter lip UNDER the grille (a lip, NOT a tube).
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.24, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+    const grille = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 0.24, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }),
+    );
     grille.position.set(0, 0.50, 2.62);
     group.add(grille);
-    const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.35),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+    const splitter = new THREE.Mesh(
+      new THREE.BoxGeometry(1.9, 0.08, 0.35),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }),
+    );
     splitter.position.set(0, 0.16, 2.5);
     group.add(splitter);
     // BIG rectangular headlights (spec 6c): a dark surround frame with a
@@ -188,8 +203,10 @@ export function buildCarMesh(type, opts) {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.28, 0.06), headFrameMat);
       frame.position.set(x, 0.64, 2.64);
       group.add(frame);
-      const lens = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.05),
-        new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
+      const lens = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.22, 0.05),
+        new THREE.MeshBasicMaterial({ color: 0xfff6c8 }),
+      );
       lens.position.set(x, 0.64, 2.68);
       group.add(lens);
       // Headlight glow sprites: the front-three-quarter chase camera lives
@@ -211,8 +228,10 @@ export function buildCarMesh(type, opts) {
       skirt.position.set(s * 1.02, 0.3, 0);
       group.add(skirt);
       // Side air intake ahead of the rear wheel — the Ferrari side scoop.
-      const scoop = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 0.7),
-        new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+      const scoop = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.35, 0.7),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }),
+      );
       scoop.position.set(s * 1.04, 0.72, -0.9);
       group.add(scoop);
     }
@@ -222,13 +241,17 @@ export function buildCarMesh(type, opts) {
     // single red strip on pink read as a flat red bar from the chase
     // cam. The dark surround makes the lights pop; the clusters +
     // halos read as lights ON, like the top-1/top-2 cars' rears.
-    const tailPanel = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.3, 0.06),
-      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
+    const tailPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(1.95, 0.3, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }),
+    );
     tailPanel.position.set(0, 0.8, -2.57);
     group.add(tailPanel);
     for (const x of [-0.5, 0.5]) {
-      const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.16, 0.06),
-        new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3.0 }));
+      const cluster = new THREE.Mesh(
+        new THREE.BoxGeometry(0.78, 0.16, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3.0 }),
+      );
       cluster.position.set(x, 0.8, -2.61);
       group.add(cluster);
       const tGlow = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -238,8 +261,10 @@ export function buildCarMesh(type, opts) {
       tGlow.scale.set(1.3, 1.3, 1);
       group.add(tGlow);
     }
-    const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.16, 0.3),
-      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
+    const diffuser = new THREE.Mesh(
+      new THREE.BoxGeometry(1.7, 0.16, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }),
+    );
     diffuser.position.set(0, 0.3, -2.55);
     group.add(diffuser);
     for (const x of [-0.55, 0.55]) {
@@ -287,8 +312,10 @@ export function buildCarMesh(type, opts) {
     group.add(roofRail);
     // Glare strip: a thin light streak at the TOP edge of the windshield
     // only — the old mid-windshield strip sat across the driver's face.
-    const glare = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.06, 0.06),
-      new THREE.MeshBasicMaterial({ color: 0xbfe8ff }));
+    const glare = new THREE.Mesh(
+      new THREE.BoxGeometry(1.0, 0.06, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xbfe8ff }),
+    );
     glare.position.set(0, 1.22, 0.52);
     glare.rotation.x = -0.55;
     group.add(glare);
@@ -325,8 +352,10 @@ export function buildCarMesh(type, opts) {
       const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.3), paint);
       mirror.position.set(s * 1.06, 1.0, 0.7);
       group.add(mirror);
-      const line = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 1.6),
-        new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9 }));
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.5, 1.6),
+        new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9 }),
+      );
       line.position.set(s * 1.03, 0.7, 0.1);
       group.add(line);
     }
@@ -354,16 +383,22 @@ export function buildCarMesh(type, opts) {
     // reads like a lit face through the windshield (spec 6a) — the
     // first v2 take at opacity 0.55 + standard materials hid the
     // driver completely behind two layers of dark glass.
-    const driverMat = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.9, emissive: 0xff5a00, emissiveIntensity: 1.4 });
+    const driverMat = new THREE.MeshStandardMaterial({
+      color: 0xff7a1a, roughness: 0.9, emissive: 0xff5a00, emissiveIntensity: 1.4,
+    });
     const driver = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.3), driverMat);
     driver.position.set(0.30, 0.87, -0.05);
     group.add(driver);
-    const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10),
-      new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
+    const dHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 10, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffd9a0 }),
+    );
     dHead.position.set(0.30, 1.04, -0.05);
     group.add(dHead);
-    const dHair = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
+    const dHair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }),
+    );
     dHair.position.set(0.30, 1.04, -0.05);
     group.add(dHair);
   } else {
@@ -398,8 +433,10 @@ export function buildCarMesh(type, opts) {
     group.add(trunkG);
     // Grille + chrome bars on the flat nose.
     const chromeG = new THREE.MeshStandardMaterial({ color: 0xd8dce2, roughness: 0.15, metalness: 1.0 });
-    const grilleG = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.28, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+    const grilleG = new THREE.Mesh(
+      new THREE.BoxGeometry(1.3, 0.28, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }),
+    );
     grilleG.position.set(0, 0.78, 2.22);
     group.add(grilleG);
     for (let i = -1; i <= 1; i += 1) {
@@ -412,13 +449,17 @@ export function buildCarMesh(type, opts) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.04, 8, 18), chromeG);
       ring.position.set(x, 0.88, 2.24);
       group.add(ring);
-      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.08, 14),
-        new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
+      const head = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.19, 0.19, 0.08, 14),
+        new THREE.MeshBasicMaterial({ color: 0xfff6c8 }),
+      );
       head.rotation.x = Math.PI / 2;
       head.position.set(x, 0.88, 2.24);
       group.add(head);
-      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.06),
-        new THREE.MeshBasicMaterial({ color: 0xff1a1a }));
+      const tail = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.15, 0.06),
+        new THREE.MeshBasicMaterial({ color: 0xff1a1a }),
+      );
       tail.position.set(x, 0.88, -2.24);
       group.add(tail);
     }
@@ -429,14 +470,18 @@ export function buildCarMesh(type, opts) {
     bumpRG.position.set(0, 0.42, -2.28);
     group.add(bumpRG);
     if (type === 'taxi') {
-      const sign = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.5),
-        new THREE.MeshBasicMaterial({ color: 0xffd23f }));
+      const sign = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.25, 0.5),
+        new THREE.MeshBasicMaterial({ color: 0xffd23f }),
+      );
       sign.position.set(0, 2.0, -0.2);
       group.add(sign);
     }
     if (type === 'pickup') {
-      const bed = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 1.6),
-        new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.9 }));
+      const bed = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.4, 1.6),
+        new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.9 }),
+      );
       bed.position.set(0, 0.95, -1.2);
       group.add(bed);
     }
@@ -481,12 +526,16 @@ export function buildCarMesh(type, opts) {
     barBase.rotation.z = Math.PI / 2;
     barBase.position.y = 0;
     lightBar.add(barBase);
-    const redLens = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.32, 0.48),
-      new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3 }));
+    const redLens = new THREE.Mesh(
+      new THREE.BoxGeometry(0.72, 0.32, 0.48),
+      new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3 }),
+    );
     redLens.position.set(-0.38, 0.14, 0);
     lightBar.add(redLens);
-    const blueLens = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.32, 0.48),
-      new THREE.MeshStandardMaterial({ color: 0x1a4dff, emissive: 0x1a4dff, emissiveIntensity: 3 }));
+    const blueLens = new THREE.Mesh(
+      new THREE.BoxGeometry(0.72, 0.32, 0.48),
+      new THREE.MeshStandardMaterial({ color: 0x1a4dff, emissive: 0x1a4dff, emissiveIntensity: 3 }),
+    );
     blueLens.position.set(0.38, 0.14, 0);
     lightBar.add(blueLens);
     for (const [x, colour] of [[-0.38, 0xff1a1a], [0.38, 0x1a4dff]]) {
@@ -547,8 +596,10 @@ export function buildCarMesh(type, opts) {
   // which a Group supports, and the twin cones stay one flame object.
   const flame = new THREE.Group();
   for (const x of [-0.55, 0.55]) {
-    const f = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.8, 8),
-      new THREE.MeshBasicMaterial({ color: 0x7fd4ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const f = new THREE.Mesh(
+      new THREE.ConeGeometry(0.16, 0.8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x7fd4ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
     f.rotation.x = -Math.PI / 2 + 0.35;
     f.position.set(x, 0.38, -2.85);
     flame.add(f);
@@ -559,17 +610,25 @@ export function buildCarMesh(type, opts) {
   if (type === 'comet') group.scale.setScalar(1.35);
   return { group, body, flame, wheels, plates, lightBar };
 }
+
 /** A drivable / stealable car in the world. */
 export function makeCar(type, x, z, heading, opts) {
   const mesh = buildCarMesh(type, opts);
   mesh.group.position.set(x, 0, z);
   mesh.group.rotation.y = heading;
   return {
-    type, mesh, x, z, heading, speed: 0,
+    type,
+    mesh,
+    x,
+    z,
+    heading,
+    speed: 0,
     kind: (opts && opts.kind) || 'parked',
-    health: 100, driver: (opts && opts.driver) || null,
+    health: 100,
+    driver: (opts && opts.driver) || null,
   };
 }
+
 /** Drive a car forward with arcade handling; returns distance moved. */
 export function driveCar(car, dt, throttle, steer, topSpeed, colliders) {
   car.speed += throttle * 16 * dt;
@@ -581,11 +640,13 @@ export function driveCar(car, dt, throttle, steer, topSpeed, colliders) {
   const p = { x: nx, z: nz };
   resolveCollisions(colliders, p, 2.2);
   if (Math.abs(p.x - nx) > 0.01 || Math.abs(p.z - nz) > 0.01) car.speed *= 0.5;
-  car.x = p.x; car.z = p.z;
+  car.x = p.x;
+  car.z = p.z;
   car.mesh.group.position.set(car.x, 0, car.z);
   car.mesh.group.rotation.y = car.heading;
   return Math.abs(car.speed) * dt;
 }
+
 /** Spawn 28 traffic cars looping the road grid, varied real colours. */
 export function spawnTraffic(scene, rng) {
   const cars = [];
@@ -596,9 +657,12 @@ export function spawnTraffic(scene, rng) {
     const vertical = i % 2 === 0;
     const x = vertical ? lane : along;
     const z = vertical ? along : lane;
-    const heading = vertical ? (i % 4 < 2 ? 0 : Math.PI) : (i % 4 < 2 ? Math.PI / 2 : -Math.PI / 2);
+    const heading = vertical
+      ? (i % 4 < 2 ? 0 : Math.PI)
+      : (i % 4 < 2 ? Math.PI / 2 : -Math.PI / 2);
     const car = makeCar(types[i % types.length], x, z, heading, {
-      kind: 'traffic', colour: TRAFFIC_PAINT[i % TRAFFIC_PAINT.length],
+      kind: 'traffic',
+      colour: TRAFFIC_PAINT[i % TRAFFIC_PAINT.length],
     });
     car.speed = 9 + rng() * 5;
     car.dir = vertical ? 'v' : 'h';
@@ -609,19 +673,25 @@ export function spawnTraffic(scene, rng) {
   }
   return cars;
 }
+
 /** Spawn extra traffic near a point (shot staging: pack the frame). */
 export function spawnTrafficNear(scene, rng, x, z, n) {
   const cars = [];
   for (let i = 0; i < n; i += 1) {
-    const car = makeCar(['sedan', 'taxi', 'pickup', 'taxi'][i % 4],
-      x + (rng() - 0.5) * 60, z + (rng() - 0.5) * 14, (rng() < 0.5 ? Math.PI / 2 : -Math.PI / 2),
-      { kind: 'traffic', colour: TRAFFIC_PAINT[(i + 2) % TRAFFIC_PAINT.length] });
+    const car = makeCar(
+      ['sedan', 'taxi', 'pickup', 'taxi'][i % 4],
+      x + (rng() - 0.5) * 60,
+      z + (rng() - 0.5) * 14,
+      (rng() < 0.5 ? Math.PI / 2 : -Math.PI / 2),
+      { kind: 'traffic', colour: TRAFFIC_PAINT[(i + 2) % TRAFFIC_PAINT.length] },
+    );
     car.speed = 8 + rng() * 5;
     scene.add(car.mesh.group);
     cars.push(car);
   }
   return cars;
 }
+
 /** Traffic cars drive their lane, turn at the city edge, never leave the roads. */
 export function updateTraffic(cars, dt, colliders) {
   for (const car of cars) {
@@ -637,11 +707,13 @@ export function updateTraffic(cars, dt, colliders) {
       car.heading += Math.PI / 2;
       continue;
     }
-    car.x = p.x; car.z = p.z;
+    car.x = p.x;
+    car.z = p.z;
     car.mesh.group.position.set(car.x, 0, car.z);
     car.mesh.group.rotation.y = car.heading;
   }
 }
+
 /** Spawn a police cruiser near (but not on top of) the player. */
 export function spawnPolice(scene, px, pz, rng) {
   const a = rng() * Math.PI * 2;
@@ -652,6 +724,7 @@ export function spawnPolice(scene, px, pz, rng) {
   scene.add(car.mesh.group);
   return car;
 }
+
 /** A POLICE MOTORCYCLE with rider (Sand 2026-11-21 ~02:12 WIT, shot 1):
  1–2 bikes chase ALONGSIDE the hero car. Black bike, white tank + front
  fairing, red/blue mini light bar + headlight, and a rider in navy with
@@ -665,13 +738,17 @@ export function makePoliceBike(x, z, heading) {
   const chrome = new THREE.MeshStandardMaterial({ color: 0xd8dce2, roughness: 0.15, metalness: 1.0 });
   // Wheels: dark tyres + alloy hubs.
   for (const wz of [0.75, -0.75]) {
-    const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.16, 14),
-      new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 }));
+    const tyre = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.34, 0.34, 0.16, 14),
+      new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 }),
+    );
     tyre.rotation.z = Math.PI / 2;
     tyre.position.set(0, 0.34, wz);
     group.add(tyre);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.18, 10),
-      new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.25, metalness: 0.9 }));
+    const hub = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.18, 0.18, 10),
+      new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.25, metalness: 0.9 }),
+    );
     hub.rotation.z = Math.PI / 2;
     hub.position.set(0, 0.34, wz);
     group.add(hub);
@@ -690,8 +767,10 @@ export function makePoliceBike(x, z, heading) {
   fairing.position.set(0, 0.85, 0.78);
   group.add(fairing);
   // Round headlight + glow on the fairing nose.
-  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 12),
-    new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
+  const lamp = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.14, 0.14, 0.08, 12),
+    new THREE.MeshBasicMaterial({ color: 0xfff6c8 }),
+  );
   lamp.rotation.x = Math.PI / 2;
   lamp.position.set(0, 0.85, 0.95);
   group.add(lamp);
@@ -705,12 +784,16 @@ export function makePoliceBike(x, z, heading) {
   const barBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.16), black);
   barBase.position.set(0, 1.02, -0.72);
   group.add(barBase);
-  const redLens = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.12, 0.14),
-    new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3 }));
+  const redLens = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.12, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0xff1a1a, emissive: 0xff1a1a, emissiveIntensity: 3 }),
+  );
   redLens.position.set(-0.13, 1.1, -0.72);
   group.add(redLens);
-  const blueLens = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.12, 0.14),
-    new THREE.MeshStandardMaterial({ color: 0x1a4dff, emissive: 0x1a4dff, emissiveIntensity: 3 }));
+  const blueLens = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.12, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0x1a4dff, emissive: 0x1a4dff, emissiveIntensity: 3 }),
+  );
   blueLens.position.set(0.13, 1.1, -0.72);
   group.add(blueLens);
   const bars = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 8), chrome);
@@ -724,12 +807,16 @@ export function makePoliceBike(x, z, heading) {
   torso.position.set(0, 1.25, -0.35);
   torso.rotation.x = 0.25;
   group.add(torso);
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12),
-    new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.3, metalness: 0.2 }));
+  const helmet = new THREE.Mesh(
+    new THREE.SphereGeometry(0.24, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.3, metalness: 0.2 }),
+  );
   helmet.position.set(0, 1.68, -0.28);
   group.add(helmet);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.06),
-    new THREE.MeshStandardMaterial({ color: 0x0a0e14, roughness: 0.1, metalness: 0.9 }));
+  const visor = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.1, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x0a0e14, roughness: 0.1, metalness: 0.9 }),
+  );
   visor.position.set(0, 1.66, -0.05);
   group.add(visor);
   for (const s of [-1, 1]) {
@@ -747,6 +834,7 @@ export function makePoliceBike(x, z, heading) {
   group.rotation.y = heading;
   return { group, x, z, heading };
 }
+
 /** Flash one cruiser's light bar: alternate red/blue glow each call. */
 export function flashLightBar(car) {
   if (!car.mesh.lightBar) return;
@@ -757,6 +845,7 @@ export function flashLightBar(car) {
   if (red && red.material) red.material.emissiveIntensity = on ? 3.5 : 0.4;
   if (blue && blue.material) blue.material.emissiveIntensity = on ? 0.4 : 3.5;
 }
+
 /** A police cruiser chases the player, rams at close range, flashes its bar. */
 export function updatePolice(car, dt, px, pz, colliders) {
   const d = dist2([car.x, car.z], [px, pz]);
@@ -770,12 +859,14 @@ export function updatePolice(car, dt, px, pz, colliders) {
   const nz = car.z + Math.cos(car.heading) * car.speed * dt;
   const p = { x: nx, z: nz };
   resolveCollisions(colliders, p, 2.2);
-  car.x = p.x; car.z = p.z;
+  car.x = p.x;
+  car.z = p.z;
   car.mesh.group.position.set(car.x, 0, car.z);
   car.mesh.group.rotation.y = car.heading;
   flashLightBar(car);
   return d;
 }
+
 /** The police helicopter: ROUNDED fuselage (scaled sphere, not a box —
  the old box body read as a dark plank against the sunset sky, the single
  biggest "toy" tell in shots 1-2), glass cockpit bubble, thin tail boom,
@@ -789,8 +880,10 @@ export function makeHelicopter(scene) {
   body.scale.set(1.0, 0.85, 1.9);
   body.position.y = 0;
   group.add(body);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(1.92, 18, 14),
-    new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.3 }));
+  const belly = new THREE.Mesh(
+    new THREE.SphereGeometry(1.92, 18, 14),
+    new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.3 }),
+  );
   belly.scale.set(0.92, 0.5, 1.82);
   belly.position.y = -0.55;
   group.add(belly);
@@ -804,13 +897,17 @@ export function makeHelicopter(scene) {
     group.add(stripe);
   }
   // Glass cockpit: a glossy bubble on the nose, not a flat dark slab.
-  const glass = new THREE.Mesh(new THREE.SphereGeometry(1.35, 16, 12),
-    new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.08, clearcoat: 1 }));
+  const glass = new THREE.Mesh(
+    new THREE.SphereGeometry(1.35, 16, 12),
+    new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.08, clearcoat: 1 }),
+  );
   glass.scale.set(1.0, 0.75, 1.0);
   glass.position.set(0, 0.25, 2.6);
   group.add(glass);
-  const glareH = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10),
-    new THREE.MeshBasicMaterial({ color: 0xbfe8ff }));
+  const glareH = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 10, 10),
+    new THREE.MeshBasicMaterial({ color: 0xbfe8ff }),
+  );
   glareH.position.set(-0.5, 0.7, 3.3);
   group.add(glareH);
   // Tail boom: a THIN tapered cylinder, not a box — the old 1x1x6 box was
@@ -854,18 +951,24 @@ export function makeHelicopter(scene) {
   // Searchlight: a bright belly lamp + a long additive cone to the ground.
   // The lamp is big and the cone strong (0.5): at night the cone is the
   // heli's main tell — the old 0.28 cone over the bright road was invisible.
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.8, 10, 10),
-    new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
+  const lamp = new THREE.Mesh(
+    new THREE.SphereGeometry(0.8, 10, 10),
+    new THREE.MeshBasicMaterial({ color: 0xfff6c8 }),
+  );
   lamp.position.set(0, -1.2, 1.5);
   group.add(lamp);
   const coneGeo = new THREE.ConeGeometry(7, 26, 16, 1, true);
-  const cone = new THREE.Mesh(coneGeo,
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const cone = new THREE.Mesh(
+    coneGeo,
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+  );
   cone.rotation.x = Math.PI;
   cone.position.set(0, -14, 1.5);
   group.add(cone);
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(7, 20),
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.3, depthWrite: false }));
+  const pool = new THREE.Mesh(
+    new THREE.CircleGeometry(7, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.3, depthWrite: false }),
+  );
   pool.rotation.x = -Math.PI / 2;
   pool.position.set(0, -26.5, 1.5);
   group.add(pool);
@@ -882,24 +985,35 @@ export function makeHelicopter(scene) {
   // lamp and the wide base lands on the car. NOT the old vertical cone
   // (that one read as a white lampshade in daylight and never touched the
   // car — it stays hidden in shot 1).
-  const beam = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 20, 1, true),
+  const beam = new THREE.Mesh(
+    new THREE.ConeGeometry(1, 1, 20, 1, true),
     // NARROW + DIM (first take was a giant pale dome at R=L*0.16 /
     // opacity 0.45 — the lampshade read Sand warned about): a spotlight
     // shaft is narrow, ~8% of its length at the base, translucent
     // (0.28) so the sky + road show through it and it reads as a BEAM.
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+  );
   beam.visible = false;
   scene.add(beam);
-  const beamPool = new THREE.Mesh(new THREE.CircleGeometry(1, 24),
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const beamPool = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 24),
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending }),
+  );
   beamPool.rotation.x = -Math.PI / 2;
   beamPool.visible = false;
   scene.add(beamPool);
-  return { group, rotor, tailRotor, cone, pool, beam, beamPool, active: false, hover: 14, angle: 0, speed: 0.35, orbit: 16 };
+  return {
+    group, rotor, tailRotor, cone, pool, beam, beamPool,
+    active: false, hover: 14, angle: 0, speed: 0.35, orbit: 16,
+  };
 }
+
 /** Circle the player overhead while active; rotor spins, cone follows. */
 export function updateHelicopter(heli, dt, px, pz) {
-  if (!heli.active) { heli.group.visible = false; return; }
+  if (!heli.active) {
+    heli.group.visible = false;
+    return;
+  }
   heli.group.visible = true;
   heli.angle += dt * heli.speed;
   const r = heli.orbit || 16; // shots stage the orbit wider so the 14 m rotor fits the frame
@@ -910,12 +1024,16 @@ export function updateHelicopter(heli, dt, px, pz) {
   heli.rotor.rotation.y += dt * 22;
   heli.tailRotor.rotation.x += dt * 30;
 }
+
 /** A police roadblock: two cruisers angled across the road + barrier stripes. */
 export function makeRoadblock(scene, px, pz, heading) {
   const group = new THREE.Group();
-  const fx = Math.sin(heading), fz = Math.cos(heading);
-  const rx = Math.cos(heading), rz = -Math.sin(heading);
-  const bx = px + fx * 22, bz = pz + fz * 22;
+  const fx = Math.sin(heading);
+  const fz = Math.cos(heading);
+  const rx = Math.cos(heading);
+  const rz = -Math.sin(heading);
+  const bx = px + fx * 22;
+  const bz = pz + fz * 22;
   const cars = [];
   for (const off of [-4, 4]) {
     const car = makeCar('police', bx + rx * off, bz + rz * off, heading + Math.PI / 2, { kind: 'roadblock' });
@@ -932,11 +1050,13 @@ export function makeRoadblock(scene, px, pz, heading) {
   scene.add(group);
   return { group, cars, x: bx, z: bz, t: 0 };
 }
+
 /** Roadblocks stand for 20 s, then clear (the police re-set them). */
 export function updateRoadblock(rb, dt) {
   rb.t += dt;
   return rb.t < 20;
 }
+
 /** Dust puffs behind the wheels at speed (a small sprite pool). */
 export function makeDustTrail(scene) {
   const sprites = [];

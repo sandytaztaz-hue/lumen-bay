@@ -1,21 +1,20 @@
-// LUMEN BAY r12 — people: pedestrians who stroll the sidewalks and flee
+// LUMEN BAY — people: pedestrians who stroll the sidewalks and flee
 // gunfire, and armed enemies (police cordon officers, Tiburones crew) who
 // shoot back. Crowds are dense: 60+ pedestrians in bright beach colours,
 // half strolling the Playa Dorada front, plus festival crowds at Festival
 // Square. Every figure looks different — striped, checked and printed
 // shirts, hats, backpacks, tall, short, stocky and thin.
-// r12 shot-1/2/4 revision: a shootout must READ — the old figures hung
-// their arms and hid the gun at their side, so from any camera the "pistol"
-// was invisible. makePersonMesh / makePlayerMesh now expose their arm +
+//
+// A shootout must READ: makePersonMesh / makePlayerMesh expose their arm +
 // hand + gun meshes on group.userData.parts, and poseAim() puts a figure
 // into a two-handed aiming stance: both arms forward, pistol out in front
 // at chest height, so the gun + shooting pose read at a glance.
-// r12 BRIGHT-NIGHT revision (Sand 2026-11-21 ~10:39 WIT: "Bagus, bersih
-// variatif" — good, clean, VARIED): figures get SMOOTH rounded torsos
-// (capsules, not boxes) + shoulder spheres, so no character reads as a
-// box from the front camera, and the police cordon is VARIED — mixed
-// white/navy shirts, mixed vests, mixed skin, some capped, some bare —
-// instead of twelve identical white-shirt clones.
+//
+// Figures get SMOOTH rounded torsos (capsules, not boxes) + shoulder
+// spheres, so no character reads as a box from the front camera, and the
+// police cordon is VARIED — mixed white/navy shirts, mixed vests, mixed
+// skin, some capped, some bare — instead of twelve identical white-shirt
+// clones.
 import * as THREE from 'three';
 import { clamp, dist2, PED_COUNT } from './config.js';
 import { resolveCollisions } from './city.js';
@@ -25,10 +24,9 @@ import { shirtTexture } from './textures.js';
  glance): short slide + barrel + a vertical grip, ~0.5 m long total — NOT
  the old 0.7 m black slab that read as an SMG. Origin at the grip so
  poseAim() can seat it in the hands; barrel points +z (local forward).
- Round-2 targeted pass (shot 2 still did not read at a glance): the
- pistol is CHUNKIER — a wider slide, a fatter barrel, a taller grip and
- a taller front sight — so the slide + grip + barrel silhouette survives
- at 5–7 m from the camera instead of collapsing into a dark nub. */
+ The pistol is CHUNKIER — a wider slide, a fatter barrel, a taller grip
+ and a taller front sight — so the slide + grip + barrel silhouette
+ survives at 5–7 m from the camera instead of collapsing into a dark nub. */
 export function makePistol() {
   const gun = new THREE.Group();
   // TWO-TONE for at-a-glance readability: a bright silver slide + barrel
@@ -38,9 +36,6 @@ export function makePistol() {
   // dark officers and washed tan under the warm sunset + flash lights.
   const steel = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, roughness: 0.3, metalness: 0.85 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.7 });
-  // CHUNKIER still (Sand 2026-11-21: pistol must be BIG and readable):
-  // wider + taller slide, fatter barrel, taller grip — the silhouette
-  // survives at 5–7 m from the camera instead of collapsing into a nub.
   const slide = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.45), steel);
   slide.position.set(0, 0.08, 0.12);
   gun.add(slide);
@@ -57,11 +52,13 @@ export function makePistol() {
   gun.add(sight);
   return gun;
 }
+
 const SHIRT_COLOURS = ['#ff2a5e', '#19b8c4', '#ffd23f', '#37c978', '#ff7a1a', '#c78bff', '#ffffff', '#3fa7ff', '#ff9a56', '#58c93c', '#e8124a', '#00c2a8'];
 const SKIN_COLOURS = [0xd9a066, 0x8a5a34, 0xf2c9a0, 0x6b4226, 0xe8b88a, 0x5a3018];
 const PANTS_COLOURS = [0x2a3040, 0xffffff, 0xffd23f, 0x19b8c4, 0x333333, 0x8a6f4d, 0x7a2a3a, 0x2a6b3a, 0xc78bff];
 const HAIR_COLOURS = [0x1a1210, 0x3a2410, 0x6b4a1a, 0xd8b25e, 0x8a8a8a, 0x7a1a1a];
 const HAT_COLOURS = [0xff2a5e, 0xffd23f, 0x19b8c4, 0xffffff, 0x222226, 0x37c978, 0xff7a1a];
+
 /** Two-handed aiming stance: both arms forward, pistol out in front at
  chest height. The arms are boxes pivoted at their centre, so each arm is
  rotated forward (-x) and its hand + the gun are re-seated at the arm's
@@ -74,22 +71,27 @@ export function poseAim(group) {
   if (!group || !group.userData || !group.userData.parts) return false;
   const p = group.userData.parts;
   // Right (gun) arm: straight forward, slightly down.
-  if (p.armR) { p.armR.rotation.set(-1.45, 0, 0); p.armR.position.set(0.35, 1.32, 0.18); }
+  if (p.armR) {
+    p.armR.rotation.set(-1.45, 0, 0);
+    p.armR.position.set(0.35, 1.32, 0.18);
+  }
   if (p.handR) p.handR.position.set(0.3, 1.32, 0.55);
   // Left arm: forward + angled across the chest to the grip.
-  if (p.armL) { p.armL.rotation.set(-1.25, 0, 0.45); p.armL.position.set(0.05, 1.3, 0.28); }
+  if (p.armL) {
+    p.armL.rotation.set(-1.25, 0, 0.45);
+    p.armL.position.set(0.05, 1.3, 0.28);
+  }
   if (p.handL) p.handL.position.set(0.0, 1.3, 0.58);
   // Pistol CENTRED in front of the chest (a real two-handed stance), so
   // it reads in profile from EITHER camera side — the old x=0.44 seat hid
   // the gun behind the body from the south camera. Scaled 2.0x with the
-  // CHUNKIER pistol (Sand 2026-11-21: BIG and readable): the 2.3x take
-  // read as a silver CANNON, not a pistol — a 1.2 m pipe spanning the
-  // gap to the cordon. 2.0x + chunky slide is big and readable without
-  // becoming a bazooka. The flash sits 0.5 m PAST the muzzle tip, so the
-  // full barrel shows. Muzzle tip with the 2.0x chunkier pistol: gun-local
-  // z 0.82 + 0.52*2.0 = 1.86 — Mara (scale 1.4) tip 2.60 m out, officers
-  // (1.3) 2.42 m out, so shots.js stages Mara's flash at tip − 0.5 m and
-  // the cordon's at tip + 0.5 m. Keep this comment + those numbers in sync.
+  // CHUNKIER pistol: the 2.3x take read as a silver CANNON, not a pistol —
+  // a 1.2 m pipe spanning the gap to the cordon. 2.0x + chunky slide is
+  // big and readable without becoming a bazooka. The flash sits 0.5 m
+  // PAST the muzzle tip, so the full barrel shows. Muzzle tip with the
+  // 2.0x chunkier pistol: gun-local z 0.82 + 0.52*2.0 = 1.86 — Mara
+  // (scale 1.4) tip 2.60 m out, officers (1.3) 2.42 m out, so shots.js
+  // stages Mara's flash at tip − 0.5 m and the cordon's at tip + 0.5 m.
   if (p.gun) {
     p.gun.visible = true;
     p.gun.position.set(0.15, 1.32, 0.82);
@@ -98,6 +100,7 @@ export function poseAim(group) {
   }
   return true;
 }
+
 /** One fully varied pedestrian: patterned shirt, coloured pants or shorts,
  varied skin, hair, a cap/hat on ~1 in 3, a backpack on ~1 in 5, and a build
  that is tall, short, stocky or thin. `rng` is the seeded stream; when
@@ -125,14 +128,14 @@ function makePersonMesh(shirt, pants, skin, rng) {
     shortsBox.position.y = 0.62;
     group.add(shortsBox);
   }
-  // SMOOTH rounded torso (Sand 10:39 — "3D jelas"): a capsule, not a
-  // box, so the chest reads curved from the front camera, + smooth
-  // shoulder spheres where the arms meet the body. Same size as the
-  // old box (0.7 wide, 0.8 tall, 0.4 deep), so poseAim's arm + gun
-  // seats stay valid.
+  // SMOOTH rounded torso: a capsule, not a box, so the chest reads curved
+  // from the front camera, + smooth shoulder spheres where the arms meet
+  // the body. Same size as the old box (0.7 wide, 0.8 tall, 0.4 deep), so
+  // poseAim's arm + gun seats stay valid.
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.25, 4, 10), shirtMat);
   torso.scale.set(1.15, 1, 0.7);
-  torso.position.y = 1.2; torso.castShadow = true;
+  torso.position.y = 1.2;
+  torso.castShadow = true;
   group.add(torso);
   for (const s of [-1, 1]) {
     const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), shirtMat);
@@ -140,23 +143,38 @@ function makePersonMesh(shirt, pants, skin, rng) {
     group.add(shoulder);
   }
   const armMat = shirtMat;
-  let armL = null; let armR = null; let handL = null; let handR = null;
+  let armL = null;
+  let armR = null;
+  let handL = null;
+  let handR = null;
   for (const s of [-1, 1]) {
     const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.45, 4, 8), armMat);
     arm.position.set(s * 0.44, 1.18, 0);
-    if (s === 1 && r() < 0.18) { arm.position.set(0.44, 1.45, 0.15); arm.rotation.x = -0.9; }
+    if (s === 1 && r() < 0.18) {
+      arm.position.set(0.44, 1.45, 0.15);
+      arm.rotation.x = -0.9;
+    }
     group.add(arm);
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.16, 0.16), skinMat);
     hand.position.set(arm.position.x, arm.position.y - 0.36, arm.position.z);
     group.add(hand);
-    if (s === 1) { armR = arm; handR = hand; } else { armL = arm; handL = hand; }
+    if (s === 1) {
+      armR = arm;
+      handR = hand;
+    } else {
+      armL = arm;
+      handL = hand;
+    }
   }
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 10), skinMat);
-  head.position.y = 1.85; head.castShadow = true;
+  head.position.y = 1.85;
+  head.castShadow = true;
   group.add(head);
   if (r() < 0.8) {
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
-      new THREE.MeshStandardMaterial({ color: HAIR_COLOURS[Math.floor(r() * HAIR_COLOURS.length)], roughness: 0.9 }));
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.MeshStandardMaterial({ color: HAIR_COLOURS[Math.floor(r() * HAIR_COLOURS.length)], roughness: 0.9 }),
+    );
     hair.position.y = 1.88;
     group.add(hair);
   }
@@ -181,8 +199,10 @@ function makePersonMesh(shirt, pants, skin, rng) {
   }
   // Backpack on ~1 in 5.
   if (r() < 0.2) {
-    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.18),
-      new THREE.MeshStandardMaterial({ color: HAT_COLOURS[Math.floor(r() * HAT_COLOURS.length)], roughness: 0.9 }));
+    const pack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.5, 0.18),
+      new THREE.MeshStandardMaterial({ color: HAT_COLOURS[Math.floor(r() * HAT_COLOURS.length)], roughness: 0.9 }),
+    );
     pack.position.set(0, 1.25, -0.3);
     group.add(pack);
   }
@@ -199,6 +219,7 @@ function makePersonMesh(shirt, pants, skin, rng) {
   group.userData.parts = { armL, armR, handL, handR, gun };
   return { group, gun };
 }
+
 export function spawnPedestrians(scene, rng) {
   const peds = [];
   for (let i = 0; i < PED_COUNT; i += 1) {
@@ -207,15 +228,22 @@ export function spawnPedestrians(scene, rng) {
     const skin = SKIN_COLOURS[Math.floor(rng() * SKIN_COLOURS.length)];
     const m = makePersonMesh(shirt, pants, skin, rng);
     // Half the crowd strolls the Playa Dorada front; the rest spread out.
-    let x, z;
-    if (i % 2 === 0) { x = -220 + rng() * 440; z = 150 + rng() * 70; }
-    else { x = -220 + rng() * 440; z = -220 + rng() * 440; }
+    let x;
+    let z;
+    if (i % 2 === 0) {
+      x = -220 + rng() * 440;
+      z = 150 + rng() * 70;
+    } else {
+      x = -220 + rng() * 440;
+      z = -220 + rng() * 440;
+    }
     m.group.position.set(x, 0, z);
     scene.add(m.group);
     peds.push({ mesh: m.group, x, z, wx: x, wz: z, speed: 1.5 + rng() * 2, heading: rng() * Math.PI * 2, flee: false });
   }
   return peds;
 }
+
 export function spawnPedestriansNear(scene, rng, cx, cz, n) {
   const peds = [];
   for (let i = 0; i < n; i += 1) {
@@ -231,6 +259,7 @@ export function spawnPedestriansNear(scene, rng, cx, cz, n) {
   }
   return peds;
 }
+
 /** Pedestrians stroll to waypoints; gunfire makes them flee from the shots. */
 export function updatePedestrians(peds, dt, gunPos, colliders) {
   for (const p of peds) {
@@ -245,7 +274,8 @@ export function updatePedestrians(peds, dt, gunPos, colliders) {
       p.heading = away;
       if (!gunPos || dist2([p.x, p.z], gunPos) > 60) p.flee = false;
     } else {
-      const dx = p.wx - p.x, dz = p.wz - p.z;
+      const dx = p.wx - p.x;
+      const dz = p.wz - p.z;
       const d = Math.hypot(dx, dz);
       if (d < 2) {
         p.wx = clamp(p.x + (Math.random() - 0.5) * 80, -230, 230);
@@ -259,20 +289,21 @@ export function updatePedestrians(peds, dt, gunPos, colliders) {
     }
     const pos = { x: p.x, z: p.z };
     resolveCollisions(colliders, pos, 0.5);
-    p.x = pos.x; p.z = pos.z;
+    p.x = pos.x;
+    p.z = pos.z;
     p.mesh.position.set(p.x, 0, p.z);
     p.mesh.rotation.y = p.heading;
     p.mesh.position.y = Math.abs(Math.sin(performance.now() * 0.008 + p.x)) * 0.05;
   }
 }
+
 /** An armed enemy: police officer or Tiburones shark, vest + cap/band.
  Police read as police at a glance against the street — white or navy
- shirts + dark vests (like the white/black cruisers) — but VARIED
- (Sand 2026-11-21 ~10:39 WIT: "variatif"): each officer's shirt, vest,
- skin and cap come from a deterministic hash of his spawn position, so
- the cordon is a mixed squad — white shirts, navy shirts, navy/black
- vests, several skin tones, some capped, some bare — never twelve
- identical clones. */
+ shirts + dark vests (like the white/black cruisers) — but VARIED:
+ each officer's shirt, vest, skin and cap come from a deterministic hash
+ of his spawn position, so the cordon is a mixed squad — white shirts,
+ navy shirts, navy/black vests, several skin tones, some capped, some
+ bare — never twelve identical clones. */
 export function spawnEnemy(scene, x, z, kind) {
   const v = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
   const shirt = kind === 'police' ? (v < 0.55 ? '#e8ecf2' : '#1c2a4a') : '#222226';
@@ -280,28 +311,43 @@ export function spawnEnemy(scene, x, z, kind) {
   const skin = SKIN_COLOURS[Math.floor(v * SKIN_COLOURS.length) % SKIN_COLOURS.length];
   const m = makePersonMesh(shirt, kind === 'police' ? 0x1c2a4a : 0x333333, skin);
   m.gun.visible = true;
-  const vest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.55, 0.44),
-    new THREE.MeshStandardMaterial({ color: vestCol, roughness: 0.9 }));
+  const vest = new THREE.Mesh(
+    new THREE.BoxGeometry(0.72, 0.55, 0.44),
+    new THREE.MeshStandardMaterial({ color: vestCol, roughness: 0.9 }),
+  );
   vest.position.set(0, 1.25, 0);
   m.group.add(vest);
   if (kind === 'police' && v < 0.6) {
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.12, 10),
-      new THREE.MeshStandardMaterial({ color: 0x0d1a3a, roughness: 0.8 }));
+    const cap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.32, 0.12, 10),
+      new THREE.MeshStandardMaterial({ color: 0x0d1a3a, roughness: 0.8 }),
+    );
     cap.position.y = 2.08;
     m.group.add(cap);
   } else if (kind !== 'police') {
-    const band = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.12, 0.58),
-      new THREE.MeshStandardMaterial({ color: 0xe8124a, roughness: 0.85 }));
+    const band = new THREE.Mesh(
+      new THREE.BoxGeometry(0.58, 0.12, 0.58),
+      new THREE.MeshStandardMaterial({ color: 0xe8124a, roughness: 0.85 }),
+    );
     band.position.y = 1.98;
     m.group.add(band);
   }
   m.group.position.set(x, 0, z);
   scene.add(m.group);
   return {
-    mesh: m.group, gun: m.gun, x, z, kind,
-    health: 100, heading: 0, shootT: 1 + Math.random(), alive: true, speed: 3.2,
+    mesh: m.group,
+    gun: m.gun,
+    x,
+    z,
+    kind,
+    health: 100,
+    heading: 0,
+    shootT: 1 + Math.random(),
+    alive: true,
+    speed: 3.2,
   };
 }
+
 /** Enemies close to ~18 units, strafe, and shoot at the player. */
 export function updateEnemy(e, dt, px, pz, onShoot, colliders) {
   if (!e.alive) return;
@@ -313,7 +359,8 @@ export function updateEnemy(e, dt, px, pz, onShoot, colliders) {
     const nz = e.z + Math.cos(want) * e.speed * dt;
     const pos = { x: nx, z: nz };
     resolveCollisions(colliders, pos, 0.5);
-    e.x = pos.x; e.z = pos.z;
+    e.x = pos.x;
+    e.z = pos.z;
   }
   e.mesh.position.set(e.x, 0, e.z);
   e.mesh.rotation.y = e.heading;
@@ -323,13 +370,14 @@ export function updateEnemy(e, dt, px, pz, onShoot, colliders) {
     onShoot(e);
   }
 }
+
 // ---- player character -------------------------------------------------------
+
 /** Mara Solis, on foot: orange jacket with a dark collar + zipper stripe +
  belt, dark jeans, long dark hair down her back, boots — a readable
- close-up character. Her torso is a SMOOTH capsule + shoulder spheres
- (Sand 10:39 — "3D jelas"), not a box, so she reads as a person from
- the front camera instead of a block. Same size as the old box, so
- poseAim's arm + gun seats stay valid. */
+ close-up character. Her torso is a SMOOTH capsule + shoulder spheres,
+ not a box, so she reads as a person from the front camera instead of a
+ block. Same size as the old box, so poseAim's arm + gun seats stay valid. */
 export function makePlayerMesh(scene) {
   const group = new THREE.Group();
   const jacket = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.85 });
@@ -342,33 +390,45 @@ export function makePlayerMesh(scene) {
     group.add(leg);
   }
   for (const s of [-1, 1]) {
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.4),
-      new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.7 }));
+    const boot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.24, 0.18, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.7 }),
+    );
     boot.position.set(s * 0.14, 0.09, 0.03);
     group.add(boot);
   }
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.3, 4, 10), jacket);
   torso.scale.set(1.15, 1, 0.68);
-  torso.position.y = 1.25; torso.castShadow = true;
+  torso.position.y = 1.25;
+  torso.castShadow = true;
   group.add(torso);
   for (const s of [-1, 1]) {
     const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), jacket);
     shoulder.position.set(s * 0.38, 1.58, 0);
     group.add(shoulder);
   }
-  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.44),
-    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
+  const collar = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.14, 0.44),
+    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }),
+  );
   collar.position.set(0, 1.68, 0);
   group.add(collar);
-  const zip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.8, 0.03),
-    new THREE.MeshStandardMaterial({ color: 0xffe9d0, roughness: 0.6 }));
+  const zip = new THREE.Mesh(
+    new THREE.BoxGeometry(0.07, 0.8, 0.03),
+    new THREE.MeshStandardMaterial({ color: 0xffe9d0, roughness: 0.6 }),
+  );
   zip.position.set(0, 1.25, 0.22);
   group.add(zip);
-  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.77, 0.1, 0.44),
-    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.8 }));
+  const belt = new THREE.Mesh(
+    new THREE.BoxGeometry(0.77, 0.1, 0.44),
+    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.8 }),
+  );
   belt.position.set(0, 0.86, 0);
   group.add(belt);
-  let armL = null; let armR = null; let handL = null; let handR = null;
+  let armL = null;
+  let armR = null;
+  let handL = null;
+  let handR = null;
   for (const s of [-1, 1]) {
     const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.5, 4, 8), jacket);
     arm.position.set(s * 0.47, 1.22, 0);
@@ -376,18 +436,27 @@ export function makePlayerMesh(scene) {
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.17, 0.17), skin);
     hand.position.set(s * 0.47, 0.86, 0);
     group.add(hand);
-    if (s === 1) { armR = arm; handR = hand; } else { armL = arm; handL = hand; }
+    if (s === 1) {
+      armR = arm;
+      handR = hand;
+    } else {
+      armL = arm;
+      handL = hand;
+    }
   }
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), skin);
-  head.position.y = 1.92; head.castShadow = true;
+  head.position.y = 1.92;
+  head.castShadow = true;
   group.add(head);
   // A nose, so Mara reads as a person in profile — the old featureless
   // sphere head read as "back of head" from every side angle.
   const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.14), skin);
   nose.position.set(0, 1.9, 0.3);
   group.add(nose);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.42),
-    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.42),
+    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }),
+  );
   hair.position.y = 1.95;
   group.add(hair);
   // Eyes, so Mara's face reads in profile — the old full hair cap + bare
@@ -398,17 +467,21 @@ export function makePlayerMesh(scene) {
     eye.position.set(s * 0.11, 1.95, 0.27);
     group.add(eye);
   }
-  const backHair = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.62, 0.14),
-    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
+  const backHair = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.62, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }),
+  );
   backHair.position.set(0, 1.55, -0.24);
   group.add(backHair);
   const gun = makePistol();
-  gun.position.set(0.42, 1.3, 0.35); gun.visible = false;
+  gun.position.set(0.42, 1.3, 0.35);
+  gun.visible = false;
   group.add(gun);
   group.userData.parts = { armL, armR, handL, handR, gun };
   scene.add(group);
   return { group, gun };
 }
+
 /** Move the on-foot player with WASD relative to the camera heading. */
 export function movePlayerOnFoot(p, dt, mx, mz, sprint, colliders) {
   const speed = sprint ? 12 : 7.5;
@@ -416,7 +489,8 @@ export function movePlayerOnFoot(p, dt, mx, mz, sprint, colliders) {
   const nz = p.z + mz * speed * dt;
   const pos = { x: nx, z: nz };
   resolveCollisions(colliders, pos, 0.6);
-  p.x = pos.x; p.z = pos.z;
+  p.x = pos.x;
+  p.z = pos.z;
   if (Math.abs(mx) > 0.01 || Math.abs(mz) > 0.01) p.heading = Math.atan2(mx, mz);
   p.mesh.group.position.set(p.x, 0, p.z);
   p.mesh.group.rotation.y = p.heading;

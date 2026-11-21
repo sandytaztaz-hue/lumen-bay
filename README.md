@@ -1,4 +1,4 @@
-# LUMEN BAY r12 — Night Pursuit: a NIGHT boulevard chase (22:40, six cruisers + helicopter + dispatch), a wet-night pier shootout, a vault heist and a dawn boat escape in Puerto Lumen — 15 story missions, turf war, garage upgrades, NOS, robberies & properties
+# LUMEN BAY r13 — Night Pursuit: a BRIGHT-NIGHT beachfront chase (22:40, eight cruisers + helicopter + dispatch), a bright-night street shootout, a full city map and a dawn boat escape in Puerto Lumen — 15 story missions, turf war, garage upgrades, NOS, robberies & properties
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
@@ -18,46 +18,41 @@ turquoise sea, sunlit facades with reflective glass windows and neon signs
 glowing softer in the midday sun, a ferris wheel over Playa Dorada,
 palm-lined Ocean Boulevard, beach umbrellas and food carts. The four
 screenshots each show the city at a DIFFERENT time and in different
-weather, like the top entries: a NIGHT boulevard chase (22:40, neon and
-lamp glow, six police cruisers and the helicopter with a searchlight cone),
-a night pier shootout in the rain-wet streets (23:20, neon and lamp glow,
-wet reflections, muzzle flashes), a vault-interior heist (21:40, warm
-gold light, dust in the beams) and a dawn marina escape (06:10, mist over
-the water, sunrise, the speedboat clear in frame). You are
+weather, like the top entries: a BRIGHT-NIGHT beachfront chase (22:40, dark
+sky with bright street lamps and lit windows, eight police cruisers and the
+helicopter with a searchlight beam), a bright-night street shootout (23:20,
+muzzle flashes, a 12-officer cordon, a downed officer), a FULL CITY MAP
+(21:40, street grid, 12 districts, escape route, markers, legend, compass)
+and a dawn beach escape (06:10, mist over the water, sunrise, the speedboat
+clear in frame). You are
 **Mara Solis**, getaway driver for a small crew — fixer **Tio Reyes**, hacker
 **Lena Cruz**, wheelman **Big Dario**. The rival crew **Los Tiburones**, led by
 El Tiburon, holds all 12 districts of the city. Take it back, one district at
-a time — in a big hot pink-red **Veloz Comet RS** convertible with real metallic
-clearcoat paint, down streets packed with traffic, crowds and police.
+a time — in a big rosso corsa red **Veloz Comet RS** sports car with real
+metallic clearcoat paint, down streets packed with traffic, crowds and police.
 
 ## The look — four different situations, four different cameras
 
-The cover shot is a NIGHT chase down the beach avenue (22:40): neon signs
-and lamp glow over wet-looking asphalt, the hot pink-red Comet RS — a real
-low-slung GT with a long hood, grille, mirrors, door lines, wheel arches
-and a visible driver — BIG in frame (~30% of frame width) on a close LOW
-rear chase camera, NOS burning, dust behind the wheels, SIX
+The cover shot is a BRIGHT-NIGHT chase down the beach avenue (22:40): street
+lamps and lit windows over wet-looking asphalt, the red Comet RS — a real
+low-slung Ferrari-style GT with a sloped hood, raked cabin, big wheels and a
+spoiler, a visible driver — BIG in frame (~30% of frame width) on a close LOW
+front chase camera, NOS burning, dust behind the wheels, EIGHT
 black-and-white police cruisers with "POLICE" door markings and flashing
-red/blue light bars packed close around it — a tight chaser beside the
-hero's flank, a second chaser behind, two head-on cruisers ahead with
-their light bars facing the lens, two flankers at the hero's sides — the
-helicopter overhead with a visible searchlight cone and a thin translucent
-rotor, a roadblock ahead, the ferris wheel and umbrellas on the beach, and
-LCPD DISPATCH talking in the dialogue box. Shot 2 is the same city at
-NIGHT (23:20): a low ground-level side view of Mara on foot at the marina
-pier, firing from behind the hero car's door — the whole car in frame — at
-a police cordon, BIG muzzle flashes, cash flying, the heli's spotlight cone
-over the wet street with visible puddles and reflections, neon signs and
-lamp glows in the dark. Shot 3 goes INSIDE the Torre Lumen vault (21:40):
-a high wide camera looking down into the vault — gold bars and cash piles
-filling the floor, guards down, Mara and two allies under warm vault light
-with dust in the beams, the round gold vault door blown open, the tall
-vault walls hiding the city outside. Shot 4 is DAWN on the south beach
-(06:10): a high wide establishing shot — the hero car BIG on the sand at
-the water's edge, the speedboat moored close off it on the screen-left
-side, hull and stern fully in frame and clear of the MISSION PASSED banner
-and the toasts, the crew standing by the car, mist over the water and a
-small warm sunrise over the sea, MISSION PASSED. The streets are alive:
+red/blue light bars packed close around it, two police motorcycles in-lane,
+the helicopter overhead with a visible spotlight beam onto the car, a
+roadblock ahead, palms and the beach beside the road, and LCPD DISPATCH
+talking in the dialogue box. Shot 2 is the same city at night (23:20): Mara
+on foot at the beachfront road, aiming her pistol with a starburst muzzle
+flash at a 12-officer cordon, a downed police officer lying flat with a
+blood pool in the foreground, the heli overhead, gold stars. Shot 3 is the
+FULL CITY MAP (21:40): a dense legible map of the whole island — street
+grid, 12 districts, escape route, markers, legend and compass, HUD kept.
+Shot 4 is DAWN on the south beach (06:10): a wide establishing shot — the
+hero car on the sand at the water's edge, the speedboat moored just off it
+in the centre of frame, white hull with a red stripe and cabin fully
+visible, the crew standing by the car, mist over the water and a big warm
+sunrise over the sea, MISSION PASSED. The streets are alive:
 crowds where every person looks different — striped, checked and printed
 shirts, hats, backpacks, tall, short, stocky and thin — and neon signs
 (CASH IN HAND, TACOS, BAR LUNA) over sunlit shopfronts. The HUD is dense
@@ -87,7 +82,7 @@ Lumen, and the city flies crew colours at 12/12.
 - **15 story missions** — steal, deliver, timed, evade, shootout, race, rob,
   multi-stage finale. Each pays cash and unlocks the next.
 - **Wanted 0–5 stars** — police cruisers chase and ram with flashing light
-  bars; at 3+ stars a helicopter circles with a spotlight cone and police set
+  bars; at 3+ stars a helicopter circles with a spotlight beam and police set
   **roadblocks** across the road ahead. **Line-of-sight chases**: break sight
   behind buildings and the heat decays faster.
 - **Combat** — fists, pistol (infinite ammo), SMG pickup; hitscan shooting,
@@ -144,21 +139,19 @@ three.js is vendored under `game/vendor/three/` under its own MIT License.
 ## Screenshots
 
 Four real headless-Chrome renders live in `screenshots/` — four DIFFERENT
-situations, like the top entries: the NIGHT boulevard chase cover (22:40,
-neon and lamp glow, hero ~30% of the frame on a low rear chase camera, SIX
-cruisers with flashing light bars around it, thin translucent heli rotor,
-dispatch dialogue, $18,450),
-the NIGHT pier shootout (23:20, low ground-level side view, Mara firing from
-behind the hero car's door — car fully in frame — police cordon ahead, heli
-spotlight cone overhead, BIG muzzle flashes, cash flying, wet street with
-visible puddles, $21,700),
-the VAULT INTERIOR heist (21:40, high wide camera looking down into the
-Torre Lumen vault — gold bars, cash piles filling the floor, guards down,
-Mara and two allies, $48,500) and the DAWN marina escape (06:10, high wide
-establishing shot — MISSION PASSED, hero car BIG on the south sand at the
-water's edge, speedboat moored close off it on the screen-left side, hull
-and stern fully in frame and clear of the banner and the toasts, mist over
-the water, small warm sunrise).
+situations, like the top entries: the BRIGHT-NIGHT beachfront chase cover
+(22:40, dark sky with bright street lamps, hero ~30% of the frame on a low
+front chase camera, EIGHT cruisers with flashing light bars around it, two
+police motorcycles, heli beam onto the car, dispatch dialogue, $18,450),
+the BRIGHT-NIGHT street shootout (23:20, Mara aiming with pistol and
+starburst muzzle flash, 12-officer cordon, downed officer with a blood pool
+in the foreground, heli overhead, $21,700),
+the FULL CITY MAP (21:40, dense legible map — street grid, 12 districts,
+escape route, markers, legend, compass, $48,500) and the DAWN beach escape
+(06:10, wide establishing shot — MISSION PASSED, hero car on the south sand
+at the water's edge, speedboat moored close off it in the centre of frame,
+white hull with red stripe and cabin fully visible, mist over the water,
+big warm sunrise).
 All with full dense HUD and a per-shot clock. Dialogue boxes show drawn
 character portraits (Mara, Tio Reyes, Lena Cruz, LCPD Dispatch), not letter
 circles. Shot 4 doubles as the feed's story-progress thumbnail (MISSION

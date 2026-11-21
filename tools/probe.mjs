@@ -1,4 +1,4 @@
-// LUMEN BAY r12 polling probe: re-tests the transitions a naive driver reads
+// LUMEN BAY r13 polling probe: re-tests the transitions a naive driver reads
 // too early (driver-read race under SwiftShader: frame tick ~310ms, driver
 // read ~250-370ms after tap). Real key taps go through CDP
 // Input.dispatchKeyEvent, and every check waits for its transition instead
@@ -166,5 +166,5 @@ try {
   await sleep(1000);
 }
 const passed = results.filter((x) => x.ok).length;
-console.log(`=== r12 probe: ${passed}/${results.length} PASS ===`);
+console.log(`=== r13 probe: ${passed}/${results.length} PASS ===`);
 process.exitCode = passed === results.length ? 0 : 1;

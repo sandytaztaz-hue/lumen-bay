@@ -1,8 +1,8 @@
-// LUMEN BAY r12 — fresh rebuild. Every tuning number, district, mission
+// LUMEN BAY r13 — fresh rebuild. Every tuning number, district, mission
 // and price in one place. Puerto Lumen is a 480 x 480 island city: roads
 // every 60, turquoise sea west + south. Plain play is BRIGHT MIDDAY (12:30);
 // the four screenshots each take their own time and weather, like the top
-// entries — and r12's cover is a BRIGHT-NIGHT boulevard chase (22:40,
+// entries — and the cover is a BRIGHT-NIGHT boulevard chase (22:40,
 // Sand 2026-11-21 ~10:36 WIT: "malam hari terang"): the top-1 Karimbu
 // front-three-quarter composition shot at NIGHT — dark sky + bright
 // street/city lights, the hero's FRONT + the police fronts to the lens,
@@ -20,11 +20,11 @@ export const DAYLIGHT = {
   sunPos: [420, 210, 175], sunColour: 0xfff6e0, sunIntensity: 3.2,
   rimColour: 0x9fc8ff, skyTop: 0x2f7fd0, skyHorizon: 0xcfe8f5, fog: 0xa8cfe0,
 };
-// r12 — PER-SHOT lighting presets. One preset per screenshot; nothing is
-// shared between shots except the city itself. Shot 1 is the BRIGHT-NIGHT
-// beach chase ('brightnight', 22:40) — the top-1 Karimbu composition at
-// night: dark sky, bright street lamps + lit windows, the heli beam and
-// the cruisers' red/blue light bars carrying the frame, the road + cars
+// PER-SHOT lighting presets. One preset per screenshot; nothing is shared
+// between shots except the city itself. Shot 1 is the BRIGHT-NIGHT beach
+// chase ('brightnight', 22:40) — the top-1 Karimbu composition at night:
+// dark sky, bright street lamps + lit windows, the heli beam and the
+// cruisers' red/blue light bars carrying the frame, the road + cars
 // still reading clearly. Shot 2 is the same bright night on the street
 // shootout (23:20). Shot 3 is the FULL CITY MAP (21:40). Shot 4 is
 // dawn mist (06:10), with the sun disc + glow strengthened so the sunrise
@@ -67,7 +67,7 @@ export const LIGHTING_PRESETS = {
     exposure: 0.85, envIntensity: 0.5, clock: '18:45',
   },
   // Shot 1 (old) — NIGHT CHASE, clear night, neon boulevard. Kept for
-  // reference; shots 1-2 moved to the sunset preset (Sand: the night
+  // reference; shots 1-2 moved to the bright-night preset (Sand: the night
   // shots read too cartoony/blocky, and the top 1-10 all shoot golden
   // hour). No sun disc at all (a white disc at night reads as a moon
   // artefact). Dark blue starry sky, cool dim moonlight, fog close and
@@ -127,10 +127,10 @@ export const LIGHTING_PRESETS = {
   },
   // Shot 4 — DAWN, morning mist over the water. Pale pink-orange sunrise
   // LOW over the SOUTH sea (the south beach is the one open horizon).
-  // r12 shot-1/2/4 revision: the sun reads too washed-out and small in the
-  // take, so the disc is bigger (0.55→0.9), the halo stronger and wider
-  // (0.5→0.65, 220→300), the sun light hotter (2.4→3.0) — the sunrise
-  // must glow over the water, not sit there as a pale coin.
+  // The sun reads too washed-out and small in the take, so the disc is
+  // bigger (0.55→0.9), the halo stronger and wider (0.5→0.65, 220→300),
+  // the sun light hotter (2.4→3.0) — the sunrise must glow over the
+  // water, not sit there as a pale coin.
   dawn: {
     sky: 'dawn', sunPos: [-150, 30, 480], sunDisc: [0xff7a1a, 0.9, true],
     glow: [0xff8c2a, 0.65, 300], streakOpacity: 0.5,
@@ -212,9 +212,9 @@ export const CARS = {
   shark: { name: 'Tiburon Coupe', colour: 0x222226, top: 32, accel: 15 },
   police: { name: 'LCPD Cruiser', colour: 0xf2f2f2, top: 33, accel: 16 },
 };
-// r12: a longer LCPD call-sign roster — the night-chase cover runs SIX
-// cruisers plus AIR-1, and every unit needs its own name on the response list.
-// r12 revision: EIGHT cruisers on the cover, so two more call-signs.
+// A longer LCPD call-sign roster — the night-chase cover runs EIGHT
+// cruisers plus AIR-1, and every unit needs its own name on the
+// response list.
 export const POLICE_ROSTER = ['PELICAN-11', 'GECKO-25', 'BARRACUDA-18', 'TAC-45', 'COBRA-07', 'VIPER-33', 'ORCA-09', 'FALCON-52'];
 export const WEAPONS = {
   fists: { name: 'Fists', damage: 12, rate: 0.45, range: 3, auto: false },

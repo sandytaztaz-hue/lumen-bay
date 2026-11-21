@@ -1,4 +1,4 @@
-// LUMEN BAY r12 — the HUD, rebuilt on the top-3 formula and denser than
+// LUMEN BAY — the HUD, rebuilt on the top-3 formula and denser than
 // ever: mission panel (job title, objectives with checkmarks, stage x/y,
 // big timer, NEXT step, alert banners, controls hint, STORY + REP), WANTED
 // stars top-center, big green cash + weapon slots + NOS + health/armour
@@ -8,12 +8,14 @@
 // ring while wanted, dialogue box with drawn portraits, big speed + gear +
 // vehicle + condition + radio. All readable at a glance, like the top
 // entries: lots of text, lots of notifications.
-// r12 revision: shot 3 is now a FULL CITY MAP (drawFullMap) — the same
-// minimap data (districts, streets, landmarks, route, blips) rendered
-// full-screen, with the game's HUD panels floating on top. The LCPD list
-// also caps its rows: the cover now runs EIGHT cruisers + AIR-1, and nine
-// rows would push the panel down over the RESPECT bar — so it shows five
-// cruisers + AIR-1 + a "+N MORE UNITS" footer, BRISA BAY style.
+//
+// Shot 3 is a FULL CITY MAP (drawFullMap) — the same minimap data
+// (districts, streets, landmarks, route, blips) rendered full-screen, with
+// the game's HUD panels floating on top. The LCPD list also caps its rows:
+// the cover now runs EIGHT cruisers + AIR-1, and nine rows would push the
+// panel down over the RESPECT bar — so it shows five cruisers + AIR-1 +
+// a "+N MORE UNITS" footer, BRISA BAY style.
+//
 // Map legibility (first render review): landmark pins carry NO text —
 // their names duplicate the district names and stacked into unreadable
 // piles. The player arrow carries NO text tag (the legend explains it;
@@ -58,7 +60,9 @@ export function createHud() {
     _alertsCache: '',
     _respectCache: '',
     /** Per-shot HUD clock — each screenshot shows its own time of day. */
-    setClock(t) { if (t) el.clock.textContent = t; },
+    setClock(t) {
+      if (t) el.clock.textContent = t;
+    },
     log(msg) {
       const div = document.createElement('div');
       div.textContent = msg;
@@ -105,12 +109,16 @@ export function createHud() {
       el.prompt.style.display = text ? 'block' : 'none';
     },
     showGarage(rows, cash) {
-      el.garageList.innerHTML = rows.map((r) => `<div>${r}</div>`).join('') + `<div class="dim">Cash $${cash} — 1/2/3 buy, 4 repair $150, E close</div>`;
+      el.garageList.innerHTML = rows.map((r) => `<div>${r}</div>`).join('')
+        + `<div class="dim">Cash $${cash} — 1/2/3 buy, 4 repair $150, E close</div>`;
       el.garage.style.display = 'block';
     },
-    hideGarage() { el.garage.style.display = 'none'; },
+    hideGarage() {
+      el.garage.style.display = 'none';
+    },
   };
 }
+
 /** Drawn character portraits for the dialogue box. Flat-style SVG drawn in
  code, no image files: Mara (dark hair, orange jacket), Tio Reyes (cap +
  sunglasses), Lena Cruz (pink cap), LCPD Dispatch (headset + badge). Each
@@ -187,12 +195,13 @@ function portraitSVG(name) {
     + '<circle cx="18.5" cy="20" r="1.3" fill="#1a1210"/><circle cx="25.5" cy="20" r="1.3" fill="#1a1210"/>'
     + '<path d="M19 24.5 Q22 27 25 24.5" stroke="#7a3a10" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>';
 }
+
 /** Per-frame HUD refresh from the live game state. */
 export function updateHud(hud, s) {
   const el = hud.el;
   el.stars.textContent = '★'.repeat(s.wanted) + '☆'.repeat(5 - s.wanted);
-  // Sand 2026-11-21 ~02:08 WIT: WANTED stars are GOLD, always — the red
-  // stars read as damage/error. Rich gold #ffb700, never pale yellow.
+  // WANTED stars are GOLD, always — the red stars read as damage/error.
+  // Rich gold #ffb700, never pale yellow.
   el.stars.style.color = '#ffb700';
   el.wantedLabel.textContent = s.wanted > 0 ? 'WANTED' : 'NOT WANTED';
   el.wantedLabel.style.color = s.wanted >= 3 ? '#ff5252' : '#9fd4ff';
@@ -302,6 +311,7 @@ export function updateHud(hud, s) {
     drawMinimap(el.minimap, s);
   }
 }
+
 /** The detailed minimap: turquoise sea + sand, district turf colours + labels,
  streets with names, ferris wheel + lighthouse icons, mission marker, police
  blips, roadblocks, heli, properties, robbery targets, race checkpoints and
@@ -309,7 +319,8 @@ export function updateHud(hud, s) {
  a round canvas (CSS border-radius: 50%). */
 function drawMinimap(canvas, s) {
   const g = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.width;
+  const H = canvas.height;
   const toMap = (x, z) => [(x + 240) / 480 * W, (z + 240) / 480 * H];
   g.clearRect(0, 0, W, H);
   g.fillStyle = '#0e2a3a';
@@ -337,8 +348,14 @@ function drawMinimap(canvas, s) {
   g.lineWidth = 2;
   for (let i = -4; i <= 4; i += 1) {
     const c = (i * 60 + 240) / 480 * W;
-    g.beginPath(); g.moveTo(c, 0); g.lineTo(c, H); g.stroke();
-    g.beginPath(); g.moveTo(0, c); g.lineTo(W, c); g.stroke();
+    g.beginPath();
+    g.moveTo(c, 0);
+    g.lineTo(c, H);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(0, c);
+    g.lineTo(W, c);
+    g.stroke();
   }
   g.fillStyle = 'rgba(255,255,255,0.95)';
   g.font = 'bold 7px system-ui, sans-serif';
@@ -357,12 +374,17 @@ function drawMinimap(canvas, s) {
   }
   const [fx, fy] = toMap(FERRIS.pos[0], FERRIS.pos[1]);
   g.fillStyle = '#ff2a5e';
-  g.beginPath(); g.arc(fx, fy, 5, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#fff'; g.font = 'bold 7px system-ui, sans-serif';
+  g.beginPath();
+  g.arc(fx, fy, 5, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#fff';
+  g.font = 'bold 7px system-ui, sans-serif';
   g.fillText('F', fx, fy + 2.5);
   const [lx, ly] = toMap(180, -180);
   g.fillStyle = '#ffd23f';
-  g.beginPath(); g.arc(lx, ly, 4, 0, Math.PI * 2); g.fill();
+  g.beginPath();
+  g.arc(lx, ly, 4, 0, Math.PI * 2);
+  g.fill();
   g.font = 'bold 11px system-ui, sans-serif';
   for (const p of s.properties) {
     const [x, y] = toMap(p.pos[0], p.pos[1]);
@@ -386,15 +408,24 @@ function drawMinimap(canvas, s) {
     const pulse = 3 + Math.sin(performance.now() * 0.006) * 1.5;
     g.fillStyle = '#ffd23f';
     g.beginPath();
-    g.moveTo(x, y - pulse - 3); g.lineTo(x + pulse + 3, y); g.lineTo(x, y + pulse + 3); g.lineTo(x - pulse - 3, y);
-    g.closePath(); g.fill();
+    g.moveTo(x, y - pulse - 3);
+    g.lineTo(x + pulse + 3, y);
+    g.lineTo(x, y + pulse + 3);
+    g.lineTo(x - pulse - 3, y);
+    g.closePath();
+    g.fill();
   }
   for (const [x, z] of s.policeBlips) {
     const [mx, my] = toMap(x, z);
     g.fillStyle = '#4d8dff';
-    g.beginPath(); g.arc(mx, my, 3.5, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#fff'; g.lineWidth = 1;
-    g.beginPath(); g.arc(mx, my, 3.5, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.arc(mx, my, 3.5, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#fff';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(mx, my, 3.5, 0, Math.PI * 2);
+    g.stroke();
   }
   g.fillStyle = '#ff2a2a';
   for (const [x, z] of s.roadblocks) {
@@ -413,10 +444,14 @@ function drawMinimap(canvas, s) {
     g.strokeStyle = 'rgba(255,42,42,0.9)';
     g.lineWidth = 2;
     g.setLineDash([6, 4]);
-    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.arc(px, py, rPx, 0, Math.PI * 2);
+    g.stroke();
     g.setLineDash([]);
     g.fillStyle = 'rgba(255,42,42,0.10)';
-    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.fill();
+    g.beginPath();
+    g.arc(px, py, rPx, 0, Math.PI * 2);
+    g.fill();
   }
   const [px, py] = toMap(s.px, s.pz);
   g.save();
@@ -424,13 +459,17 @@ function drawMinimap(canvas, s) {
   g.rotate(Math.atan2(Math.sin(s.heading), Math.cos(s.heading)) * -1 + Math.PI);
   g.fillStyle = '#fff';
   g.beginPath();
-  g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(-5, 5);
-  g.closePath(); g.fill();
+  g.moveTo(0, -7);
+  g.lineTo(5, 5);
+  g.lineTo(-5, 5);
+  g.closePath();
+  g.fill();
   g.restore();
   g.fillStyle = '#fff';
   g.font = 'bold 10px system-ui, sans-serif';
   g.fillText('N', W - 12, 14);
 }
+
 /** The FULL CITY MAP (shot 3): the same minimap data as drawMinimap, but
  rendered full-screen on a 1280x720 canvas — the whole of Puerto Lumen in
  one frame, dense and legible, like the top entries' big detailed minimaps
@@ -446,10 +485,12 @@ function drawMinimap(canvas, s) {
  stars, cash, toasts, dialogue, speed) floats on top of it. */
 function drawFullMap(canvas, s) {
   const g = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.width;
+  const H = canvas.height;
   // City square: 640 px for 480 world units, centred at (640, 360).
   const S = 640 / 480;
-  const OX = 320, OY = 40;
+  const OX = 320;
+  const OY = 40;
   const toMap = (x, z) => [OX + (x + 240) * S, OY + (z + 240) * S];
   const label = (text, x, y, font, colour, align) => {
     g.font = font;
@@ -488,8 +529,14 @@ function drawFullMap(canvas, s) {
   g.lineWidth = 3;
   for (let i = -4; i <= 4; i += 1) {
     const c = (i * 60 + 240) * S + OX;
-    g.beginPath(); g.moveTo(c, OY); g.lineTo(c, OY + 640); g.stroke();
-    g.beginPath(); g.moveTo(OX, c - OX + OY); g.lineTo(OX + 640, c - OX + OY); g.stroke();
+    g.beginPath();
+    g.moveTo(c, OY);
+    g.lineTo(c, OY + 640);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(OX, c - OX + OY);
+    g.lineTo(OX + 640, c - OX + OY);
+    g.stroke();
   }
   // City square border.
   g.strokeStyle = 'rgba(255,255,255,0.8)';
@@ -508,21 +555,32 @@ function drawFullMap(canvas, s) {
     g.strokeStyle = 'rgba(0,0,0,0.55)';
     g.lineWidth = 9;
     g.beginPath();
-    pts.forEach(([x, z], i) => { const [mx, my] = toMap(x, z); if (i === 0) g.moveTo(mx, my); else g.lineTo(mx, my); });
+    pts.forEach(([x, z], i) => {
+      const [mx, my] = toMap(x, z);
+      if (i === 0) g.moveTo(mx, my);
+      else g.lineTo(mx, my);
+    });
     g.stroke();
     g.strokeStyle = '#ffd23f';
     g.lineWidth = 5;
     g.setLineDash([16, 11]);
     g.beginPath();
-    pts.forEach(([x, z], i) => { const [mx, my] = toMap(x, z); if (i === 0) g.moveTo(mx, my); else g.lineTo(mx, my); });
+    pts.forEach(([x, z], i) => {
+      const [mx, my] = toMap(x, z);
+      if (i === 0) g.moveTo(mx, my);
+      else g.lineTo(mx, my);
+    });
     g.stroke();
     g.setLineDash([]);
     // Arrowhead at the boat end, pointing south down Ocean Boulevard.
     const [ax, ay] = toMap(tx0, tz0);
     g.fillStyle = '#ffd23f';
     g.beginPath();
-    g.moveTo(ax, ay + 16); g.lineTo(ax - 9, ay - 2); g.lineTo(ax + 9, ay - 2);
-    g.closePath(); g.fill();
+    g.moveTo(ax, ay + 16);
+    g.lineTo(ax - 9, ay - 2);
+    g.lineTo(ax + 9, ay - 2);
+    g.closePath();
+    g.fill();
   }
   // District names (drawn over the route so they stay readable).
   for (let i = 0; i < DISTRICTS.length; i += 1) {
@@ -564,19 +622,29 @@ function drawFullMap(canvas, s) {
     const [x, y] = toMap(lm.pos[0], lm.pos[1]);
     if (labelCentres.some(([cx, cy]) => Math.abs(x - cx) < 50 && Math.abs(y - cy) < 18)) continue;
     g.fillStyle = '#ffd23f';
-    g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#1a1210'; g.lineWidth = 1.5;
-    g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.arc(x, y, 5, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#1a1210';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(x, y, 5, 0, Math.PI * 2);
+    g.stroke();
   }
   // Ferris wheel + lighthouse icons.
   const [fx, fy] = toMap(FERRIS.pos[0], FERRIS.pos[1]);
   g.fillStyle = '#ff2a5e';
-  g.beginPath(); g.arc(fx, fy, 7, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#fff'; g.font = 'bold 10px system-ui, sans-serif';
+  g.beginPath();
+  g.arc(fx, fy, 7, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#fff';
+  g.font = 'bold 10px system-ui, sans-serif';
   g.fillText('F', fx, fy + 3.5);
   const [lx, ly] = toMap(180, -180);
   g.fillStyle = '#ffd23f';
-  g.beginPath(); g.arc(lx, ly, 6, 0, Math.PI * 2); g.fill();
+  g.beginPath();
+  g.arc(lx, ly, 6, 0, Math.PI * 2);
+  g.fill();
   // Properties + robbery targets.
   g.font = 'bold 15px system-ui, sans-serif';
   for (const p of s.properties) {
@@ -602,12 +670,21 @@ function drawFullMap(canvas, s) {
     const pulse = 6 + Math.sin(performance.now() * 0.006) * 2;
     g.fillStyle = '#ffd23f';
     g.beginPath();
-    g.moveTo(x, y - pulse - 5); g.lineTo(x + pulse + 5, y); g.lineTo(x, y + pulse + 5); g.lineTo(x - pulse - 5, y);
-    g.closePath(); g.fill();
-    g.strokeStyle = '#1a1210'; g.lineWidth = 2;
+    g.moveTo(x, y - pulse - 5);
+    g.lineTo(x + pulse + 5, y);
+    g.lineTo(x, y + pulse + 5);
+    g.lineTo(x - pulse - 5, y);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = '#1a1210';
+    g.lineWidth = 2;
     g.beginPath();
-    g.moveTo(x, y - pulse - 5); g.lineTo(x + pulse + 5, y); g.lineTo(x, y + pulse + 5); g.lineTo(x - pulse - 5, y);
-    g.closePath(); g.stroke();
+    g.moveTo(x, y - pulse - 5);
+    g.lineTo(x + pulse + 5, y);
+    g.lineTo(x, y + pulse + 5);
+    g.lineTo(x - pulse - 5, y);
+    g.closePath();
+    g.stroke();
     // Label to the LEFT of the diamond, right-aligned, clear of the title
     // pill (which starts at x=425) and of the PLAYA DORADA district label.
     label('BOAT — PLAYA DORADA', x - 18, y + 5, 'bold 12px system-ui, sans-serif', '#ffd23f', 'right');
@@ -616,9 +693,14 @@ function drawFullMap(canvas, s) {
   for (const [x, z] of s.policeBlips) {
     const [mx, my] = toMap(x, z);
     g.fillStyle = '#4d8dff';
-    g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#fff'; g.lineWidth = 2;
-    g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.arc(mx, my, 6, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#fff';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.arc(mx, my, 6, 0, Math.PI * 2);
+    g.stroke();
   }
   g.fillStyle = '#ff2a2a';
   for (const [x, z] of s.roadblocks) {
@@ -636,10 +718,14 @@ function drawFullMap(canvas, s) {
     g.strokeStyle = 'rgba(255,42,42,0.9)';
     g.lineWidth = 3;
     g.setLineDash([10, 7]);
-    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.arc(px, py, rPx, 0, Math.PI * 2);
+    g.stroke();
     g.setLineDash([]);
     g.fillStyle = 'rgba(255,42,42,0.08)';
-    g.beginPath(); g.arc(px, py, rPx, 0, Math.PI * 2); g.fill();
+    g.beginPath();
+    g.arc(px, py, rPx, 0, Math.PI * 2);
+    g.fill();
   }
   // Player arrow at the vault. NO text tag — the legend explains the
   // arrow, and a tag here collided with the heli blip + TORRE label.
@@ -649,19 +735,34 @@ function drawFullMap(canvas, s) {
   g.rotate(Math.atan2(Math.sin(s.heading), Math.cos(s.heading)) * -1 + Math.PI);
   g.fillStyle = '#fff';
   g.beginPath();
-  g.moveTo(0, -12); g.lineTo(9, 9); g.lineTo(-9, 9);
-  g.closePath(); g.fill();
-  g.strokeStyle = '#1a1210'; g.lineWidth = 2;
+  g.moveTo(0, -12);
+  g.lineTo(9, 9);
+  g.lineTo(-9, 9);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#1a1210';
+  g.lineWidth = 2;
   g.beginPath();
-  g.moveTo(0, -12); g.lineTo(9, 9); g.lineTo(-9, 9);
-  g.closePath(); g.stroke();
+  g.moveTo(0, -12);
+  g.lineTo(9, 9);
+  g.lineTo(-9, 9);
+  g.closePath();
+  g.stroke();
   g.restore();
   // Compass rose, top-right of the map square (clear of the cash panel).
   const [cx, cy] = [OX + 640 - 34, OY + 34];
-  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 2;
-  g.beginPath(); g.arc(cx, cy, 18, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.9)';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(cx, cy, 18, 0, Math.PI * 2);
+  g.stroke();
   g.fillStyle = '#ff5252';
-  g.beginPath(); g.moveTo(cx, cy - 13); g.lineTo(cx - 5, cy + 4); g.lineTo(cx + 5, cy + 4); g.closePath(); g.fill();
+  g.beginPath();
+  g.moveTo(cx, cy - 13);
+  g.lineTo(cx - 5, cy + 4);
+  g.lineTo(cx + 5, cy + 4);
+  g.closePath();
+  g.fill();
   label('N', cx, cy - 24, 'bold 13px system-ui, sans-serif');
   // Title pill, bottom-centre above the dialogue box. SINGLE line: the
   // two-line pill's subtitle sat half under the dialogue box (its top edge
@@ -669,14 +770,20 @@ function drawFullMap(canvas, s) {
   // (mission panel NEXT + legend already name the route). Pill 586–622,
   // clear of the bottom-row district labels (≈578) and the dialogue.
   g.fillStyle = 'rgba(10,14,24,0.82)';
-  g.strokeStyle = 'rgba(255,210,63,0.6)'; g.lineWidth = 1.5;
-  const tw = 430, th = 36, tx = (W - tw) / 2, ty = 586;
+  g.strokeStyle = 'rgba(255,210,63,0.6)';
+  g.lineWidth = 1.5;
+  const tw = 430;
+  const th = 36;
+  const tx = (W - tw) / 2;
+  const ty = 586;
   g.beginPath();
   g.roundRect(tx, ty, tw, th, 10);
-  g.fill(); g.stroke();
+  g.fill();
+  g.stroke();
   label('PUERTO LUMEN — CITY MAP', W / 2, ty + 25, 'bold 22px system-ui, sans-serif', '#ffd23f');
   // Legend, bottom-left (the corner minimap is hidden in map mode).
-  const lx0 = 24, ly0 = 548;
+  const lx0 = 24;
+  const ly0 = 548;
   g.textAlign = 'left';
   g.font = 'bold 13px system-ui, sans-serif';
   const legend = [
