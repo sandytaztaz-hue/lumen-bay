@@ -108,61 +108,104 @@ export function buildCarMesh(type, opts) {
   group.add(body);
   let lightBar = null;
   if (type === 'comet') {
-    // The hero Comet RS — LOW SLEEK FERRARI-STYLE SPORTS CAR (Sand
-    // 2026-11-21 ~06:20 WIT: "ganti jd mobil sport kya ferarri"). NOT a
-    // classic Corolla sedan any more: a long low nose sloping down to a
-    // front splitter, sculpted raked hood, LOW raked cabin set back, wide
-    // haunches, big wheels, rear spoiler + diffuser, metallic hot-pink/red
-    // paint with highlights, slim LED headlights. Copied from the top-1
-    // madsrepo red sports car (low wedge, sloped hood, dark raked
-    // windshield, big silver wheels, wide stance) and the afaba99
-    // sports-car take the coordinator rated GOOD — pushed LOWER + WIDER +
-    // LONGER here (body 0.72 tall, 5.1 long, roof 1.36). Police + traffic
-    // stay classic boxy sedans (the else branch below); ONLY the hero
-    // changes. Same hot-pink paint (0xe8124a), same poster scale.
-    body.scale.set(0.98, 0.72, 1.16);
-    body.position.y = 0.62;
-    // Long low nose: a tapered wedge under the sloped hood.
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.34, 0.7), paint);
-    nose.position.set(0, 0.58, 2.3);
-    group.add(nose);
-    // SLOPED hood (top-1 geometry): a long low panel raked down toward
-    // the nose — the rake is what makes the front read as a sports car
-    // instead of a box. Rake 0.26 (was 0.22 in afaba99): the front edge
-    // drops to ~0.68, the Ferrari wedge line.
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.08, 2.0), paint);
-    hood.position.set(0, 0.94, 1.3);
-    hood.rotation.x = 0.26;
+    // The hero Comet RS — a FERRARI (Sand 2026-11-21 ~11:16 WIT:
+    // "Mobilnya jelek ganti mobil ferarri bro" — the car is ugly, make
+    // it a Ferrari). Rosso corsa red (0xd2001a in config.js), ONE clean
+    // low body slab, ONE long raked hood panel, a wide low dark grille
+    // + slim LEDs + splitter lip, and a LOW DARK-GLASS cabin with a
+    // THIN red roof rail. NO dome, NO hood bulge, NO haunch spheres,
+    // NO stacked nose boxes, NO cylinder bumper, NO pink flank bands —
+    // the previous take read as a stack of pink bubbles from the front
+    // 3/4 camera. Copied from the top-1 Karimbu car: long low wedge,
+    // dark-glass cabin dominating the top, one sloped hood surface,
+    // wide low grille, big dark wheels. Police + traffic stay classic
+    // boxy sedans (the else branch below); ONLY the hero changes.
+    // Same footprint (2.1 wide x 5.1 long, wheels z +/-1.45, x +/-1.0)
+    // and same poster scale, so the shot-1 staging is untouched.
+    // FERRARI v2 (Sand 2026-11-21 ~11:24 WIT, spec 6 + 7): the v1 take
+    // still read BOXY — flat red front face, flat slab hood, opaque
+    // dark-box cabin, no driver, no shield, slim-strip headlights.
+    // v2 adds: SEMI-TRANSPARENT windshield + glasshouse so the driver
+    // READS, a brighter driver face, the yellow/green shield on the
+    // hood, BIG rectangular headlights with dark frames, a subtle hood
+    // centre ridge, and a wider-reading grille mouth.
+    body.scale.set(1.0, 0.58, 1.16);
+    body.position.y = 0.52;
+    // ONE long raked hood panel — one continuous sloped surface from
+    // the windshield base to the nose tip. Front edge low at the nose
+    // (y ~0.64, z ~2.54), rear edge up at the windshield base
+    // (y ~0.92, z ~0.36). NO bulge on it. The subtle centre ridge +
+    // shield below are spec 6 (Sand's reference) — a sculpted line
+    // and an emblem, not a bulge.
+    // Rake 0.13 (not 0.20): the 0.20 rake put the hood's rear edge at
+    // y 1.07 — ABOVE the driver's head (1.04), so the solid hood panel
+    // hid the whole driver from the low front camera. At 0.13 the rear
+    // edge drops to 0.92 and the head + shoulders read through the
+    // upper windshield; the nose stays low (front edge 0.64).
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 2.2), paint);
+    hood.position.set(0, 0.78, 1.45);
+    hood.rotation.x = 0.13;
     group.add(hood);
-    const noseWedge = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.3, 0.55), paint);
-    noseWedge.position.set(0, 0.52, 2.42);
-    noseWedge.rotation.x = 0.18;
-    group.add(noseWedge);
-    // ROUNDED nose bumper (smooth-body pass, Sand 10:39 — "3D jelas"):
-    // a smooth horizontal cylinder across the nose, not the old flat
-    // dark splitter box — the front camera catches a curved highlight
-    // across the whole nose instead of a hard box edge. Low (y 0.26)
-    // so the grille + headlights above it stay clear of its curve.
-    const noseBumper = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.9, 20),
-      new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 }));
-    noseBumper.rotation.z = Math.PI / 2;
-    noseBumper.position.set(0, 0.26, 2.55);
-    group.add(noseBumper);
-    // SMOOTH hood bulge (same pass): a flattened sphere on the sloped
-    // hood — a curved highlight dome down the hood's centreline, so the
-    // hood reads sculpted, not a flat pink plank, from the front 3/4.
-    const hoodBulge = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), paint);
-    hoodBulge.scale.set(0.8, 0.16, 1.0);
-    hoodBulge.position.set(0, 0.96, 1.25);
-    group.add(hoodBulge);
-    // Bright flank highlight: a thin lighter band along each side at
-    // mid-height. The old flank was one blank pink slab; the band + the
-    // dark side skirt below it give the side a waistline like the top-1 car.
-    const flankMat = new THREE.MeshStandardMaterial({ color: 0xff6b9a, metalness: 0.8, roughness: 0.25 });
+    // Hood centre ridge (spec 6d): ONE subtle thin low box along the
+    // centreline, same red paint — a sculpted line down the hood, not
+    // a bulge. Sits on the hood panel surface, raked with it.
+    const hoodRidge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 2.0), paint);
+    hoodRidge.position.set(0, 0.83, 1.45);
+    hoodRidge.rotation.x = 0.13;
+    group.add(hoodRidge);
+    // Ferrari shield on the hood (spec 6b): small yellow shield plate
+    // with a green top strip, lying on the hood panel about 2/3 toward
+    // the nose (z ~1.9), rotated to the hood rake. Basic materials so
+    // the yellow reads bright at night.
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.03, 0.30),
+      new THREE.MeshBasicMaterial({ color: 0xffd400 }));
+    shield.position.set(0, 0.77, 1.88);
+    shield.rotation.x = 0.13;
+    group.add(shield);
+    const shieldTop = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 0.08),
+      new THREE.MeshBasicMaterial({ color: 0x009444 }));
+    shieldTop.position.set(0, 0.79, 1.78);
+    shieldTop.rotation.x = 0.13;
+    group.add(shieldTop);
+    // Front face: ONE wide low dark grille band (a WIDE LOW mouth, spec
+    // 6e) + BIG rectangular headlights with dark frames (spec 6c) +
+    // a subtle dark splitter lip UNDER the grille (a lip, NOT a tube).
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.24, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+    grille.position.set(0, 0.50, 2.62);
+    group.add(grille);
+    const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.35),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
+    splitter.position.set(0, 0.16, 2.5);
+    group.add(splitter);
+    // BIG rectangular headlights (spec 6c): a dark surround frame with a
+    // bright emissive lens proud of it — prominent units like the
+    // reference, NOT the slim strips that read as a white plate + two
+    // glows. Frames sit proud of the grille band so they read as units
+    // mounted on the nose. Glow sprites kept, slightly bigger.
+    const headFrameMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 });
+    for (const x of [-0.68, 0.68]) {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.28, 0.06), headFrameMat);
+      frame.position.set(x, 0.64, 2.64);
+      group.add(frame);
+      const lens = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.05),
+        new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
+      lens.position.set(x, 0.64, 2.68);
+      group.add(lens);
+      // Headlight glow sprites: the front-three-quarter chase camera lives
+      // on the headlights — the bare lens boxes read flat, the halos read
+      // as lights ON. Same treatment the cruisers already get.
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: sunGlowTexture(), color: 0xfff6c8, transparent: true, opacity: 0.9, depthWrite: false,
+      }));
+      glow.position.set(x, 0.64, 2.80);
+      glow.scale.set(2.4, 2.4, 1);
+      group.add(glow);
+    }
+    // Dark side skirts + side air-intake scoops (kept from the sports
+    // take): the skirt + scoop give the flank a waistline like the
+    // top-1 car. The lighter-pink flank bands are GONE (lumpiness).
     for (const s of [-1, 1]) {
-      const band = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 3.4), flankMat);
-      band.position.set(s * 1.04, 0.78, 0);
-      group.add(band);
       const skirtMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.4, metalness: 0.6 });
       const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 3.4), skirtMat);
       skirt.position.set(s * 1.02, 0.3, 0);
@@ -173,37 +216,7 @@ export function buildCarMesh(type, opts) {
       scoop.position.set(s * 1.04, 0.72, -0.9);
       group.add(scoop);
     }
-    // SMOOTH fender haunches (same pass): flattened spheres over the four
-    // wheels, bulging out of the flanks in the same paint — the haunch
-    // curve is what makes a sports car's flank read sculpted instead of
-    // slab-sided, and the curve catches the lamp light from the front.
-    for (const [x, z] of [[-1.02, 1.45], [1.02, 1.45], [-1.02, -1.45], [1.02, -1.45]]) {
-      const haunch = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), paint);
-      haunch.scale.set(0.28, 0.3, 0.55);
-      haunch.position.set(x, 0.72, z);
-      group.add(haunch);
-    }
-    // Low dark grille + slim LED headlights on the sloped nose.
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.22, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.6 }));
-    grille.position.set(0, 0.55, 2.66);
-    group.add(grille);
     const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd8dce2, roughness: 0.15, metalness: 1.0 });
-    for (const x of [-0.75, 0.75]) {
-      const led = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 0.06),
-        new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
-      led.position.set(x, 0.72, 2.66);
-      group.add(led);
-      // Headlight glow sprites: the front-three-quarter chase camera lives
-      // on the headlights — the bare LED boxes read flat, the halos read
-      // as lights ON. Same treatment the cruisers already get.
-      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: sunGlowTexture(), color: 0xfff6c8, transparent: true, opacity: 0.9, depthWrite: false,
-      }));
-      glow.position.set(x, 0.72, 2.78);
-      glow.scale.set(2.2, 2.2, 1);
-      group.add(glow);
-    }
     // Rear: dark panel + twin bright clusters + glow halos + dark
     // diffuser + twin pipes. 3D-BOULEVARD POLISH (2026-11-21): the old
     // single red strip on pink read as a flat red bar from the chase
@@ -235,34 +248,49 @@ export function buildCarMesh(type, opts) {
       pipe.position.set(x, 0.4, -2.6);
       group.add(pipe);
     }
-    // Cabin (top-1 geometry, pushed LOWER): a PAINT-COLOURED curved roof
-    // over a narrower glasshouse — the old single dark box was the "Lego
-    // cabin", and the flat roof slab that replaced it still read as a
-    // pink shelf from the front. The DOMED roof (a flattened sphere in
-    // the same paint) gives the cabin a smooth curved roofline; slanted
-    // windshield up front, slanted rear glass, dark side glass with a
-    // bright glare band, so the cabin reads as glass + curved roof,
-    // not a black brick. Roof dome top 1.64 — the low Ferrari roofline.
+    // Cabin — LOW DARK GLASS + THIN RED ROOF RAIL (the big fix). The
+    // old pink roof DOME was the single worst read (a big pink bubble
+    // on top of the car). Karimbu's car has NO dome: its cabin is
+    // mostly DARK GLASS with a thin paint roof edge. One low dark-glass
+    // box, a raked windshield up front, raked rear glass, and ONE THIN
+    // red box across the glasshouse top — an edge, not a dome.
+    // Roofline top y ~1.24 — the LOW Ferrari roofline.
+    // SEMI-TRANSPARENT glass (spec 6a, v2, comet only): the opaque dark
+    // glass hid the driver completely — at opacity 0.40 the driver
+    // behind it READS from the front 3/4 camera. LOW metalness + low
+    // env: the first v2 take kept metalness 0.9, so the "glass" mirrored
+    // the environment like a dark mirror instead of a tint — the driver
+    // stayed invisible even at 0.40 opacity. Rear glass stays opaque
+    // so the cabin keeps a dark back wall behind the driver.
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.08, clearcoat: 1 });
-    const roofDome = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), paint);
-    roofDome.scale.set(0.78, 0.32, 0.78);
-    roofDome.position.set(0, 1.32, -0.35);
-    group.add(roofDome);
-    const glasshouse = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.42, 1.8), glassMat);
-    glasshouse.position.set(0, 1.1, -0.35);
+    const cometGlassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0a0e14, metalness: 0.1, roughness: 0.05, clearcoat: 1,
+      envMapIntensity: 0.4, transparent: true, opacity: 0.40, depthWrite: false,
+    });
+    const windshieldMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0a0e14, metalness: 0.0, roughness: 0.05, clearcoat: 1,
+      envMapIntensity: 0.2, transparent: true, opacity: 0.35, depthWrite: false,
+    });
+    const glasshouse = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.38, 1.7), cometGlassMat);
+    glasshouse.position.set(0, 1.0, -0.35);
     group.add(glasshouse);
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 0.08), glassMat);
-    windshield.position.set(0, 1.02, 0.68);
-    windshield.rotation.x = -0.6;
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 0.06), windshieldMat);
+    windshield.position.set(0, 1.0, 0.62);
+    windshield.rotation.x = -0.55;
     group.add(windshield);
-    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.08), glassMat);
-    rearGlass.position.set(0, 1.04, -1.32);
+    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 0.06), glassMat);
+    rearGlass.position.set(0, 1.02, -1.28);
     rearGlass.rotation.x = 0.5;
     group.add(rearGlass);
-    const glare = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.1, 0.06),
+    const roofRail = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 1.55), paint);
+    roofRail.position.set(0, 1.21, -0.35);
+    group.add(roofRail);
+    // Glare strip: a thin light streak at the TOP edge of the windshield
+    // only — the old mid-windshield strip sat across the driver's face.
+    const glare = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.06, 0.06),
       new THREE.MeshBasicMaterial({ color: 0xbfe8ff }));
-    glare.position.set(0, 1.24, 0.62);
-    glare.rotation.x = -0.6;
+    glare.position.set(0, 1.22, 0.52);
+    glare.rotation.x = -0.55;
     group.add(glare);
     // Rear decklid (3D-boulevard polish): a RAKED deck panel over the
     // rear deck between the rear glass and the tail — the old deck was
@@ -308,20 +336,35 @@ export function buildCarMesh(type, opts) {
     const lip = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.14, 0.04), bumpMat);
     lip.position.set(0, 1.19, -2.56);
     group.add(lip);
-    // Visible driver: dark hair + orange jacket, hands on the wheel.
-    // Lowered into the LOW cabin (roof 1.36): torso y 0.9, head 1.12 —
-    // the whole driver stays inside the glasshouse, never a blob on the roof.
-    const driverMat = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.9 });
+    // Visible driver (spec 6a, v2): dark hair + orange jacket, hands on
+    // the wheel — now BRIGHT and FORWARD so the face + torso READ
+    // through the semi-transparent windshield at night. Lighter warm
+    // face (was 0xd9a066), moved 0.15 forward toward the glass.
+    // LOWERED into the LOW glass cabin (roof rail 1.21): torso y 0.87,
+    // head 1.04 — the head top (1.26) sits just at the roof rail, never
+    // a blob on the roof. Head raised 1.02 → 1.04 so the face clears
+    // the hood's rear edge (0.92) and reads through the upper windshield.
+    // DRIVER'S SEAT IS THE CAMERA SIDE (x +0.30): the car faces west,
+    // so its left (driver's) side is south — the flank the front 3/4
+    // camera sees. The first v2 takes sat the driver at x -0.35, the
+    // FAR (north) half of the windshield, foreshortened + behind two
+    // glass layers = invisible. On the near half the head + torso read.
+    // Torso glows (emissive orange) so the jacket reads through the
+    // tinted glass at night; the face is unlit bright warm skin so it
+    // reads like a lit face through the windshield (spec 6a) — the
+    // first v2 take at opacity 0.55 + standard materials hid the
+    // driver completely behind two layers of dark glass.
+    const driverMat = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.9, emissive: 0xff5a00, emissiveIntensity: 1.4 });
     const driver = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.3), driverMat);
-    driver.position.set(-0.35, 0.9, -0.2);
+    driver.position.set(0.30, 0.87, -0.05);
     group.add(driver);
     const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 }));
-    dHead.position.set(-0.35, 1.12, -0.2);
+      new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
+    dHead.position.set(0.30, 1.04, -0.05);
     group.add(dHead);
-    const dHair = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    const dHair = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
       new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9 }));
-    dHair.position.set(-0.35, 1.14, -0.2);
+    dHair.position.set(0.30, 1.04, -0.05);
     group.add(dHair);
   } else {
     // Generic cars (sedan / taxi / pickup / police): the SAME classic
@@ -486,7 +529,11 @@ export function buildCarMesh(type, opts) {
   const plates = [];
   for (const z of [2.5, -2.5]) {
     const p = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, 0.04), plateMat);
-    p.position.set(0, 0.42, z);
+    // Ferrari only: the front plate at (0, 0.42, 2.5) would sit behind
+    // the wide grille band — move it below the grille, above the
+    // splitter lip.
+    if (type === 'comet' && z > 0) p.position.set(0, 0.30, 2.60);
+    else p.position.set(0, 0.42, z);
     group.add(p);
     plates.push(p);
   }

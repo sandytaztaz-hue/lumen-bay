@@ -106,6 +106,27 @@ export function stageShot1(G) {
   G.clearPedsNear(90, 215, 15); // clear the hero's foreground
   G.spawnPedsNear(140, 206, 8); // pedestrians on the north sidewalk behind the hero
   G.spawnPedsNear(170, 228, 5); // beachgoers on the sand behind the hero, south side
+  // PEDESTRIANS ON THE RIGHT SIDEWALK (Sand 2026-11-21 ~11:24 WIT, spec
+  // 7): 5 people WALKING on the beach-side sidewalk just east of the
+  // hero, mid-ground so they READ in the frame — the far peds at x
+  // 140–170 are too small to read as pedestrians. z 225 is the sidewalk
+  // line; spawned AFTER clearPedsNear above, so this group survives.
+  // x 102 (not 108): the first take scattered two peds behind the
+  // right-side HUD panels — closer to the hero keeps the whole group
+  // in the open frame, left of the panels. TWO groups (8 total):
+  // the take-1 config (108,225,5) alone netted 2 readable sidewalk
+  // peds; the westward moves (102/100/98) only scattered a green ped
+  // onto the road by the hero, so the base group REVERTS to 108,225
+  // and a second group at the same x on the sand side (z 228) adds
+  // 1–2 more — peds wander during the slow SwiftShader settle, so 8
+  // spawned nets 3–5 on the sidewalk in frame.
+  G.spawnPedsNear(108, 225, 5);
+  G.spawnPedsNear(108, 228, 3);
+  // Third pair (same x, sand side): the rng is sequential, so the 8
+  // peds above keep their take-5 places and these 2 are purely extra —
+  // take 5 netted 2 clear sidewalk peds + 1 tiny far one, one short of
+  // the 3–5 target.
+  G.spawnPedsNear(104, 228, 2);
   // Warm bounce light over the hero so the pink-red paint + chrome glow
   // under the lamps. 60, not 100: at bright night the old 100 + the beam
   // pool washed the pink to pale white — the paint still glows at 60.

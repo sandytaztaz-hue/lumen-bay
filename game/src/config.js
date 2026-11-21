@@ -202,7 +202,10 @@ export const UPGRADES = {
   nos: { name: 'NOS Tank', max: 3, prices: [700, 1300, 2400], capacity: [60, 90, 120, 160] },
 };
 export const CARS = {
-  comet: { name: 'Veloz Comet RS', colour: 0xe8124a, top: 34, accel: 16 },
+  // Ferrari rebuild (Sand 2026-11-21 ~11:16 WIT: "Mobilnya jelek ganti
+  // mobil ferarri bro"): the hero Comet RS is now ROSSO CORSA RED
+  // 0xd2001a (was hot pink 0xe8124a — read as a toy).
+  comet: { name: 'Veloz Comet RS', colour: 0xd2001a, top: 34, accel: 16 },
   sedan: { name: 'Solmar Sedan', colour: 0x3fa7ff, top: 26, accel: 12 },
   pickup: { name: 'Dune Pickup', colour: 0x8a6f4d, top: 28, accel: 13 },
   taxi: { name: 'Lumen Taxi', colour: 0xffd23f, top: 26, accel: 12 },
