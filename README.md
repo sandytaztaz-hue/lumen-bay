@@ -1,8 +1,8 @@
 # LUMEN BAY: Sunset Getaway
 
-[![make.fun — gta6-01](https://img.shields.io/badge/make.fun-gta6--01-orange)](https://make.fun/c/gta6-01)
-[![Lumen Bay — Sunset Getaway](https://img.shields.io/badge/Lumen%20Bay-Sunset%20Getaway-red)](https://make.fun/c/gta6-01)
-[![lumen-bay repo](https://img.shields.io/badge/repo-lumen--bay-blue)](https://github.com/sandytaztaz-hue/lumen-bay)
+[![gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/p/gta6-01)
+[![rank](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/rank.svg)](https://make.fun/p/gta6-01)
+[![reward](https://make.fun/badge/gta6-01/sandytaztaz-hue/lumen-bay/reward.svg)](https://make.fun/p/gta6-01)
 
 **make.fun bounty:** [gta6-01](https://make.fun/c/gta6-01) — build the most
 complete open-world crime game you can, in the spirit of GTA 6. Owner:
