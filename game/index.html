@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LUMEN BAY — Sunset Getaway</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a12; font-family: Arial, sans-serif; }
+  #gameCanvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .panel { position: fixed; background: rgba(10, 12, 20, 0.82); border: 1px solid rgba(255, 210, 28, 0.25); border-radius: 10px; color: #f2f2ee; padding: 10px 12px; z-index: 5; }
+  .gold { color: #ffd21c; }
+  /* Top-left mission panel */
+  #missionPanel { top: 12px; left: 12px; width: 330px; }
+  #jobTitle { color: #ffd21c; font-size: 19px; font-weight: bold; letter-spacing: 0.5px; }
+  #jobBrief { color: #e8e8e8; font-size: 13px; margin-top: 4px; }
+  #jobStage { color: #9fd8ff; font-size: 12px; margin-top: 4px; font-weight: bold; }
+  #jobNext { color: #ffd21c; font-size: 12px; margin-top: 3px; }
+  #jobBanner { display: none; background: #c22a1e; color: #fff; font-weight: bold; font-size: 13px; text-align: center; border-radius: 6px; padding: 6px 4px; margin-top: 8px; }
+  #keysLine { color: #b9bcc2; font-size: 11px; margin-top: 8px; }
+  /* Top-centre wanted panel */
+  #wantedPanel { top: 12px; left: 50%; transform: translateX(-50%); text-align: center; background: transparent; border: none; padding: 0; }
+  #wantedLabel { color: #ff4d4d; font-size: 18px; font-weight: bold; letter-spacing: 4px; }
+  #wantedStars { font-size: 22px; letter-spacing: 2px; line-height: 1; }
+  #wantedStars .star { color: #3a3f4a; }
+  #wantedStars .star.filled { color: #ffd21c; text-shadow: 0 0 8px rgba(255, 210, 28, 0.7); }
+  #wantedPill { display: none; background: #c22a1e; color: #fff; font-size: 11px; font-weight: bold; border-radius: 20px; padding: 3px 10px; margin-top: 4px; }
+  /* Top-right money panel */
+  #moneyPanel { top: 12px; right: 12px; width: 246px; text-align: right; }
+  #cashText { color: #4ade80; font-size: 30px; font-weight: bold; }
+  #weaponLabel { color: #f2f2ee; font-size: 13px; font-weight: bold; margin-top: 2px; }
+  #clockText { color: #ffd21c; font-size: 14px; font-weight: bold; }
+  .weapon-slots { display: flex; gap: 6px; margin-top: 8px; }
+  .weapon-slot { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 5px 2px; font-size: 11px; text-align: center; }
+  .weapon-slot.active { background: #ffd21c; color: #111; font-weight: bold; }
+  .bar-label { font-size: 10px; color: #b9bcc2; letter-spacing: 1px; margin-top: 7px; text-align: left; }
+  .bar { height: 8px; background: rgba(255,255,255,0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
+  .bar > div { height: 100%; border-radius: 4px; }
+  #healthBar { background: #4ade80; width: 100%; }
+  #armourBar { background: #4aa3ff; width: 0%; }
+  #nosBar { background: #4aa3ff; width: 100%; }
+  /* Left police panel */
+  #policePanel { top: 232px; left: 12px; width: 262px; }
+  #policePanel h3 { color: #9fd8ff; font-size: 13px; letter-spacing: 2px; margin-bottom: 6px; }
+  .police-row { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 0; }
+  .police-row span:first-child { flex: 1; }
+  .police-dist { color: #b9bcc2; font-size: 12px; }
+  .pill { font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 6px; color: #fff; }
+  .pill.chasing { background: #2e6fd2; }
+  .pill.flanking { background: #8a4fd2; }
+  .pill.spotlight { background: #d9a41c; color: #111; }
+  .pill.enroute { background: #2e6fd2; }
+  .pill.clear { background: #c22a1e; }
+  /* Right toasts */
+  #toasts { position: fixed; top: 232px; right: 12px; width: 246px; z-index: 5; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: rgba(10, 12, 20, 0.85); border-left: 4px solid #4ade80; border-radius: 8px; padding: 8px 10px; color: #f2f2ee; }
+  .toast.bad { border-left-color: #ff4d4d; }
+  .toast-title { font-size: 13px; font-weight: bold; color: #4ade80; }
+  .toast.bad .toast-title { color: #ff6d6d; }
+  .toast-text { font-size: 12px; color: #e8e8e8; margin-top: 2px; }
+  /* Right event log */
+  #eventlog { position: fixed; top: 428px; right: 12px; width: 300px; z-index: 5; display: flex; flex-direction: column; gap: 6px; }
+  .log-line { background: rgba(10, 12, 20, 0.78); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: #e8e8e8; }
+  /* Bottom-left respect + street + minimap + turf */
+  #respectBox { position: fixed; left: 12px; bottom: 222px; z-index: 5; color: #ffd21c; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px #000; }
+  #respectBarWrap { width: 190px; height: 7px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-top: 3px; overflow: hidden; }
+  #respectBar { height: 100%; background: #ff8c1a; width: 50%; }
+  #streetText { position: fixed; left: 12px; bottom: 198px; z-index: 5; background: rgba(10,12,20,0.8); color: #f2f2ee; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 5px 9px; }
+  #minimap { position: fixed; left: 12px; bottom: 18px; width: 190px; height: 190px; z-index: 5; border-radius: 50%; border: 3px solid #fff; background: #1c2b1e; }
+  #turfText { position: fixed; left: 12px; bottom: 0px; z-index: 5; color: #4ade80; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px #000; }
+  /* Bottom-centre dialogue bar */
+  #dialogueBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; width: 620px; max-width: 48vw; background: rgba(10, 12, 20, 0.85); border-radius: 10px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; z-index: 5; }
+  #dlgInitial { width: 42px; height: 42px; min-width: 42px; border-radius: 50%; background: #4aa3ff; color: #fff; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+  #dlgName { font-size: 13px; font-weight: bold; color: #4aa3ff; }
+  #dlgText { font-size: 13px; color: #f2f2ee; margin-top: 2px; }
+  /* Bottom-right speed panel */
+  #speedPanel { bottom: 12px; right: 12px; width: 246px; text-align: right; }
+  #speedText { font-size: 44px; font-weight: bold; line-height: 1; }
+  #speedUnit { font-size: 14px; color: #b9bcc2; }
+  #gearText { color: #ffd21c; font-size: 13px; font-weight: bold; }
+  #carNameText { color: #ffd21c; font-size: 14px; font-weight: bold; }
+  #conditionLabel { font-size: 10px; color: #b9bcc2; letter-spacing: 1px; margin-top: 6px; }
+  #conditionBar { height: 8px; background: rgba(255,255,255,0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
+  #conditionBar > div { height: 100%; width: 100%; background: #4ade80; }
+  #radioLine { color: #ffd21c; font-size: 11px; font-weight: bold; margin-top: 6px; }
+  /* Centre mission-passed banner */
+  #missionPassed { display: none; position: fixed; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; }
+  #missionPassedTitle { color: #ffd21c; font-size: 56px; font-weight: bold; letter-spacing: 3px; text-shadow: 0 3px 12px rgba(0,0,0,0.7); }
+  #missionPassedSub { color: #fff; font-size: 16px; font-weight: bold; margin-top: 6px; text-shadow: 0 2px 6px #000; }
+  /* Floating damage numbers */
+  #damageLayer { position: fixed; inset: 0; pointer-events: none; z-index: 7; overflow: hidden; }
+  .damage-number { position: absolute; color: #ff4d4d; font-size: 20px; font-weight: bold; text-shadow: 0 1px 3px #000; animation: floatUp 0.9s ease-out forwards; }
+  @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-46px); } }
+  /* Full city map overlay */
+  #mapOverlay { display: none; position: fixed; inset: 0; background: rgba(5, 5, 10, 0.72); z-index: 8; }
+  #citymap { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; }
+  /* Title screen */
+  #titleScreen { position: fixed; inset: 0; background: linear-gradient(180deg, rgba(10,10,20,0.55), rgba(10,10,20,0.85)); z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #f2f2ee; text-align: center; }
+  #titleScreen h1 { color: #ffd21c; font-size: 72px; letter-spacing: 6px; text-shadow: 0 4px 18px rgba(0,0,0,0.8); }
+  #titleScreen h2 { color: #ffd21c; font-size: 20px; letter-spacing: 3px; margin-top: 6px; }
+  #titleScreen p { max-width: 560px; font-size: 15px; line-height: 1.5; margin-top: 18px; color: #e8e8e8; }
+  .big-btn { margin-top: 26px; background: #ffd21c; color: #111; border: none; border-radius: 10px; padding: 14px 44px; font-size: 20px; font-weight: bold; cursor: pointer; }
+  .big-btn:hover { background: #ffe14d; }
+  #continueBtn { display: none; background: #2e6fd2; color: #fff; }
+  /* Pause screen */
+  #pauseScreen { position: fixed; inset: 0; background: rgba(5, 5, 10, 0.7); z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: center; color: #f2f2ee; text-align: center; }
+  #pauseScreen h1 { font-size: 52px; letter-spacing: 6px; }
+  #pauseScreen p { font-size: 16px; margin-top: 10px; color: #e8e8e8; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="missionPanel" class="panel">
+  <div id="jobTitle">JOB 1: FIRST KEYS</div>
+  <div id="jobBrief">○ Steal the Comet GT from the marina</div>
+  <div id="jobStage">STAGE 1/3 · +$800 · STORY 1/15 · REP 40</div>
+  <div id="jobNext">NEXT: Deliver the Comet to Tio's garage.</div>
+  <div id="jobBanner"></div>
+  <div id="keysLine">[WASD] drive · [SPACE] handbrake · [E] exit · [M] map</div>
+</div>
+
+<div id="wantedPanel" class="panel">
+  <div id="wantedLabel">NOT WANTED</div>
+  <div id="wantedStars"></div>
+  <div id="wantedPill">IN SIGHT — search zone follows you</div>
+</div>
+
+<div id="moneyPanel" class="panel">
+  <div id="cashText">$1,200</div>
+  <div id="weaponLabel">PISTOL ∞</div>
+  <div class="weapon-slots">
+    <div class="weapon-slot" id="slot-fists">1 FISTS<br>∞</div>
+    <div class="weapon-slot active" id="slot-pistol">2 PISTOL<br>∞</div>
+    <div class="weapon-slot" id="slot-smg">3 SMG<br>30/120</div>
+  </div>
+  <div class="bar-label">HEALTH</div>
+  <div class="bar"><div id="healthBar"></div></div>
+  <div class="bar-label">ARMOUR</div>
+  <div class="bar"><div id="armourBar"></div></div>
+  <div class="bar-label">NOS</div>
+  <div class="bar"><div id="nosBar"></div></div>
+  <div id="clockText">18:40</div>
+</div>
+
+<div id="policePanel" class="panel">
+  <h3>LCPD RESPONSE</h3>
+  <div id="policeRows"></div>
+</div>
+
+<div id="toasts"></div>
+<div id="eventlog"></div>
+
+<div id="respectBox">
+  <span id="respectText">RESPECT · ROOKIE 0/550</span>
+  <div id="respectBarWrap"><div id="respectBar"></div></div>
+</div>
+<div id="streetText">DUNES — Torre Boulevard</div>
+<canvas id="minimap" width="190" height="190"></canvas>
+<div id="turfText">TURF 0/12</div>
+
+<div id="dialogueBar">
+  <div id="dlgInitial">T</div>
+  <div>
+    <div id="dlgName">TIO REYES</div>
+    <div id="dlgText">Comet's yours, Mara. Tio's garage is waiting — don't scratch her.</div>
+  </div>
+</div>
+
+<div id="speedPanel" class="panel">
+  <div><span id="speedText">0</span> <span id="speedUnit">km/h</span></div>
+  <div id="gearText">ON FOOT</div>
+  <div id="carNameText">ON FOOT</div>
+  <div id="conditionLabel">CONDITION</div>
+  <div id="conditionBar"><div></div></div>
+  <div id="radioLine">RADIO SOL 101.9 — Sol Hits</div>
+</div>
+
+<div id="missionPassed">
+  <div id="missionPassedTitle">MISSION PASSED</div>
+  <div id="missionPassedSub"></div>
+</div>
+
+<div id="damageLayer"></div>
+
+<div id="mapOverlay"><canvas id="citymap" width="1280" height="720"></canvas></div>
+
+<div id="titleScreen">
+  <h1>LUMEN BAY</h1>
+  <h2>SUNSET GETAWAY — PUERTO LUMEN</h2>
+  <p>You are Mara Solis, getaway driver. Steal the Comet GT, run fifteen jobs across Puerto Lumen, outrun the LCPD, crack the Torre Lumen vault and vanish on the dawn boat. Drive, shoot, steal, race — and mind the five stars.</p>
+  <button class="big-btn" id="playBtn">PLAY</button>
+  <button class="big-btn" id="continueBtn">CONTINUE — SAVE FOUND</button>
+</div>
+
+<div id="pauseScreen">
+  <h1>PAUSED</h1>
+  <p>Lumen Bay is waiting. The LCPD is not.</p>
+  <button class="big-btn" id="resumeBtn">RESUME</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
