@@ -261,8 +261,11 @@ function stageShot1(game) {
   // boulevard between the two cruiser rows, angled so the camera sees
   // its long side, turret and barrel instead of looking straight down
   // its nose. The barrel still points west at the hero, and the tank
-  // overlaps no cruiser and hides no hero car.
-  place(game, makeTank(), 158, 215, -0.97);
+  // overlaps no cruiser and hides no hero car. Pulled well forward
+  // toward the camera (122, 213.5) and a touch north of the road centre
+  // so it stands clear of the helicopter beam's bright core and reads
+  // at full size as one complete olive tank.
+  place(game, makeTank(), 122, 213.5, -0.97);
 
   // Three people on the south sidewalk, unchanged: pink, green, purple.
   dressPerson(game, 0xff5a8a, 108, 225, 0, false);
