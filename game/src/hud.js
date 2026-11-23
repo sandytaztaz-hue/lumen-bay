@@ -417,22 +417,33 @@ export class Hud {
     ctx.fillStyle = '#ffffff';
     ctx.fillText('MARINA', 505, 130);
     ctx.fillText('MERCADO VIEJO', 620, 130);
-    ctx.fillText('TORRE', 745, 130);
+    // TORRE drops a row below MERCADO VIEJO: the two ran together as
+    // one word at the same height. A leader line points back up to its row.
+    ctx.fillText('TORRE', 745, 158);
     ctx.fillText('FAROL ROJO', 905, 130);
     ctx.fillText('TALLER', 520, 310);
-    ctx.fillText('OLD TOWN', 625, 310);
+    // OLD TOWN lifts above CASINO ROW: the two ran together at the same
+    // height. A leader line points back down to its row.
+    ctx.fillText('OLD TOWN', 625, 282);
     ctx.fillText('CASINO ROW', 745, 310);
     ctx.fillText('FESTIVAL SQ', 885, 310);
     ctx.fillText('PLAYA DORADA', 445, 463);
-    ctx.fillText('NORTH DOCKS', 630, 463);
+    // NORTH DOCKS drops below PLAYA DORADA: the two ran together at the
+    // same height. A leader line points back up to its row.
+    ctx.fillText('NORTH DOCKS', 630, 491);
     ctx.fillText('DUNES', 780, 463);
     ctx.fillText('HILLSIDE', 905, 463);
     ctx.font = '12px Arial';
     ctx.fillStyle = '#c8c8c8';
     ctx.textAlign = 'center';
-    ctx.fillText('MARINA RD', 730, 92);
+    // MARINA RD lifts clear of the white player triangle that hid its tail.
+    // A leader line points back down to the road it names.
+    ctx.fillText('MARINA RD', 730, 78);
     ctx.fillText('FESTIVAL AVE', 677, 257);
-    ctx.fillText('PLAYA DR', 612, 347);
+    // PLAYA DR lifts clear of the solid green block it sat on, to just
+    // above the block's top edge. A leader line points back down to the
+    // street it names.
+    ctx.fillText('PLAYA DR', 612, 326);
     ctx.fillText('MIRAMAR STRIP', 662, 437);
     for (const street of [['OCEAN BLVD', 570], ['PALM AVE', 685], ['MERCADO ST', 765], ['CASINO AVE', 837], ['TORRE BLVD', 910]]) {
       ctx.save();
@@ -442,6 +453,17 @@ export class Hud {
       ctx.fillText(street[0], 0, 4);
       ctx.restore();
     }
+    // Short thin leader lines from each staggered label back to the place
+    // it names, so the stagger reads as a pointer and not a stray label.
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(770, 144); ctx.lineTo(770, 133); // TORRE up to its row
+    ctx.moveTo(665, 286); ctx.lineTo(665, 306); // OLD TOWN down to its row
+    ctx.moveTo(700, 477); ctx.lineTo(700, 464); // NORTH DOCKS up to its row
+    ctx.moveTo(730, 82); ctx.lineTo(730, 95); // MARINA RD down to its road
+    ctx.moveTo(612, 330); ctx.lineTo(612, 345); // PLAYA DR down to its street
+    ctx.stroke();
     ctx.strokeStyle = '#ffd23e';
     ctx.lineWidth = 3;
     ctx.setLineDash([10, 8]);

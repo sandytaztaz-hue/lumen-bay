@@ -256,12 +256,13 @@ function stageShot1(game) {
   dressPerson(game, 0xffd21c, 108, 209, WEST, true);
   dressPerson(game, 0x19c8e8, 116, 209.5, WEST, true);
 
-  // Armored tank on the south lane with a clear line of sight: south of
-  // the cruiser row, in its own open stretch of road, angled so the
-  // camera sees its long side, turret and barrel instead of looking
-  // straight down its nose. The barrel still points west at the hero,
-  // and the tank overlaps no cruiser and hides no hero car.
-  place(game, makeTank(), 150, 223, -0.97);
+  // Armored tank in the middle of the road with a clear line of sight:
+  // forward of the south sidewalk and its lamp posts, centred on the
+  // boulevard between the two cruiser rows, angled so the camera sees
+  // its long side, turret and barrel instead of looking straight down
+  // its nose. The barrel still points west at the hero, and the tank
+  // overlaps no cruiser and hides no hero car.
+  place(game, makeTank(), 158, 215, -0.97);
 
   // Three people on the south sidewalk, unchanged: pink, green, purple.
   dressPerson(game, 0xff5a8a, 108, 225, 0, false);
@@ -383,8 +384,15 @@ const HUD_PANELS = [
 function stageShot4(game) {
   beginShot(game, 4, { x: -28, z: 235, heading: 0, job: 14 });
   const camera = game.render.camera;
-  camera.position.set(-28, 3.2, 228);
-  camera.lookAt(-22, 1.5, 252);
+  // Pulled back and raised so the whole hero car, front bumper to rear,
+  // fits inside the frame with a margin of empty road around it: the car
+  // used to sit so close to the lens that its front ran off the bottom
+  // edge. The pullback is kept short on purpose — any further back and
+  // the palm trunk just west of the camera crowds into the right of the
+  // frame and hides the orange ally. The boat stays centre frame and
+  // the allies still flank the car.
+  camera.position.set(-28, 5.0, 224);
+  camera.lookAt(-22, 1.2, 252);
 
   // Speedboat, big and centre frame, turned slightly.
   const boat = makeBoat();
