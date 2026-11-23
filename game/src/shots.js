@@ -402,7 +402,7 @@ function stageShot4(game) {
   // on the west side.
   const tio = dressPerson(game, 0x14b8a6, -24.5, 236, Math.PI, false);
   tio.scale.setScalar(1.3);
-  const lena = dressPerson(game, 0xff7a1a, -29, 236, Math.PI, false);
+  const lena = dressPerson(game, 0xff7a1a, -30.5, 236, Math.PI, false);
   lena.scale.setScalar(1.3);
 
   // Warm fill light, clear sand around the boat, warm sand glow, and the
@@ -419,21 +419,23 @@ function stageShot4(game) {
     game.render.retargetShadow(-20, 240, 130);
   }
 
-  // Aim the sun disc and the sky glow at the shot camera from the
-  // low-sun direction. If the renderer's own aim call is unavailable,
-  // put the disc and halo on the camera-to-sun line by hand.
-  try {
-    game.render.aimSunAtCamera(camera, game.render.preset);
-  } catch (err) {
-    const sunDir = new THREE.Vector3(62, 57, 351).sub(camera.position).normalize();
-    const sunPos = camera.position.clone().addScaledVector(sunDir, 820);
-    if (game.render.sunSprite) game.render.sunSprite.position.copy(sunPos);
-    if (game.render.sunHalo) game.render.sunHalo.position.copy(sunPos);
-  }
+  // The dawn preset leaves the sky's sun direction and both sun sprites
+  // as not-a-number, so no disc is drawn — rebuild them by hand from the
+  // low-sun direction instead of aiming at the camera.
+  const dawnDir = new THREE.Vector3(62, 57, 351).normalize();
+  const skySun = game.render.skyUniforms && game.render.skyUniforms.sunDir;
+  if (skySun && skySun.value) skySun.value.copy(dawnDir);
+  const dawnSpot = dawnDir.clone().multiplyScalar(820);
+  if (game.render.sunSprite) game.render.sunSprite.position.copy(dawnSpot);
+  if (game.render.sunHalo) game.render.sunHalo.position.copy(dawnSpot);
 
   // Title screen on top, gameplay HUD away. The pinned cash stays in the
   // hidden money panel, so the capture check still reads $21,400.
   showElement('titleScreen');
+  // A fresh profile holds no save, so the page rule keeps the CONTINUE
+  // row hidden even though Slot 1 is complete — force it on for this shot.
+  const continueRow = document.getElementById('continueBtn');
+  if (continueRow) continueRow.style.display = 'block';
   for (const id of HUD_PANELS) hideElement(id);
 }
 

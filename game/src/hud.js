@@ -298,14 +298,14 @@ export class Hud {
       for (let i = 0; i < DISTRICTS.length; i++) {
         const d = DISTRICTS[i];
         const lx = mapX(d.x);
-        // Stagger: two baselines cannot clear the long names — columns 1
-        // and 3 share a baseline and MERCADO VIEJO / FAROL ROJO (and the
-        // other long pairs) still overwrite each other at any offset, so
-        // the labels cycle 0 / -12 / -24 diagonally by row + column and
-        // no two overlapping names share a baseline.
-        const row = Math.floor(i / 4);
-        const col = i % 4;
-        const ly = mapZ(d.z) - 12 * ((row + col) % 3);
+        // Lift each name so neighbours never share a baseline: with four
+        // names per row, the lift steps 0, 12 or 24 pixels up, chosen by
+        // the diagonal (row plus column) modulo three, so long neighbours
+        // like MERCADO VIEJO and FAROL ROJO sit on different heights.
+        const gridRow = (i / 4) | 0;
+        const gridCol = i - gridRow * 4;
+        const lift = 12 * ((gridRow + gridCol) % 3);
+        const ly = mapZ(d.z) - lift;
         ctx.lineWidth = 3;
         ctx.strokeStyle = 'rgba(0,0,0,0.8)';
         ctx.strokeText(d.name, lx, ly);
@@ -366,8 +366,8 @@ export class Hud {
     }
     ctx.beginPath();
     ctx.arc(95, 95, 93.5, 0, Math.PI * 2);
-    ctx.lineWidth = 3;
     ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
   }
