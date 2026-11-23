@@ -219,7 +219,10 @@
     font-size: 26px; font-weight: bold; letter-spacing: 6px; }
   .title-rows { flex: 1; display: flex; align-items: flex-start; justify-content: space-between;
     margin-top: 30px; }
+  /* SAVE FILE panel lifts 65px so its bottom clears the hero car and
+     both allies (r29); it stays on the right, clear of the headline. */
   .save-card { width: 400px; padding: 18px 20px; border-radius: 10px;
+    transform: translateY(-65px);
     background: rgba(5, 10, 25, 0.82); border: 1px solid rgba(212, 175, 55, 0.45); }
   .save-heading { color: #ffd23e; font-size: 16px; font-weight: bold; letter-spacing: 4px; margin-bottom: 8px; }
   .slot-line { padding: 10px 0; font-size: 13px; color: #f2ede2;

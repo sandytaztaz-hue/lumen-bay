@@ -369,6 +369,43 @@ function stageShot3(game) {
   mara.visible = true;
 }
 
+// A low-poly beach palm for the shot-4 backdrop, in the game's own
+// blocky style: a leaning brown trunk, a cone crown, a ring of six
+// drooping fronds and a small coconut cluster under the crown.
+function makeBeachPalm(lean) {
+  const palm = new THREE.Group();
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8a5a30, roughness: 1 });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.32, 5.6, 6), trunkMat);
+  trunk.position.y = 2.8;
+  trunk.rotation.z = lean;
+  trunk.castShadow = true;
+  palm.add(trunk);
+  const crownMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.9 });
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.8, 7), crownMat);
+  crown.position.y = 6.1;
+  crown.rotation.z = lean;
+  crown.castShadow = true;
+  palm.add(crown);
+  const frondMat = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.9, side: THREE.DoubleSide });
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const frond = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.8), frondMat);
+    frond.position.set(Math.cos(a) * 1.5, 5.7, Math.sin(a) * 1.5);
+    frond.rotation.order = 'YXZ';
+    frond.rotation.y = -a;
+    frond.rotation.x = 0.85;
+    palm.add(frond);
+  }
+  const nutMat = new THREE.MeshStandardMaterial({ color: 0x6d4c2f, roughness: 1 });
+  for (let i = 0; i < 3; i++) {
+    const nut = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), nutMat);
+    const a = (i / 3) * Math.PI * 2;
+    nut.position.set(Math.cos(a) * 0.45, 5.3, Math.sin(a) * 0.45);
+    palm.add(nut);
+  }
+  return palm;
+}
+
 // ---------------------------------------------------------------------------
 // Shot 4 — title / start screen over the dawn boat scene. The 3D backdrop
 // is the dawn scene exactly as staged before: the big speedboat centre
@@ -421,6 +458,44 @@ function stageShot4(game) {
   // render black.
   game.render.setFill(-28, 4, 229, 30);
   clearUmbrellas(game, -20, 240, 45);
+
+  // Busy beach backdrop (r29): palms, beachgoers, umbrellas and extra
+  // boats behind the car and the allies, all clear of the hero, both
+  // allies and the big boat, so the start screen reads as a lived-in
+  // beach instead of an empty stretch of sand.
+  const beachPalms = [
+    [-10, 258, 0.08, 1.15], [-46, 256, -0.07, 1.05],
+    [-38, 268, 0.06, 1.25], [-16, 270, -0.09, 0.95],
+  ];
+  for (const [x, z, lean, s] of beachPalms) {
+    const palm = makeBeachPalm(lean);
+    palm.scale.setScalar(s);
+    place(game, palm, x, z, 0);
+  }
+  const beachgoers = [
+    [-18, 247, 0xffd21c], [-40, 246, 0x19c8e8], [-14, 262, 0xff5a8a],
+    [-44, 262, 0x4ade80], [-24, 264, 0xc07bff], [-50, 250, 0xf2f2ee],
+    [-8, 246, 0xff7a1a], [-42, 270, 0x4aa3ff],
+  ];
+  for (const [x, z, shirt] of beachgoers) {
+    dressPerson(game, shirt, x, z, Math.PI, true);
+  }
+  const beachUmbrellas = [[-16, 252], [-42, 254], [-20, 272], [-36, 272]];
+  (game.city.umbrellas || []).slice(0, 4).forEach((um, i) => {
+    const spot = beachUmbrellas[i];
+    if (!spot) return;
+    um.position.set(spot[0], 0, spot[1]);
+    um.visible = true;
+  });
+  // Extra boats sit in the visible band below the SAVE FILE panel, clear
+  // of the orange ally and the beachgoers, so they read as boats on the
+  // shore instead of hiding behind the big boat and the panel.
+  const beachBoats = [[-54, 245, 0.6, 1.5], [-40, 246, 0.4, 1.5]];
+  for (const [x, z, heading, s] of beachBoats) {
+    const boat = makeBoat();
+    boat.scale.setScalar(s);
+    place(game, boat, x, z, heading);
+  }
   const sand = game.city && game.city.sandMat;
   if (sand && sand.emissive) {
     sand.emissive.set(0x8a6b42);
