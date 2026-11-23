@@ -4,112 +4,126 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LUMEN BAY — Sunset Getaway</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a12; font-family: Arial, sans-serif; }
-  #gameCanvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-  .panel { position: fixed; background: rgba(10, 12, 20, 0.82); border: 1px solid rgba(255, 210, 28, 0.25); border-radius: 10px; color: #f2f2ee; padding: 10px 12px; z-index: 5; }
-  .gold { color: #ffd21c; }
-  /* Top-left mission panel */
-  #missionPanel { top: 12px; left: 12px; width: 330px; }
-  #jobTitle { color: #ffd21c; font-size: 19px; font-weight: bold; letter-spacing: 0.5px; }
-  #jobBrief { color: #e8e8e8; font-size: 13px; margin-top: 4px; }
-  #jobStage { color: #9fd8ff; font-size: 12px; margin-top: 4px; font-weight: bold; }
-  #jobNext { color: #ffd21c; font-size: 12px; margin-top: 3px; }
-  #jobBanner { display: none; background: #c22a1e; color: #fff; font-weight: bold; font-size: 13px; text-align: center; border-radius: 6px; padding: 6px 4px; margin-top: 8px; }
-  #keysLine { color: #b9bcc2; font-size: 11px; margin-top: 8px; }
-  /* Top-centre wanted panel */
-  #wantedPanel { top: 12px; left: 50%; transform: translateX(-50%); text-align: center; background: transparent; border: none; padding: 0; }
-  #wantedLabel { color: #ff4d4d; font-size: 18px; font-weight: bold; letter-spacing: 4px; }
-  #wantedStars { font-size: 22px; letter-spacing: 2px; line-height: 1; }
-  #wantedStars .star { color: #3a3f4a; }
-  #wantedStars .star.filled { color: #ffd21c; text-shadow: 0 0 8px rgba(255, 210, 28, 0.7); }
-  #wantedPill { display: none; background: #c22a1e; color: #fff; font-size: 11px; font-weight: bold; border-radius: 20px; padding: 3px 10px; margin-top: 4px; }
-  /* Top-right money panel */
-  #moneyPanel { top: 12px; right: 12px; width: 246px; text-align: right; }
-  #cashText { color: #4ade80; font-size: 30px; font-weight: bold; }
-  #weaponLabel { color: #f2f2ee; font-size: 13px; font-weight: bold; margin-top: 2px; }
-  #clockText { color: #ffd21c; font-size: 14px; font-weight: bold; }
-  .weapon-slots { display: flex; gap: 6px; margin-top: 8px; }
-  .weapon-slot { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 5px 2px; font-size: 11px; text-align: center; }
-  .weapon-slot.active { background: #ffd21c; color: #111; font-weight: bold; }
-  .bar-label { font-size: 10px; color: #b9bcc2; letter-spacing: 1px; margin-top: 7px; text-align: left; }
-  .bar { height: 8px; background: rgba(255,255,255,0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
-  .bar > div { height: 100%; border-radius: 4px; }
-  #healthBar { background: #4ade80; width: 100%; }
-  #armourBar { background: #4aa3ff; width: 0%; }
-  #nosBar { background: #4aa3ff; width: 100%; }
-  /* Left police panel */
-  #policePanel { top: 232px; left: 12px; width: 262px; }
-  #policePanel h3 { color: #9fd8ff; font-size: 13px; letter-spacing: 2px; margin-bottom: 6px; }
-  .police-row { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 0; }
-  .police-row span:first-child { flex: 1; }
-  .police-dist { color: #b9bcc2; font-size: 12px; }
-  .pill { font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 6px; color: #fff; }
-  .pill.chasing { background: #2e6fd2; }
-  .pill.flanking { background: #8a4fd2; }
-  .pill.spotlight { background: #d9a41c; color: #111; }
-  .pill.enroute { background: #2e6fd2; }
-  .pill.clear { background: #c22a1e; }
-  /* Right toasts */
-  #toasts { position: fixed; top: 232px; right: 12px; width: 246px; z-index: 5; display: flex; flex-direction: column; gap: 8px; }
-  .toast { background: rgba(10, 12, 20, 0.85); border-left: 4px solid #4ade80; border-radius: 8px; padding: 8px 10px; color: #f2f2ee; }
-  .toast.bad { border-left-color: #ff4d4d; }
-  .toast-title { font-size: 13px; font-weight: bold; color: #4ade80; }
-  .toast.bad .toast-title { color: #ff6d6d; }
-  .toast-text { font-size: 12px; color: #e8e8e8; margin-top: 2px; }
-  /* Right event log */
-  #eventlog { position: fixed; top: 428px; right: 12px; width: 300px; z-index: 5; display: flex; flex-direction: column; gap: 6px; }
-  .log-line { background: rgba(10, 12, 20, 0.78); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: #e8e8e8; }
-  /* Bottom-left respect + street + minimap + turf */
-  #respectBox { position: fixed; left: 12px; bottom: 222px; z-index: 5; color: #ffd21c; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px #000; }
-  #respectBarWrap { width: 190px; height: 7px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-top: 3px; overflow: hidden; }
-  #respectBar { height: 100%; background: #ff8c1a; width: 50%; }
-  #streetText { position: fixed; left: 12px; bottom: 198px; z-index: 5; background: rgba(10,12,20,0.8); color: #f2f2ee; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 5px 9px; }
-  #minimap { position: fixed; left: 12px; bottom: 18px; width: 190px; height: 190px; z-index: 5; border-radius: 50%; border: 3px solid #fff; background: #1c2b1e; }
-  #turfText { position: fixed; left: 12px; bottom: 0px; z-index: 5; color: #4ade80; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px #000; }
-  /* Bottom-centre dialogue bar */
-  #dialogueBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; width: 620px; max-width: 48vw; background: rgba(10, 12, 20, 0.85); border-radius: 10px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; z-index: 5; }
-  #dlgInitial { width: 42px; height: 42px; min-width: 42px; border-radius: 50%; background: #4aa3ff; color: #fff; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-  #dlgName { font-size: 13px; font-weight: bold; color: #4aa3ff; }
-  #dlgText { font-size: 13px; color: #f2f2ee; margin-top: 2px; }
-  /* Bottom-right speed panel */
-  #speedPanel { bottom: 12px; right: 12px; width: 246px; text-align: right; }
-  #speedText { font-size: 44px; font-weight: bold; line-height: 1; }
-  #speedUnit { font-size: 14px; color: #b9bcc2; }
-  #gearText { color: #ffd21c; font-size: 13px; font-weight: bold; }
-  #carNameText { color: #ffd21c; font-size: 14px; font-weight: bold; }
-  #conditionLabel { font-size: 10px; color: #b9bcc2; letter-spacing: 1px; margin-top: 6px; }
-  #conditionBar { height: 8px; background: rgba(255,255,255,0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
-  #conditionBar > div { height: 100%; width: 100%; background: #4ade80; }
-  #radioLine { color: #ffd21c; font-size: 11px; font-weight: bold; margin-top: 6px; }
-  /* Centre mission-passed banner */
-  #missionPassed { display: none; position: fixed; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; z-index: 6; }
-  #missionPassedTitle { color: #ffd21c; font-size: 56px; font-weight: bold; letter-spacing: 3px; text-shadow: 0 3px 12px rgba(0,0,0,0.7); }
-  #missionPassedSub { color: #fff; font-size: 16px; font-weight: bold; margin-top: 6px; text-shadow: 0 2px 6px #000; }
-  /* Floating damage numbers */
-  #damageLayer { position: fixed; inset: 0; pointer-events: none; z-index: 7; overflow: hidden; }
-  .damage-number { position: absolute; color: #ff4d4d; font-size: 20px; font-weight: bold; text-shadow: 0 1px 3px #000; animation: floatUp 0.9s ease-out forwards; }
-  @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-46px); } }
-  /* Full city map overlay */
-  #mapOverlay { display: none; position: fixed; inset: 0; background: rgba(5, 5, 10, 0.72); z-index: 8; }
-  #citymap { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; }
-  /* Title screen */
-  #titleScreen { position: fixed; inset: 0; background: linear-gradient(180deg, rgba(10,10,20,0.55), rgba(10,10,20,0.85)); z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #f2f2ee; text-align: center; }
-  #titleScreen h1 { color: #ffd21c; font-size: 72px; letter-spacing: 6px; text-shadow: 0 4px 18px rgba(0,0,0,0.8); }
-  #titleScreen h2 { color: #ffd21c; font-size: 20px; letter-spacing: 3px; margin-top: 6px; }
-  #titleScreen p { max-width: 560px; font-size: 15px; line-height: 1.5; margin-top: 18px; color: #e8e8e8; }
-  .big-btn { margin-top: 26px; background: #ffd21c; color: #111; border: none; border-radius: 10px; padding: 14px 44px; font-size: 20px; font-weight: bold; cursor: pointer; }
-  .big-btn:hover { background: #ffe14d; }
-  #continueBtn { display: none; background: #2e6fd2; color: #fff; }
-  /* Pause screen */
-  #pauseScreen { position: fixed; inset: 0; background: rgba(5, 5, 10, 0.7); z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: center; color: #f2f2ee; text-align: center; }
-  #pauseScreen h1 { font-size: 52px; letter-spacing: 6px; }
-  #pauseScreen p { font-size: 16px; margin-top: 10px; color: #e8e8e8; }
-</style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three/three.module.min.js" } }
 </script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000;
+    font-family: Arial, Helvetica, sans-serif; }
+  #gameCanvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .panel { position: fixed; background: rgba(5, 10, 25, 0.82); border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 10px; color: #f2ede2; padding: 10px 12px; z-index: 10; }
+  /* Mission panel */
+  #missionPanel { top: 12px; left: 12px; width: 330px; }
+  #jobTitle { color: #ffd23e; font-size: 19px; font-weight: bold; line-height: 1.15; }
+  #jobBrief { color: #f2ede2; font-size: 13px; margin-top: 4px; }
+  #jobStage { color: #8ecbff; font-size: 12px; font-weight: bold; margin-top: 4px; }
+  #jobNext { color: #ffd23e; font-size: 12px; margin-top: 3px; }
+  #jobBanner { display: none; background: #c22a1e; color: #fff; font-size: 13px; font-weight: bold;
+    text-align: center; border-radius: 6px; padding: 5px 6px; margin-top: 6px; }
+  #keysLine { color: #9aa3b2; font-size: 11px; margin-top: 6px; }
+  /* Wanted panel */
+  #wantedPanel { top: 12px; left: 50%; transform: translateX(-50%); text-align: center;
+    background: transparent; border: none; padding: 0; }
+  #wantedLabel { color: #ff5a4e; font-size: 18px; font-weight: bold; letter-spacing: 6px; }
+  #wantedStars { font-size: 22px; letter-spacing: 2px; line-height: 1.1; }
+  #wantedPill { display: none; background: #c22a1e; color: #fff; font-size: 11px; font-weight: bold;
+    border-radius: 20px; padding: 3px 12px; margin-top: 4px; }
+  /* Money panel */
+  #moneyPanel { top: 12px; right: 12px; width: 246px; text-align: right; }
+  #cashText { color: #3ddc5a; font-size: 30px; font-weight: bold; line-height: 1; }
+  #weaponLabel { font-size: 13px; font-weight: bold; margin-top: 4px; }
+  .weapon-slots { display: flex; gap: 6px; margin-top: 6px; }
+  .weapon-slot { flex: 1; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px;
+    font-size: 11px; font-weight: bold; text-align: center; padding: 5px 2px; color: #f2ede2;
+    background: rgba(255, 255, 255, 0.06); }
+  .weapon-slot.active { background: #ffd23e; color: #1a1200; border-color: #ffd23e; }
+  .bar-label { color: #9aa3b2; font-size: 10px; letter-spacing: 2px; margin-top: 7px; text-align: left; }
+  .bar-track { height: 8px; background: rgba(255, 255, 255, 0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  #healthBar { background: #3ddc5a; width: 100%; }
+  #armourBar { background: #4aa3ff; width: 0%; }
+  #nosBar { background: #4aa3ff; width: 100%; }
+  #clockText { color: #ffd23e; font-size: 14px; font-weight: bold; margin-top: 7px; }
+  /* Police panel */
+  #policePanel { left: 12px; top: 232px; width: 262px; }
+  #policePanel h3 { color: #8ecbff; font-size: 13px; letter-spacing: 3px; font-weight: bold; margin-bottom: 6px; }
+  .police-row { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; }
+  .police-name { flex: 1; text-align: left; }
+  .police-dist { color: #9aa3b2; }
+  .police-pill { font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 6px; color: #fff; }
+  .pill-chasing { background: #2f6fd0; }
+  .pill-flanking { background: #7a4fd0; }
+  .pill-spotlight { background: #ffd23e; color: #1a1200; }
+  .pill-enroute { background: #2f6fd0; }
+  .pill-clear { background: #c22a1e; }
+  /* Toasts */
+  #toasts { position: fixed; right: 12px; top: 232px; width: 246px; z-index: 10;
+    display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: rgba(5, 10, 25, 0.88); border-left: 4px solid #3ddc5a; border-radius: 8px;
+    padding: 8px 10px; }
+  .toast-bad { border-left-color: #ff5a4e; }
+  .toast-title { font-size: 13px; font-weight: bold; color: #3ddc5a; }
+  .toast-bad .toast-title { color: #ff5a4e; }
+  .toast-text { font-size: 12px; color: #f2ede2; margin-top: 2px; }
+  /* Event log */
+  #eventlog { position: fixed; right: 12px; top: 428px; width: 300px; z-index: 10;
+    display: flex; flex-direction: column; gap: 6px; }
+  .log-line { background: rgba(5, 10, 25, 0.82); border-radius: 8px; padding: 7px 10px;
+    font-size: 12px; color: #f2ede2; }
+  /* Respect / street / turf / minimap */
+  #respectBox { position: fixed; left: 12px; bottom: 222px; z-index: 10; }
+  #respectText { color: #ffd23e; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+  #respectBarWrap { width: 190px; height: 7px; background: rgba(255, 255, 255, 0.14);
+    border-radius: 4px; overflow: hidden; margin-top: 3px; }
+  #respectBar { height: 100%; background: #ff8c1a; width: 0%; }
+  #streetText { position: fixed; left: 12px; bottom: 198px; z-index: 10;
+    background: rgba(5, 10, 25, 0.82); border-radius: 8px; padding: 5px 10px;
+    color: #f2ede2; font-size: 12px; font-weight: bold; }
+  #minimap { position: fixed; left: 12px; bottom: 18px; width: 190px; height: 190px; z-index: 10;
+    border-radius: 50%; border: 3px solid #fff; background: #1d4a2a; }
+  #turfText { position: fixed; left: 12px; bottom: 0; z-index: 10; color: #3ddc5a;
+    font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+  /* Dialogue bar */
+  #dialogueBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    width: 620px; z-index: 10; background: rgba(5, 10, 25, 0.82); border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; }
+  #dlgInitial { width: 42px; height: 42px; min-width: 42px; border-radius: 50%; background: #4aa3ff;
+    color: #fff; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+  #dlgName { color: #4aa3ff; font-size: 13px; font-weight: bold; }
+  #dlgText { color: #f2ede2; font-size: 13px; margin-top: 2px; }
+  /* Speed panel */
+  #speedPanel { bottom: 12px; right: 12px; width: 246px; text-align: right; }
+  #speedText { font-size: 44px; font-weight: bold; line-height: 1; }
+  #speedUnit { color: #9aa3b2; font-size: 14px; }
+  #gearText { color: #ffd23e; font-size: 13px; font-weight: bold; margin-top: 2px; }
+  #carNameText { color: #ffd23e; font-size: 14px; font-weight: bold; }
+  #conditionLabel { color: #9aa3b2; font-size: 10px; letter-spacing: 2px; margin-top: 6px; }
+  #conditionBar { background: #3ddc5a; width: 100%; }
+  #radioLine { color: #ffd23e; font-size: 11px; font-weight: bold; margin-top: 6px; }
+  /* Mission passed banner */
+  #missionPassed { display: none; position: fixed; top: 22%; left: 0; right: 0; z-index: 15;
+    text-align: center; pointer-events: none; }
+  #missionPassedTitle { color: #ffd23e; font-size: 56px; font-weight: bold; letter-spacing: 10px;
+    text-shadow: 2px 2px 6px #000; }
+  #missionPassedSub { color: #fff; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 4px #000; margin-top: 6px; }
+  /* Damage numbers */
+  #damageLayer { position: fixed; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+  .dmg-num { position: absolute; color: #ff3b30; font-size: 20px; font-weight: bold;
+    text-shadow: 1px 1px 2px #000; animation: dmgFloat 0.9s ease-out forwards; }
+  @keyframes dmgFloat { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-46px); } }
+  /* Full city map overlay */
+  #mapOverlay { display: none; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, 0.72); }
+  #citymap { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; }
+  /* Pause screen */
+  #pauseScreen { display: none; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.78);
+    flex-direction: column; align-items: center; justify-content: center; color: #f2ede2; }
+  .pause-title { font-size: 52px; font-weight: bold; letter-spacing: 12px; }
+  .pause-text { font-size: 14px; color: #cfd6e4; margin-top: 10px; }
+  .big-btn { margin-top: 22px; background: #ffd23e; color: #1a1200; border: none; border-radius: 10px;
+    font-size: 18px; font-weight: bold; letter-spacing: 2px; padding: 12px 34px; cursor: pointer; }
+</style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
@@ -133,16 +147,16 @@
   <div id="cashText">$1,200</div>
   <div id="weaponLabel">PISTOL ∞</div>
   <div class="weapon-slots">
-    <div class="weapon-slot" id="slot-fists">1 FISTS<br>∞</div>
-    <div class="weapon-slot active" id="slot-pistol">2 PISTOL<br>∞</div>
-    <div class="weapon-slot" id="slot-smg">3 SMG<br>30/120</div>
+    <div id="slot-fists" class="weapon-slot">1 FISTS ∞</div>
+    <div id="slot-pistol" class="weapon-slot active">2 PISTOL ∞</div>
+    <div id="slot-smg" class="weapon-slot">3 SMG 30/120</div>
   </div>
   <div class="bar-label">HEALTH</div>
-  <div class="bar"><div id="healthBar"></div></div>
+  <div class="bar-track"><div id="healthBar" class="bar-fill"></div></div>
   <div class="bar-label">ARMOUR</div>
-  <div class="bar"><div id="armourBar"></div></div>
+  <div class="bar-track"><div id="armourBar" class="bar-fill"></div></div>
   <div class="bar-label">NOS</div>
-  <div class="bar"><div id="nosBar"></div></div>
+  <div class="bar-track"><div id="nosBar" class="bar-fill"></div></div>
   <div id="clockText">18:40</div>
 </div>
 
@@ -158,15 +172,16 @@
   <span id="respectText">RESPECT · ROOKIE 0/550</span>
   <div id="respectBarWrap"><div id="respectBar"></div></div>
 </div>
-<div id="streetText">DUNES — Torre Boulevard</div>
+
+<div id="streetText">PLAYA DORADA — Ocean Boulevard</div>
 <canvas id="minimap" width="190" height="190"></canvas>
 <div id="turfText">TURF 0/12</div>
 
 <div id="dialogueBar">
-  <div id="dlgInitial">T</div>
+  <div id="dlgInitial">M</div>
   <div>
-    <div id="dlgName">TIO REYES</div>
-    <div id="dlgText">Comet's yours, Mara. Tio's garage is waiting — don't scratch her.</div>
+    <div id="dlgName">MARA</div>
+    <div id="dlgText">Welcome to Puerto Lumen.</div>
   </div>
 </div>
 
@@ -175,7 +190,7 @@
   <div id="gearText">ON FOOT</div>
   <div id="carNameText">ON FOOT</div>
   <div id="conditionLabel">CONDITION</div>
-  <div id="conditionBar"><div></div></div>
+  <div class="bar-track"><div id="conditionBar" class="bar-fill"></div></div>
   <div id="radioLine">RADIO SOL 101.9 — Sol Hits</div>
 </div>
 
@@ -188,20 +203,83 @@
 
 <div id="mapOverlay"><canvas id="citymap" width="1280" height="720"></canvas></div>
 
+<style>
+  /* Title / start screen (new layout) */
+  #titleScreen { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+    padding: 34px 48px; color: #f2ede2;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.32) 30%,
+      rgba(0, 0, 0, 0.28) 62%, rgba(0, 0, 0, 0.82) 100%); }
+  #titleTagline { font-size: 15px; letter-spacing: 4px; color: #ffe9a8; font-weight: bold; }
+  .title-main { margin-top: 14px; font-size: 104px; line-height: 0.95; font-weight: 900; letter-spacing: 2px;
+    background: linear-gradient(180deg, #ffe45c 0%, #ffb02e 55%, #ff7a1a 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #titleBanner { display: inline-block; align-self: flex-start; margin-top: 10px;
+    background: #17b8a6; color: #06231f; font-size: 26px; font-weight: bold; letter-spacing: 6px;
+    padding: 8px 22px; border-radius: 4px; }
+  .title-middle { display: flex; justify-content: space-between; align-items: flex-start;
+    margin-top: 30px; flex: 1; }
+  .title-menu { width: 430px; display: flex; flex-direction: column; gap: 12px; }
+  .menu-row { display: block; width: 100%; text-align: left; cursor: pointer;
+    background: rgba(10, 16, 30, 0.72); border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px; padding: 13px 18px; color: #fff; font-family: Arial, Helvetica, sans-serif; }
+  .menu-row-title { display: block; font-size: 24px; font-weight: bold; letter-spacing: 3px; }
+  .menu-row-sub { display: block; font-size: 13px; color: #cfd6e4; margin-top: 3px; }
+  .menu-row-selected { background: #ffd94d; border-color: #ffd94d; color: #1a1200; }
+  .menu-row-selected .menu-row-sub { color: #4a3a00; }
+  #continueBtn { display: none; }
+  #controlsDetail { background: rgba(10, 16, 30, 0.72); border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #f2ede2; line-height: 1.7; }
+  .save-panel { width: 400px; background: rgba(5, 10, 25, 0.82);
+    border: 1px solid rgba(212, 175, 55, 0.45); border-radius: 10px; padding: 18px 20px; }
+  .save-title { color: #ffd23e; font-size: 16px; font-weight: bold; letter-spacing: 4px; margin-bottom: 8px; }
+  .save-slot { font-size: 13px; color: #f2ede2; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+  .save-slot:last-child { border-bottom: none; }
+  .save-slot-empty { color: #9aa3b2; }
+  .title-bottom { text-align: center; font-size: 13px; color: #9aa3b2; padding-top: 18px; }
+</style>
+
 <div id="titleScreen">
-  <h1>LUMEN BAY</h1>
-  <h2>SUNSET GETAWAY — PUERTO LUMEN</h2>
-  <p>You are Mara Solis, getaway driver. Steal the Comet GT, run fifteen jobs across Puerto Lumen, outrun the LCPD, crack the Torre Lumen vault and vanish on the dawn boat. Drive, shoot, steal, race — and mind the five stars.</p>
-  <button class="big-btn" id="playBtn">PLAY</button>
-  <button class="big-btn" id="continueBtn">CONTINUE — SAVE FOUND</button>
+  <div id="titleTagline">PUERTO LUMEN — AN ORIGINAL OPEN WORLD CRIME STORY</div>
+  <h1 class="title-main">LUMEN BAY</h1>
+  <div id="titleBanner">SUNSET GETAWAY</div>
+  <div class="title-middle">
+    <div class="title-menu">
+      <button type="button" id="playBtn" class="menu-row menu-row-selected">
+        <span class="menu-row-title">NEW GAME</span>
+        <span class="menu-row-sub">Start a fresh story as Mara Solis</span>
+      </button>
+      <button type="button" id="continueBtn" class="menu-row">
+        <span class="menu-row-title">CONTINUE</span>
+        <span class="menu-row-sub" id="continueSub">Story 15/15 · $21,400 · 100% COMPLETE</span>
+      </button>
+      <button type="button" id="controlsBtn" class="menu-row">
+        <span class="menu-row-title">CONTROLS</span>
+        <span class="menu-row-sub">Keys, driving and combat</span>
+      </button>
+      <div id="controlsDetail" hidden>WASD drive · SPACE handbrake · E exit car · M map · 1 / 2 / 3 switch weapons · Mouse aim · SHIFT NOS boost</div>
+    </div>
+    <div class="save-panel" id="savePanel">
+      <div class="save-title">SAVE FILE</div>
+      <div class="save-slot" id="saveSlot1">SLOT 1 — STORY 15/15 · $21,400 · 100% COMPLETE · Puerto Lumen</div>
+      <div class="save-slot save-slot-empty" id="saveSlot2">SLOT 2 — Empty</div>
+      <div class="save-slot save-slot-empty" id="saveSlot3">SLOT 3 — Empty</div>
+    </div>
+  </div>
+  <div class="title-bottom">WASD drive · SPACE handbrake · E exit · M map · 1/2/3 weapons · Mouse aim</div>
 </div>
 
 <div id="pauseScreen">
-  <h1>PAUSED</h1>
-  <p>Lumen Bay is waiting. The LCPD is not.</p>
-  <button class="big-btn" id="resumeBtn">RESUME</button>
+  <div class="pause-title">PAUSED</div>
+  <div class="pause-text">Lumen Bay is waiting — the LCPD won't.</div>
+  <button type="button" id="resumeBtn" class="big-btn">RESUME</button>
 </div>
 
+<script>
+  document.getElementById('controlsBtn').addEventListener('click', function () {
+    var d = document.getElementById('controlsDetail');
+    d.hidden = !d.hidden;
+  });
+</script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
