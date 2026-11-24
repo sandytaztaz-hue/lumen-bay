@@ -609,19 +609,29 @@ export class Hud {
     // TORRE drops a row below MERCADO VIEJO: the two ran together as
     // one word at the same height. A leader line points back up to its row.
     ctx.fillText('TORRE', 745, 158);
-    ctx.fillText('FAROL ROJO', 905, 130);
+    // Right-aligned inside the frame (ends 978, 7px clear of the 985
+    // edge): left-aligned at 905 it ran past the frame.
+    ctx.textAlign = 'right';
+    ctx.fillText('FAROL ROJO', 978, 130);
+    ctx.textAlign = 'left';
     ctx.fillText('TALLER', 488, 310);
     // OLD TOWN lifts above CASINO ROW: the two ran together at the same
     // height. A leader line points back down to its row.
     ctx.fillText('OLD TOWN', 625, 282);
     ctx.fillText('CASINO ROW', 745, 310);
-    ctx.fillText('FESTIVAL SQ', 885, 310);
+    // Same right-align fix: at 885 it ended right on the frame edge.
+    ctx.textAlign = 'right';
+    ctx.fillText('FESTIVAL SQ', 978, 310);
+    ctx.textAlign = 'left';
     ctx.fillText('PLAYA DORADA', 455, 463);
     // NORTH DOCKS drops below PLAYA DORADA: the two ran together at the
     // same height. A leader line points back up to its row.
     ctx.fillText('NORTH DOCKS', 630, 491);
     ctx.fillText('DUNES', 780, 463);
-    ctx.fillText('HILLSIDE', 905, 463);
+    // Right-aligned too, for a uniform 7px margin on all three east labels.
+    ctx.textAlign = 'right';
+    ctx.fillText('HILLSIDE', 978, 463);
+    ctx.textAlign = 'left';
     ctx.font = '12px Arial';
     ctx.fillStyle = '#c8c8c8';
     ctx.textAlign = 'center';
