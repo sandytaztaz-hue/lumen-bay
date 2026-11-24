@@ -567,9 +567,11 @@ function stageShot4(game) {
   // boats behind the car and the allies, all clear of the hero, both
   // allies and the big boat, so the start screen reads as a lived-in
   // beach instead of an empty stretch of sand.
+  // Shot-4 fix: no palm may stand on or ahead of the dawn boat. Two palms
+  // stood here before — one sprouting from the boat's deck in frame, one
+  // blocking its bow — and both are removed, not moved.
   const beachPalms = [
     [-10, 258, 0.08, 1.15], [-46, 256, -0.07, 1.05],
-    [-38, 268, 0.06, 1.25], [-16, 270, -0.09, 0.95],
   ];
   for (const [x, z, lean, s] of beachPalms) {
     const palm = makeBeachPalm(lean);
