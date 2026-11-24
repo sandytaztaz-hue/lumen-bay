@@ -440,7 +440,8 @@ function makeBeachPalm(lean) {
 // umbrellas and small boats behind. No title screen, the full gameplay
 // HUD stays up (mission panel, wanted, money, police, toasts, event log,
 // minimap, dialogue bar, speed panel). The pinned cash stays $21,400 so
-// the capture tool's freshness check still passes.
+// the capture tool's freshness check still passes. r32: the hero Comet
+// sits 2 m further forward so its rear clears the dialogue bar.
 // ---------------------------------------------------------------------------
 
 function stageShot4(game) {
@@ -464,8 +465,10 @@ function stageShot4(game) {
   // small boats below stay — they read clearly as boats.
 
   // Hero Comet in the foreground, rear to the camera, nose to the sea.
+  // Parked 2 m further forward (z 237) so its rear bumper clears the
+  // bottom dialogue bar with a visible margin.
   const hero = game.heroCar;
-  hero.position.set(-28, 0, 235);
+  hero.position.set(-28, 0, 237);
   hero.rotation.y = 0;
   hero.visible = true;
 
