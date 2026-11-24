@@ -1,4 +1,5 @@
-import { DISTRICTS, WORLD, STREETS, AVENUES, formatCash, clockText, respectRank, RADIO_LINE, CREW, RESPECT_BAR_MAX, WEAPONS, WEAPON_ORDER, weaponOwned, CREW_ABILITIES } from './config.js';
+import { DISTRICTS, WORLD, STREETS, AVENUES, formatCash, clockText, respectRank, RESPECT_RANKS, JOB_TOTALS, RADIO_LINE, CREW, RESPECT_BAR_MAX, WEAPONS, WEAPON_ORDER, weaponOwned, CREW_ABILITIES } from './config.js';
+import { drawMapStats } from './mapstats.js';
 import { TURF_TOTAL, districtAt } from './turf.js';
 
 export { RADIO_LINE } from './config.js';
@@ -126,6 +127,9 @@ export class Hud {
   setMapOpen(open) {
     this.mapOpen = open;
     $('mapOverlay').style.display = open ? 'block' : 'none';
+    // The full map screen IS the map: hide the round minimap while it
+    // is open so no circular minimap shows in the corner (shot 3).
+    $('minimap').style.display = open ? 'none' : '';
     if (open) this.drawCityMap();
   }
 
@@ -321,6 +325,8 @@ export class Hud {
 
   update(state, view) {
     view = view || {};
+    this.liveState = state;
+    this.liveView = view;
     if (this.pin) {
       if (view.minimap) this.drawMinimap(view.minimap);
       return;
@@ -563,263 +569,84 @@ export class Hud {
 
   drawCityMap() {
     const ctx = this.mapCanvas.getContext('2d');
-    ctx.save();
-    ctx.clearRect(0, 0, 1280, 720);
-    ctx.fillStyle = '#2b0e13';
-    ctx.fillRect(385, 30, 600, 555);
-    ctx.strokeStyle = '#9c7a33';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(385, 30, 600, 555);
-    ctx.fillStyle = '#11596c';
-    ctx.fillRect(385, 30, 34, 555);
-    ctx.fillStyle = '#c9a227';
-    ctx.fillRect(419, 30, 2, 555);
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = 385.5; x <= 985.5; x += 25) {
-      ctx.moveTo(x, 30);
-      ctx.lineTo(x, 585);
+    drawMapStats(ctx, this.mapStatsValues());
+  }
+
+  // Values for the full map/stats screen: the pinned shot values when a
+  // shot is staged, else the live game state.
+  mapStatsValues() {
+    const pin = this.pin;
+    const crew = [
+      { name: 'Mara', role: 'driver' },
+      { name: 'Tio Reyes', role: 'heat off' },
+      { name: 'Lena Cruz', role: 'decoy' },
+      { name: 'Big Dario', role: 'pit crew' },
+    ];
+    let nextRank = 'KINGPIN';
+    let nextAt = 800;
+    const pickNext = (rep) => {
+      for (const r of RESPECT_RANKS) {
+        if (r.min > rep) { nextRank = r.name; nextAt = r.min; break; }
+      }
+    };
+    if (pin) {
+      const story = String(pin.story || '15/15').split('/');
+      const title = String(pin.jobTitle || '').replace(/^JOB \d+: /, '');
+      pickNext(pin.respect);
+      return {
+        cash: pin.cash,
+        clock: pin.clock,
+        day: pin.day || 1,
+        wanted: pin.wanted,
+        rank: pin.rank,
+        respect: pin.respect,
+        respectMax: RESPECT_BAR_MAX,
+        nextRank,
+        nextRankAt: nextAt,
+        turf: pin.turf,
+        turfTotal: TURF_TOTAL,
+        standingDistrict: pin.standing ? pin.standing.district : 'MARINA',
+        standingPct: pin.standing ? pin.standing.pct : 0,
+        jobN: parseInt(story[0], 10) || 15,
+        jobTotal: parseInt(story[1], 10) || 15,
+        jobTitle: title,
+        jobStage: pin.stageText,
+        jobReward: pin.reward,
+        jobRep: pin.rep,
+        kills: JOB_TOTALS.kills,
+        crew,
+      };
     }
-    for (let y = 30.5; y <= 580.5; y += 25) {
-      ctx.moveTo(385, y);
-      ctx.lineTo(985, y);
-    }
-    ctx.stroke();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (const x of [570, 685, 765, 837, 910]) {
-      ctx.moveTo(x, 30);
-      ctx.lineTo(x, 585);
-    }
-    for (const y of [99, 263, 348, 448]) {
-      ctx.moveTo(385, y);
-      ctx.lineTo(985, y);
-    }
-    ctx.stroke();
-    ctx.fillStyle = '#2d5d23';
-    ctx.fillRect(586, 330, 127, 106);
-    ctx.font = 'bold 15px Arial';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('MARINA', 505, 130);
-    ctx.fillText('MERCADO VIEJO', 575, 130);
-    // TORRE drops a row below MERCADO VIEJO: the two ran together as
-    // one word at the same height. A leader line points back up to its row.
-    ctx.fillText('TORRE', 745, 158);
-    // Right-aligned inside the frame (ends 978, 7px clear of the 985
-    // edge): left-aligned at 905 it ran past the frame.
-    ctx.textAlign = 'right';
-    ctx.fillText('FAROL ROJO', 978, 130);
-    ctx.textAlign = 'left';
-    ctx.fillText('TALLER', 488, 310);
-    // OLD TOWN lifts above CASINO ROW: the two ran together at the same
-    // height. A leader line points back down to its row.
-    ctx.fillText('OLD TOWN', 625, 282);
-    ctx.fillText('CASINO ROW', 745, 310);
-    // Same right-align fix: at 885 it ended right on the frame edge.
-    ctx.textAlign = 'right';
-    ctx.fillText('FESTIVAL SQ', 978, 310);
-    ctx.textAlign = 'left';
-    ctx.fillText('PLAYA DORADA', 455, 463);
-    // NORTH DOCKS drops below PLAYA DORADA: the two ran together at the
-    // same height. A leader line points back up to its row.
-    ctx.fillText('NORTH DOCKS', 630, 491);
-    ctx.fillText('DUNES', 780, 463);
-    // Right-aligned too, for a uniform 7px margin on all three east labels.
-    ctx.textAlign = 'right';
-    ctx.fillText('HILLSIDE', 978, 463);
-    ctx.textAlign = 'left';
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#c8c8c8';
-    ctx.textAlign = 'center';
-    // MARINA RD lifts clear of the white player triangle that hid its tail.
-    // A leader line points back down to the road it names.
-    ctx.fillText('MARINA RD', 730, 78);
-    ctx.fillText('FESTIVAL AVE', 677, 257);
-    // PLAYA DR lifts clear of the solid green block it sat on, to just
-    // above the block's top edge. A leader line points back down to the
-    // street it names.
-    ctx.fillText('PLAYA DR', 612, 326);
-    ctx.fillText('MIRAMAR STRIP', 662, 447);
-    for (const street of [['OCEAN BLVD', 570], ['PALM AVE', 685], ['MERCADO ST', 765], ['CASINO AVE', 837], ['TORRE BLVD', 910]]) {
-      ctx.save();
-      ctx.translate(street[1], 390);
-      ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = 'center';
-      ctx.fillText(street[0], 0, 4);
-      ctx.restore();
-    }
-    // Short thin leader lines from each staggered label back to the place
-    // it names, so the stagger reads as a pointer and not a stray label.
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(770, 144); ctx.lineTo(770, 133); // TORRE up to its row
-    ctx.moveTo(665, 286); ctx.lineTo(665, 306); // OLD TOWN down to its row
-    ctx.moveTo(700, 477); ctx.lineTo(700, 464); // NORTH DOCKS up to its row
-    ctx.moveTo(730, 82); ctx.lineTo(730, 95); // MARINA RD down to its road
-    ctx.moveTo(612, 330); ctx.lineTo(612, 345); // PLAYA DR down to its street
-    ctx.stroke();
-    ctx.strokeStyle = '#ffd23e';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([10, 8]);
-    ctx.beginPath();
-    ctx.moveTo(755, 99);
-    ctx.lineTo(553, 99);
-    ctx.lineTo(553, 436);
-    ctx.lineTo(515, 452);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = '#d8402f';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 7]);
-    ctx.beginPath();
-    ctx.arc(770, 161, 80, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.moveTo(755, 87);
-    ctx.lineTo(739, 118);
-    ctx.lineTo(771, 118);
-    ctx.closePath();
-    ctx.fill();
-    ctx.font = 'bold 22px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('H', 778, 118);
-    ctx.fillStyle = '#4aa3ff';
-    for (const dot of [[699, 205], [790, 205], [640, 345]]) {
-      ctx.beginPath();
-      ctx.arc(dot[0], dot[1], 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#ffd23e';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('$', 553, 203);
-    ctx.fillText('$', 844, 435);
-    ctx.fillText('$', 619, 498);
-    ctx.fillText('$', 840, 499);
-    // Two quiet annotations in the map's empty corners: the state name
-    // up in the north-west, and the bay's name on the open water
-    // bottom-right. Both sit clear of every label, line and marker.
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#c8c8c8';
-    ctx.textAlign = 'center';
-    ctx.fillText('LEONIDA', 440, 60);
-    ctx.fillText('LUMEN BAY', 820, 545);
-    ctx.textBaseline = 'alphabetic';
-    ctx.font = 'bold 13px Arial';
-    ctx.textAlign = 'left';
-    // BOAT label lifts up-left of the white PLAYA DORADA district label so
-    // the two never touch; a short leader line points down to the boat.
-    ctx.fillText('BOAT — PLAYA DORADA', 400, 430);
-    ctx.beginPath();
-    ctx.moveTo(440, 460);
-    ctx.lineTo(432, 472);
-    ctx.lineTo(448, 472);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#ffd23e';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(440, 434);
-    ctx.lineTo(440, 457);
-    ctx.stroke();
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'left';
-    // Legend stays in the bottom-left interior, but drops to rows
-    // 505-571 at 10px: the old 12px rows at 484-562 ran on NORTH
-    // DOCKS' own line (its label spans x630-750 at y479-491, and the
-    // old first line ended at x640), so the two read as one jumbled
-    // line, and the first row crowded PLAYA DORADA above it. The new
-    // rows sit clearly below NORTH DOCKS (5px under its glyphs, 24px
-    // left of its start), 33px below PLAYA DORADA, with the first
-    // line ending at x606 — 8px clear of the gold $ marker at (619,
-    // 498) — and the last row still 9px clear of the banner pill.
-    ctx.strokeStyle = '#ffd23e';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(400, 501);
-    ctx.lineTo(420, 501);
-    ctx.stroke();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('ESCAPE ROUTE — VAULT → BOAT', 428, 505);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.moveTo(410, 506);
-    ctx.lineTo(404, 515);
-    ctx.lineTo(416, 515);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('MARA — YOU', 428, 516);
-    ctx.fillStyle = '#4aa3ff';
-    ctx.beginPath();
-    ctx.arc(410, 523, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('MISSION TARGET — BOAT', 428, 527);
-    ctx.fillStyle = '#fc3f46';
-    ctx.beginPath();
-    ctx.arc(410, 534, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('LCPD UNITS ON THE STREET', 428, 538);
-    ctx.fillStyle = '#ffd23e';
-    ctx.font = 'bold 11px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('$', 410, 545);
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('ROBBERY TARGETS / PROPERTIES', 428, 549);
-    ctx.fillStyle = '#2d8a3e';
-    ctx.fillRect(404, 551, 12, 12);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('CREW / TURF', 428, 560);
-    ctx.fillStyle = '#d8402f';
-    ctx.fillRect(404, 562, 12, 12);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('TIBURONES TURF', 428, 571);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(930, 62, 21, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = '#d8402f';
-    ctx.beginPath();
-    ctx.moveTo(930, 46);
-    ctx.lineTo(921, 74);
-    ctx.lineTo(939, 74);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('N', 930, 34);
-    ctx.fillStyle = '#160a0d';
-    ctx.strokeStyle = '#c9a227';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(475, 580);
-    ctx.lineTo(805, 580);
-    ctx.arc(805, 605, 25, -Math.PI / 2, Math.PI / 2);
-    ctx.lineTo(475, 630);
-    ctx.arc(475, 605, 25, Math.PI / 2, Math.PI * 3 / 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#ffd23e';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('PUERTO LUMEN — CITY MAP', 640, 605);
-    ctx.restore();
+    const s = this.liveState || {};
+    const v = this.liveView || {};
+    const rep = s.rep || 0;
+    pickNext(rep);
+    const district = v.minimap ? districtAt(v.minimap.playerX, v.minimap.playerZ) : { name: 'MARINA' };
+    const standing = s.turf && s.turf.includes(district.name) ? 100 : Math.min(95, Math.floor(rep / 15));
+    const job = v.job;
+    return {
+      cash: s.cash || 0,
+      clock: clockText(s.clockMin || 0),
+      day: Math.floor((s.clockMin || 0) / 1440) + 1,
+      wanted: s.wanted || 0,
+      rank: respectRank(rep),
+      respect: rep,
+      respectMax: RESPECT_BAR_MAX,
+      nextRank,
+      nextRankAt: nextAt,
+      turf: s.turf ? s.turf.length : 0,
+      turfTotal: TURF_TOTAL,
+      standingDistrict: district.name,
+      standingPct: standing,
+      jobN: job ? job.n : 15,
+      jobTotal: 15,
+      jobTitle: job ? job.title : 'EL PUERTO ES NUESTRO',
+      jobStage: (s.jobStage || 3) + '/3',
+      jobReward: job ? job.reward : 8000,
+      jobRep: job ? job.rep : 290,
+      kills: JOB_TOTALS.kills,
+      crew,
+    };
   }
 }
 
