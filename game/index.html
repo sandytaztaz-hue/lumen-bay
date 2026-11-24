@@ -68,7 +68,10 @@
   .toast-bad .toast-title { color: #ff5a4e; }
   .toast-text { font-size: 12px; color: #f2ede2; margin-top: 2px; }
   /* Event log */
-  #eventlog { position: fixed; right: 12px; top: 428px; width: 300px; z-index: 10;
+  /* Event log: 270px wide so that on the map shot its left edge (998)
+     clears the map panel's right edge (985) — at 300px the first letter
+     of every line hid behind the opaque map panel. */
+  #eventlog { position: fixed; right: 12px; top: 428px; width: 270px; z-index: 10;
     display: flex; flex-direction: column; gap: 6px; }
   .log-line { background: rgba(5, 10, 25, 0.82); border-radius: 8px; padding: 7px 10px;
     font-size: 12px; color: #f2ede2; }

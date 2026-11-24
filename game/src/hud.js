@@ -523,55 +523,62 @@ export class Hud {
     ctx.moveTo(440, 434);
     ctx.lineTo(440, 457);
     ctx.stroke();
-    ctx.font = '12px Arial';
+    ctx.font = '10px Arial';
     ctx.textAlign = 'left';
-    // Legend lifts 20px so TIBURONES TURF clears the banner pill below;
-    // 20px (not 14) also keeps its first line off NORTH DOCKS' height.
+    // Legend stays in the bottom-left interior, but drops to rows
+    // 505-571 at 10px: the old 12px rows at 484-562 ran on NORTH
+    // DOCKS' own line (its label spans x630-750 at y479-491, and the
+    // old first line ended at x640), so the two read as one jumbled
+    // line, and the first row crowded PLAYA DORADA above it. The new
+    // rows sit clearly below NORTH DOCKS (5px under its glyphs, 24px
+    // left of its start), 33px below PLAYA DORADA, with the first
+    // line ending at x606 — 8px clear of the gold $ marker at (619,
+    // 498) — and the last row still 9px clear of the banner pill.
     ctx.strokeStyle = '#ffd23e';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(400, 480);
-    ctx.lineTo(420, 480);
+    ctx.moveTo(400, 501);
+    ctx.lineTo(420, 501);
     ctx.stroke();
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('ESCAPE ROUTE — VAULT → BOAT', 428, 484);
+    ctx.fillText('ESCAPE ROUTE — VAULT → BOAT', 428, 505);
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(410, 487);
-    ctx.lineTo(404, 496);
-    ctx.lineTo(416, 496);
+    ctx.moveTo(410, 506);
+    ctx.lineTo(404, 515);
+    ctx.lineTo(416, 515);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('MARA — YOU', 428, 497);
+    ctx.fillText('MARA — YOU', 428, 516);
     ctx.fillStyle = '#4aa3ff';
     ctx.beginPath();
-    ctx.arc(410, 506, 5, 0, Math.PI * 2);
+    ctx.arc(410, 523, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('MISSION TARGET — BOAT', 428, 510);
+    ctx.fillText('MISSION TARGET — BOAT', 428, 527);
     ctx.fillStyle = '#fc3f46';
     ctx.beginPath();
-    ctx.arc(410, 519, 5, 0, Math.PI * 2);
+    ctx.arc(410, 534, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('LCPD UNITS ON THE STREET', 428, 523);
+    ctx.fillText('LCPD UNITS ON THE STREET', 428, 538);
     ctx.fillStyle = '#ffd23e';
-    ctx.font = 'bold 13px Arial';
+    ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('$', 410, 532);
-    ctx.font = '12px Arial';
+    ctx.fillText('$', 410, 545);
+    ctx.font = '10px Arial';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('ROBBERY TARGETS / PROPERTIES', 428, 536);
+    ctx.fillText('ROBBERY TARGETS / PROPERTIES', 428, 549);
     ctx.fillStyle = '#2d8a3e';
-    ctx.fillRect(404, 539, 12, 12);
+    ctx.fillRect(404, 551, 12, 12);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('CREW / TURF', 428, 549);
+    ctx.fillText('CREW / TURF', 428, 560);
     ctx.fillStyle = '#d8402f';
-    ctx.fillRect(404, 552, 12, 12);
+    ctx.fillRect(404, 562, 12, 12);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('TIBURONES TURF', 428, 562);
+    ctx.fillText('TIBURONES TURF', 428, 571);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.beginPath();

@@ -36,10 +36,10 @@ Take all four staged screenshots (1280×720 JPEG, quality 90) with the shot driv
 node tools/shot.mjs all
 ```
 
-1. `1-chase.jpg` — night boulevard chase, five stars, eight units, heli beam
+1. `1-chase.jpg` — day boulevard chase, five stars, eight units, heli beam
 2. `2-shootout.jpg` — beach shootout at sunset, cordon, cash in the air
 3. `3-job.jpg` — the full city map with the gold escape route
-4. `4-done.jpg` — dawn boat, the Comet and the crew, story complete
+4. `4-done.jpg` — dawn boat escape at Playa Dorada, Mara on foot, crew and Comet
 
 ## Verify
 

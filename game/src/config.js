@@ -141,11 +141,11 @@ export function streetNameAt(x, z) {
 // Pinned HUD values for the four staged screenshots. Never computed live.
 export const SHOT_PINS = {
   1: {
-    preset: 'night', jobTitle: 'JOB 12: STREET KING',
+    preset: 'day', jobTitle: 'JOB 12: STREET KING',
     jobBrief: 'Win the street race — 8 checkpoints', stageText: '1/1',
     reward: 3600, story: '12/15', rep: 120,
     nextText: 'Win the street race — 8 checkpoints', banner: 'VEHICLE STOLEN: VELOZ COMET RS',
-    cash: 18450, speed: 117, gear: 4, wanted: 5, clock: '22:40',
+    cash: 18450, speed: 117, gear: 4, wanted: 5, clock: '16:00',
     inCar: true, carName: 'VELOZ COMET RS', weapon: 'pistol',
     street: 'DUNES — Torre Boulevard', turf: 1, respect: 290, rank: 'HUSTLER',
     speaker: 'dispatch', dialogue: 'All units — suspect westbound on the Playa front, five stars. Air One overhead, eight units closing. Do not let her reach the pier.',
@@ -155,8 +155,8 @@ export const SHOT_PINS = {
       { kind: 'bad', title: 'WANTED LEVEL UP', text: '5 stars — the whole LCPD is on you' },
     ],
     log: [
-      'LUMEN BAY — Puerto Lumen, 22:40. Press M to start the story.',
-      'Night chase — eight units on you, heli beam on the car.',
+      'LUMEN BAY — Puerto Lumen, 16:00. Day chase — five stars, eight units.',
+      'Day chase — eight units on you, heli beam on the car.',
       'NOS burning — hold Shift on the straight.',
     ],
     police: [
@@ -182,7 +182,7 @@ export const SHOT_PINS = {
       { kind: 'bad', title: 'BEACH SHOOTOUT', text: 'LCPD cordon on the sand — hold the door' },
     ],
     log: [
-      'LUMEN BAY — Puerto Lumen, 18:45. Press M to start the story.',
+      'LUMEN BAY — Puerto Lumen, 18:45. Beach shootout — five stars.',
       'Cash flying on the beach — $21,700',
       'Mara downed a police officer',
     ],
@@ -210,7 +210,7 @@ export const SHOT_PINS = {
       { kind: 'good', title: 'VAULT CRACKED', text: 'Torre Lumen vault — $48,500 in gold and cash' },
     ],
     log: [
-      'LUMEN BAY — Puerto Lumen, 21:40. Press M to start the story.',
+      'LUMEN BAY — Puerto Lumen, 21:40. Vault cracked — escape route set.',
       'Escape route set — Torre Lumen vault to the Playa boat.',
       "Vault's cracked — $48,500. Map's open.",
     ],
@@ -224,25 +224,24 @@ export const SHOT_PINS = {
     toastsTop: null, missionPassed: false, mapOpen: true,
   },
   4: {
-    preset: 'dawn', jobTitle: 'STORY COMPLETE',
-    jobBrief: 'El puerto es nuestro — Puerto Lumen is yours', stageText: '15/15',
+    preset: 'dawn', jobTitle: 'JOB 15: EL PUERTO ES NUESTRO',
+    jobBrief: 'Escape on the dawn boat — Playa Dorada', stageText: '3/3',
     reward: 8000, story: '15/15', rep: 290,
-    nextText: 'Free roam — rob, race, take turf.', banner: null,
-    cash: 21400, speed: 0, gear: 1, wanted: 0, clock: '06:10',
-    inCar: true, carName: 'VELOZ COMET RS', weapon: 'pistol',
+    nextText: 'Board the dawn boat — Puerto Lumen is yours', banner: null,
+    cash: 21400, speed: 0, gear: 0, wanted: 0, clock: '06:10',
+    inCar: false, carName: 'ON FOOT', weapon: 'pistol',
     street: 'PLAYA DORADA — Ocean Boulevard', turf: 12, respect: 290, rank: 'HUSTLER',
     speaker: 'tio', dialogue: 'Dawn breaks over the marina, Mara. The boat is waiting — Puerto Lumen is ours.',
     toasts: [
-      { kind: 'good', title: 'STORY 15/15 — SAVE SLOT 1', text: '100% COMPLETE — Puerto Lumen is yours' },
+      { kind: 'good', title: 'BOAT ESCAPE', text: 'Dawn boat at Playa Dorada — board and go' },
       { kind: 'good', title: 'MISSION PASSED', text: 'El Puerto Es Nuestro +$8,000' },
     ],
     log: [
-      'LUMEN BAY — Puerto Lumen, 06:10. Press M to start the story.',
+      'LUMEN BAY — Puerto Lumen, 06:10. Dawn boat at Playa Dorada — board and go.',
       'STORY 15/15 — SAVE SLOT 1 100% COMPLETE.',
       'MISSION PASSED: El Puerto Es Nuestro — +$8,000 · +500 REP',
     ],
     police: [],
-    toastsTop: 252, missionPassed: true,
-    missionPassedText: '+$8,000 · +500 REP · UNLOCKED: PIER SAFEHOUSE',
+    toastsTop: 252, missionPassed: false,
   },
 };

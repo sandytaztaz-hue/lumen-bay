@@ -79,8 +79,9 @@ function beginShot(game, n, player) {
   game.hud.setPin(pin);
   game.hud.setMapOpen(pin.mapOpen === true);
   hideElement('pauseScreen');
-  if (n === 4) showElement('titleScreen');
-  else hideElement('titleScreen');
+  // No shot shows the title screen any more: shot 4 is a gameplay
+  // moment now, like the other three.
+  hideElement('titleScreen');
   return pin;
 }
 
@@ -182,6 +183,25 @@ function clearUmbrellas(game, cx, cz, radius) {
   }
 }
 
+// Hide every city palm within a radius of a point. The city plants a
+// palm row along the boulevard's south sidewalk (z 225.4, every 17 m),
+// so a beach camera parked on the sand can sit a metre from a palm
+// whose canopy fills the top of the frame — that is what the green
+// triangle in the first gameplay shot 4 was. Palms live inside the city
+// group, so they are found by position, not by name; only group
+// children standing on the ground near the point are hidden.
+function clearPalms(game, cx, cz, radius) {
+  if (!game.city || !game.city.group) return;
+  const r2 = radius * radius;
+  for (const child of game.city.group.children) {
+    if (child.type !== 'Group') continue;
+    if (Math.abs(child.position.y) > 0.01) continue;
+    const dx = child.position.x - cx;
+    const dz = child.position.z - cz;
+    if (dx * dx + dz * dz < r2) child.visible = false;
+  }
+}
+
 // Mara's pistol carries its muzzle flash as a hidden group inside the gun;
 // showing it is what makes the shot read as a gunshot in progress.
 function showMuzzleFlash(mara) {
@@ -194,7 +214,8 @@ function showMuzzleFlash(mara) {
 }
 
 // ---------------------------------------------------------------------------
-// Shot 1 — night boulevard chase. Hero Comet at (90, 215) facing east,
+// Shot 1 — bright daylight boulevard chase (r31: the night preset became
+// the day preset in the shot pin, clock 16:00). Hero Comet at (90, 215) facing east,
 // camera low behind and above it, eight cruisers in two staggered rows
 // ahead, a roadblock pair, three oncoming sedans, two police bikes, the
 // helicopter overhead with its beam on the hero's roof, three people on
@@ -412,36 +433,28 @@ function makeBeachPalm(lean) {
 }
 
 // ---------------------------------------------------------------------------
-// Shot 4 — title / start screen over the dawn beach scene. The 3D
-// backdrop is beach only (r30): the big speedboat is gone — seen
-// stern-on it read as a beige building block with a red stripe — and the
-// marina pier is hidden too, so nothing in the background can read as a
-// building, a wall, or a house. What is left is open beach: sand, sea,
-// the low sun, palm trees, beachgoers, umbrellas, and the two small
-// boats at the west end, which read clearly as boats. The hero Comet
-// sits in the foreground with two allies flanking the car. The title
-// screen itself is shown (with the completed-save state) and every
-// gameplay HUD panel is hidden for the shot, while the money panel's
-// cash text still holds the pinned $21,400 so the capture tool's
-// freshness check passes.
+// Shot 4 — dawn boat escape at Playa Dorada, a real gameplay moment (r31):
+// Mara on foot on the sand by the dawn boat, the hero Comet parked at the
+// beach edge, Tio Reyes and Lena Cruz flanking the car, palms, beachgoers,
+// umbrellas and small boats behind. No title screen, the full gameplay
+// HUD stays up (mission panel, wanted, money, police, toasts, event log,
+// minimap, dialogue bar, speed panel). The pinned cash stays $21,400 so
+// the capture tool's freshness check still passes.
 // ---------------------------------------------------------------------------
-const HUD_PANELS = [
-  'missionPanel', 'wantedPanel', 'moneyPanel', 'policePanel', 'toasts',
-  'eventlog', 'respectBox', 'streetText', 'minimap', 'turfText',
-  'dialogueBar', 'speedPanel', 'missionPassed',
-];
 
 function stageShot4(game) {
   beginShot(game, 4, { x: -28, z: 235, heading: 0, job: 14 });
   const camera = game.render.camera;
-  // Pulled back and raised so the whole hero car, front bumper to rear,
-  // fits inside the frame with a margin of empty road around it: the car
-  // used to sit so close to the lens that its front ran off the bottom
-  // edge. The pullback is kept short on purpose — any further back and
-  // the palm trunk just west of the camera crowds into the right of the
-  // frame and hides the orange ally. The allies still flank the car.
-  camera.position.set(-28, 5.0, 224);
-  camera.lookAt(-22, 1.2, 252);
+  // Low and close on the car and the crew, looking south to the dawn
+  // boat: the old high pullback left the car small, Mara hidden behind
+  // it, and a boulevard palm's canopy filling the top-right corner.
+  // The camera sits south of the palm row now, and clearPalms hides any
+  // palm still close to the lens. Kept far enough back (z 226) that the
+  // whole car fits with a margin — at z 230 the car's front ran off the
+  // bottom edge.
+  camera.position.set(-28, 4.2, 226);
+  camera.lookAt(-26, 1.0, 244);
+  clearPalms(game, -28, 226, 10);
 
   // No big speedboat any more (r30): at 3.6x scale, seen stern-on, its
   // white hull, red stripe, cabin and dark outboard motor read as one
@@ -455,10 +468,19 @@ function stageShot4(game) {
   hero.rotation.y = 0;
   hero.visible = true;
 
+  // Mara on foot east of the car's rear corner, facing the camera, on
+  // her way to the dawn boat — in front of the car, never behind it, so
+  // she reads as her own figure at a glance.
+  const mara = game.maraMesh;
+  mara.position.set(-25.5, 0, 233);
+  mara.rotation.y = Math.PI;
+  mara.visible = true;
+
   // Two allies on the sand flanking the car, facing the camera, larger
   // than normal: Tio Reyes in teal on the east side, Lena Cruz in orange
-  // on the west side.
-  const tio = dressPerson(game, 0x14b8a6, -24.5, 236, Math.PI, false);
+  // on the west side. Tio stands a step east so Mara, behind him to the
+  // south, is not hidden by him.
+  const tio = dressPerson(game, 0x14b8a6, -22, 237, Math.PI, false);
   tio.scale.setScalar(1.3);
   const lena = dressPerson(game, 0xff7a1a, -30.5, 236, Math.PI, false);
   lena.scale.setScalar(1.3);
@@ -499,8 +521,10 @@ function stageShot4(game) {
   });
   // Extra boats sit in the visible band below the SAVE FILE panel, clear
   // of the orange ally and the beachgoers, so they read as boats on the
-  // shore instead of hiding behind the big boat and the panel.
-  const beachBoats = [[-54, 245, 0.6, 1.5], [-40, 246, 0.4, 1.5]];
+  // shore instead of hiding behind the big boat and the panel. Out in
+  // the sea (z 252+) and near the centre line, so both sit fully in
+  // frame instead of one running off the right edge.
+  const beachBoats = [[-30, 252, 0.6, 1.5], [-38, 254, 0.4, 1.5]];
   for (const [x, z, heading, s] of beachBoats) {
     const boat = makeBoat();
     boat.scale.setScalar(s);
@@ -538,14 +562,9 @@ function stageShot4(game) {
   if (game.render.sunSprite) game.render.sunSprite.position.copy(dawnSpot);
   if (game.render.sunHalo) game.render.sunHalo.position.copy(dawnSpot);
 
-  // Title screen on top, gameplay HUD away. The pinned cash stays in the
-  // hidden money panel, so the capture check still reads $21,400.
-  showElement('titleScreen');
-  // A fresh profile holds no save, so the page rule keeps the CONTINUE
-  // row hidden even though Slot 1 is complete — force it on for this shot.
-  const continueRow = document.getElementById('continueBtn');
-  if (continueRow) continueRow.style.display = 'block';
-  for (const id of HUD_PANELS) hideElement(id);
+  // Gameplay shot now: the title screen stays hidden (beginShot hides
+  // it) and every HUD panel stays up, so this reads as a live moment —
+  // Mara, the Comet, the crew and the dawn boat — not a menu.
 }
 
 // ---------------------------------------------------------------------------
