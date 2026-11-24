@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { SHOT_PINS } from './config.js';
 import { makeCruiser, makeSedan, makeBoat, makeHeli } from './vehicles.js';
-import { makePerson, makeMara, makeDownedOfficer, makeCashBurst } from './people.js';
+import { makePerson, makeMara, makeDownedOfficer, makeCashBurst, makeGun } from './people.js';
 import { makePoliceBike, makeTank } from './police-bike-tank.js';
 
 const EAST = Math.PI / 2;
@@ -316,6 +316,44 @@ function stageShot1(game) {
   }
 }
 
+// A police cruiser on fire: flames licking out of the hood and roof and a
+// column of black smoke rising off it, so the car reads as burning at a
+// glance. Flames are unlit orange cones with yellow cores; smoke is dark
+// grey spheres stacked upward and drifting east, away from the hero.
+function addBurningCruiser(game, x, z, heading) {
+  const car = place(game, makeCruiser(game.textures), x, z, heading);
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff7a1a });
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xffd21c });
+  const flameSpots = [
+    { x: 0, y: 1.5, z: 1.2, r: 0.55, h: 1.7 },
+    { x: 0, y: 1.6, z: -0.3, r: 0.5, h: 1.5 },
+    { x: -0.5, y: 1.4, z: 0.5, r: 0.35, h: 1.1 },
+    { x: 0.5, y: 1.4, z: 0.5, r: 0.35, h: 1.1 },
+  ];
+  for (const spot of flameSpots) {
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(spot.r, spot.h, 10), flameMat);
+    flame.position.set(spot.x, spot.y, spot.z);
+    car.add(flame);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(spot.r * 0.55, spot.h * 0.65, 8), coreMat);
+    core.position.set(spot.x, spot.y - 0.1, spot.z);
+    car.add(core);
+  }
+  // Smoke drifts east, away from the hero and clear of the palm trunk
+  // that stands in front of the car, and rises higher so the top puffs
+  // silhouette against the sky. Bigger and a touch lighter than near-black
+  // so the column reads against the dark buildings.
+  for (let i = 0; i < 5; i++) {
+    const puff = new THREE.Mesh(
+      new THREE.SphereGeometry(0.8 + i * 0.15, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0x35353e, transparent: true, opacity: 0.65 - i * 0.07 })
+    );
+    puff.position.set(x + 1.5 + i * 0.6, 3.2 + i * 1.3, z - 0.3 - i * 0.15);
+    game.scene.add(puff);
+    game.staged.push(puff);
+  }
+  return car;
+}
+
 // ---------------------------------------------------------------------------
 // Shot 2 — beach shootout at sunset. Mara on foot at (100, 229) facing
 // east, one downed officer flat in the open foreground, a cash burst over
@@ -338,31 +376,35 @@ function stageShot2(game) {
   heli.rotation.y = Math.PI;
   heli.visible = true;
 
-  // R5 fix round 3: the heli spotlights Mara, the hero in the red shirt.
-  // The helicopter's own straight-down beam would land on the road, so
-  // hide it and draw the aimed beam from the belly down to Mara instead,
-  // the wide end landing on her.
+  // The heli spotlights Mara at her new spot on the left: the helicopter's
+  // own straight-down beam would land on the road, so hide it and draw the
+  // aimed beam from the belly down to Mara instead, the wide end landing
+  // on her.
   heli.userData.beam.visible = false;
-  addBeam(game, { x: 122, y: 17, z: 208 }, { x: 100, y: 1.0, z: 229 });
+  addBeam(game, { x: 122, y: 17, z: 208 }, { x: 100, y: 1.0, z: 219 });
 
-  // Mara on foot, facing east, gun out with the muzzle flash showing.
+  // Mara on foot at the green-circled spot on the left, mid-height on the
+  // road edge, facing east across the street at the police, gun out with
+  // the muzzle flash showing — clearly further from the police than
+  // before, the two sides exchanging fire across the street.
   const mara = game.maraMesh;
-  mara.position.set(100, 0, 229);
+  mara.position.set(100, 0, 219);
   mara.rotation.y = EAST;
   mara.visible = true;
   showMuzzleFlash(mara);
 
-  // R5 fix round 3: the spotlight's landing pool on the sand at Mara's
-  // feet, a flat pale disc so the beam visibly ends on the hero.
+  // The spotlight's landing pool on the road at Mara's feet, a flat pale
+  // disc so the beam visibly ends on the hero, not on the police. Lifted
+  // to y 0.15 and brightened: at 0.06 on the dark asphalt it barely read.
   const spotPool = new THREE.Mesh(
-    new THREE.CircleGeometry(3.2, 24),
+    new THREE.CircleGeometry(3.6, 24),
     new THREE.MeshBasicMaterial({
-      color: 0xfff2c8, transparent: true, opacity: 0.35,
+      color: 0xfff2c8, transparent: true, opacity: 0.5,
       side: THREE.DoubleSide, depthWrite: false,
     })
   );
   spotPool.rotation.x = -Math.PI / 2;
-  spotPool.position.set(100, 0.06, 229);
+  spotPool.position.set(100, 0.15, 219);
   game.scene.add(spotPool);
   game.staged.push(spotPool);
 
@@ -374,7 +416,10 @@ function stageShot2(game) {
 
   // Exactly two pedestrians on the road, bright yellow and bright cyan,
   // facing the camera. No formation, no cordon anywhere.
-  dressPerson(game, 0xffd21c, 120, 215, WEST, true);
+  // The yellow pedestrian moves from (120, 215) to (116, 212): the new
+  // dismounting cop at (104, 222.5) stood directly in front of him on
+  // this camera bearing and hid him behind the muzzle flash.
+  dressPerson(game, 0xffd21c, 116, 212, WEST, true);
   // R5 fix round 3: the cyan pedestrian stood at (122, 217), where the
   // lamppost pole crossed his head and a cash bill covered his face.
   // The first move, (127, 218), hid him behind the (112, 223) cruiser,
@@ -384,20 +429,29 @@ function stageShot2(game) {
   // still facing the camera.
   dressPerson(game, 0x19c8e8, 118, 213, WEST, true);
 
-  // Police cordon closing in around Mara (r30): cruisers on the road
-  // ahead of her and one close on the sand edge beside her, the far
-  // cruiser on the right as before, and two motorcycles flanking her
-  // near — a ring the viewer can read at a glance. No unit covers Mara,
-  // the body on the ground, or the two pedestrians on the road. The
-  // second motorcycle sits in open sand to the right of Mara, clear of
-  // the toast panels and any palm trunk, so it reads as its own shape
-  // with its rider.
+  // Police cordon facing Mara across the street: the cruiser at (112, 223)
+  // is on fire, flames and smoke rising off it mid-distance; cruisers hold
+  // the road ahead and the far right; two motorcycles with riders flank
+  // the cordon. The (116, 209) cruiser is gone — it stood directly behind
+  // Mara's new spot and would have grown out of her head. No unit covers
+  // Mara, the body on the ground, or the two pedestrians on the road.
   place(game, makeCruiser(game.textures), 106, 206, WEST);
-  place(game, makeCruiser(game.textures), 116, 209, WEST);
-  place(game, makeCruiser(game.textures), 112, 223, WEST);
+  addBurningCruiser(game, 112, 223, WEST);
   place(game, makeCruiser(game.textures), 130, 230, WEST);
   place(game, makePoliceBike(), 106, 227, -1.25);
   place(game, makePoliceBike(), 106, 230, -2.36);
+
+  // A motorcycle cop who has just stepped off his bike, standing between
+  // the bike and Mara with his pistol aimed west at her, muzzle flash
+  // showing — mid-gunfight, his aiming hands and oversized pistol reading
+  // clearly at full size. His bike sits right behind him to the east.
+  place(game, makePoliceBike(), 106.5, 223, WEST);
+  const dismount = makePerson({
+    shirt: 0xf2f2ee, trousers: 0x1d2a5e, scale: 1.35, cap: true,
+    gun: makeGun('pistol', game.textures, 1.6), aim: true,
+  });
+  place(game, dismount, 104, 222.5, WEST);
+  showMuzzleFlash(dismount);
 
   // One more cruiser far east to close the ring on the open side, and a
   // second downed officer plus a smaller cash burst on the sand — the
