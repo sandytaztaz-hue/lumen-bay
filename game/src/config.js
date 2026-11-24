@@ -53,7 +53,7 @@ export const FACADE_COLORS = [
 
 export const JOBS = [
   { n: 1, title: 'FIRST KEYS', brief: 'Steal the Comet GT from the marina', next: "Deliver the Comet to Tio's garage.", target: { x: 20, z: 250 }, reward: 800, rep: 40, kills: 0, turf: 0 },
-  { n: 2, title: 'THE DROP', brief: 'Deliver a package to Mercado Viejo in 90 s', next: 'Package delivered — lay low.', target: { x: 110, z: 62 }, reward: 1200, rep: 50, kills: 0, turf: 1 },
+  { n: 2, title: 'THE DROP', brief: 'Deliver a package to Mercado Viejo in 90 s', next: 'Package delivered — lay low.', target: { x: 110, z: 62 }, reward: 1200, rep: 50, kills: 0, turf: 1, time: 90 },
   { n: 3, title: 'HOT WHEELS', brief: 'Lose a 2-star heat tail', next: 'Heat is off — breathe.', target: { x: 240, z: 215 }, reward: 1500, rep: 60, kills: 0, turf: 0 },
   { n: 4, title: 'THE MARINA JOB', brief: "Pick up Lena's cargo at the docks, dodge patrols", next: 'Cargo secured — move it.', target: { x: 28, z: 246 }, reward: 2000, rep: 80, kills: 2, turf: 0 },
   { n: 5, title: 'PAYDAY', brief: 'Ambush the courier van, grab the cash, escape', next: 'Cash is ours — split it later.', target: { x: 180, z: 215 }, reward: 2500, rep: 90, kills: 3, turf: 1 },
@@ -63,10 +63,10 @@ export const JOBS = [
   { n: 9, title: 'BAY GARAGE', brief: 'Claim the Bay Garage as your own', next: 'Garage is yours — tune the Comet.', target: { x: 60, z: 150 }, reward: 2200, rep: 80, kills: 0, turf: 0, garage: true },
   { n: 10, title: 'TURF WAR', brief: 'Take Casino Row from the Tiburones', next: 'Casino Row flies our colours.', target: { x: 185, z: 150 }, reward: 2800, rep: 100, kills: 2, turf: 1 },
   { n: 11, title: 'THE GETAWAY', brief: 'Outrun the LCPD across the whole city', next: 'They never had a chance.', target: { x: 300, z: 215 }, reward: 3200, rep: 110, kills: 0, turf: 0 },
-  { n: 12, title: 'STREET KING', brief: 'Win the street race — 8 checkpoints', next: 'King of Torre Boulevard.', target: { x: 240, z: 215 }, reward: 3600, rep: 120, kills: 0, turf: 1, race: true },
+  { n: 12, title: 'STREET KING', brief: 'Win the street race — 8 checkpoints', next: 'King of Torre Boulevard.', target: { x: 240, z: 215 }, reward: 3600, rep: 120, kills: 0, turf: 1, race: true, time: 90 },
   { n: 13, title: 'NIGHT SHIFT', brief: 'Night run through the docks, no witnesses', next: 'Docks are quiet again.', target: { x: 40, z: 246 }, reward: 2400, rep: 90, kills: 2, turf: 1 },
   { n: 14, title: "SMUGGLER'S RUN", brief: 'Run the coast road, lose the tail', next: 'Cargo delivered, no tail.', target: { x: 300, z: 240 }, reward: 1500, rep: 60, kills: 0, turf: 1 },
-  { n: 15, title: 'EL PUERTO ES NUESTRO', brief: 'Storm the Torre Lumen vault guards (4)', next: 'Free roam — rob, race, take turf.', target: { x: 185, z: 62 }, reward: 8000, rep: 290, kills: 4, turf: 1, guards: 4 },
+  { n: 15, title: 'EL PUERTO ES NUESTRO', brief: 'Storm the Torre Lumen vault guards (4)', next: 'Free roam — rob, race, take turf.', target: { x: 185, z: 62 }, reward: 8000, rep: 290, kills: 4, turf: 1, guards: 4, time: 300 },
 ];
 
 export const JOB_TOTALS = { cash: 38500, kills: 19, turf: 8, rep: 1420 };
@@ -77,7 +77,22 @@ export const WEAPONS = {
   fists: { name: 'FISTS', damage: 12, ammo: Infinity, label: 'FISTS ∞' },
   pistol: { name: 'PISTOL', damage: 34, ammo: Infinity, label: 'PISTOL ∞' },
   smg: { name: 'SMG', damage: 22, ammo: 120, mag: 30, label: 'SMG 30/120' },
+  shotgun: { name: 'SHOTGUN', damage: 65, ammo: 24, mag: 6, price: 1200, turf: 4, label: 'SHOTGUN 6/24' },
+  rifle: { name: 'RIFLE', damage: 48, ammo: 90, mag: 30, price: 2500, turf: 6, label: 'RIFLE 30/90' },
+  bat: { name: 'BAT', damage: 20, ammo: Infinity, price: 300, turf: 2, label: 'BAT ∞' },
 };
+
+export const WEAPON_ORDER = ['fists', 'pistol', 'smg', 'shotgun', 'rifle', 'bat'];
+
+// A weapon with no turf threshold is owned from the start. The three
+// new weapons unlock as Mara takes turf: bat at 2, shotgun at 4,
+// rifle at 6 — so the LOCKED slots in the bar advertise real progress.
+export function weaponOwned(id, state) {
+  const w = WEAPONS[id];
+  if (!w) return false;
+  if (!w.turf) return true;
+  return (state.turf ? state.turf.length : 0) >= w.turf;
+}
 
 export const CARS = {
   comet: { name: 'VELOZ COMET RS', topKmh: 62, accel: 26, color: 0xd2001a },
@@ -99,6 +114,16 @@ export const CREW = {
   dario: { name: 'BIG DARIO', color: '#4ade80', initial: 'D' },
   dispatch: { name: 'LCPD DISPATCH', color: '#4aa3ff', initial: 'L' },
 };
+
+// Crew abilities on the HUD: one key per crew member, each with a real
+// effect and a cooldown in seconds. Tio cuts one wanted star, Dario
+// refills NOS and patches Mara up, Lena sends a decoy that jams the
+// nearest cruiser for 8 seconds.
+export const CREW_ABILITIES = [
+  { id: 'tio', key: 'Q', keyCode: 'KeyQ', name: 'TIO · HEAT OFF', cooldown: 45 },
+  { id: 'dario', key: 'Z', keyCode: 'KeyZ', name: 'DARIO · PIT CREW', cooldown: 30 },
+  { id: 'lena', key: 'X', keyCode: 'KeyX', name: 'LENA · DECOY', cooldown: 20 },
+];
 
 export const RESPECT_RANKS = [
   { min: 0, name: 'ROOKIE' },
@@ -142,11 +167,14 @@ export function streetNameAt(x, z) {
 export const SHOT_PINS = {
   1: {
     preset: 'day', jobTitle: 'JOB 12: STREET KING',
-    jobBrief: 'Win the street race — 8 checkpoints', stageText: '1/1',
+    jobBrief: 'Win the street race — 8 checkpoints', stageText: '1/3',
     reward: 3600, story: '12/15', rep: 120,
     nextText: 'Win the street race — 8 checkpoints', banner: 'VEHICLE STOLEN: VELOZ COMET RS',
     cash: 18450, speed: 117, gear: 4, wanted: 5, clock: '16:00',
     inCar: true, carName: 'VELOZ COMET RS', weapon: 'pistol',
+    weaponsOwned: ['fists', 'pistol', 'smg'],
+    jobTimeLeft: 62, stageFill: 0.625, day: 3, standing: { district: 'DUNES', pct: 45 },
+    crewCd: { tio: 0, dario: 12, lena: 0 },
     street: 'DUNES — Torre Boulevard', turf: 1, respect: 290, rank: 'HUSTLER',
     speaker: 'dispatch', dialogue: 'All units — suspect westbound on the Playa front, five stars. Air One overhead, eight units closing. Do not let her reach the pier.',
     toasts: [
@@ -163,7 +191,7 @@ export const SHOT_PINS = {
       { name: 'PELICAN-11', dist: 13, status: 'CHASING' },
       { name: 'GECKO-25', dist: 19, status: 'CHASING' },
       { name: 'BARRACUDA-18', dist: 18, status: 'FLANKING' },
-      { name: 'TAC-45', dist: 26, status: 'FLANKING' },
+      { name: 'VIPER-07', dist: 42, status: 'ROADBLOCK' },
       { name: 'AIR-1', dist: 17, status: 'SPOTLIGHT' },
     ],
     toastsTop: null, missionPassed: false,
@@ -175,6 +203,9 @@ export const SHOT_PINS = {
     nextText: 'Storm the Torre Lumen vault guards (4)', banner: null,
     cash: 21700, speed: 0, gear: 0, wanted: 5, clock: '18:45',
     inCar: false, carName: 'ON FOOT', weapon: 'pistol',
+    weaponsOwned: ['fists', 'pistol', 'smg'],
+    jobTimeLeft: 214, stageFill: 0.33, day: 5, standing: { district: 'DUNES', pct: 62 },
+    crewCd: { tio: 8, dario: 0, lena: 20 },
     street: 'DUNES — Festival Avenue', turf: 1, respect: 290, rank: 'HUSTLER',
     speaker: 'mara', dialogue: 'Beach is hot — heli on us, cash in the air. Hold the door!',
     toasts: [
@@ -202,6 +233,9 @@ export const SHOT_PINS = {
     nextText: 'NOS chase — escape to Playa Dorada', banner: null,
     cash: 48500, speed: 0, gear: 0, wanted: 5, clock: '21:40',
     inCar: false, carName: 'ON FOOT', weapon: 'smg',
+    weaponsOwned: ['fists', 'pistol', 'smg'],
+    jobTimeLeft: 96, stageFill: 1.0, day: 5, standing: { district: 'TORRE', pct: 78 },
+    crewCd: { tio: 0, dario: 0, lena: 0 },
     street: 'TORRE — City Map', turf: 1, respect: 290, rank: 'HUSTLER',
     speaker: 'mara', dialogue: "Vault's cracked — $48,500. Map's open: gold line to the boat at Playa Dorada. Five stars, so we run clean.",
     toasts: [
@@ -230,6 +264,9 @@ export const SHOT_PINS = {
     nextText: 'Board the dawn boat — Puerto Lumen is yours', banner: null,
     cash: 21400, speed: 0, gear: 0, wanted: 0, clock: '06:10',
     inCar: false, carName: 'ON FOOT', weapon: 'pistol',
+    weaponsOwned: ['fists', 'pistol', 'smg', 'shotgun', 'rifle', 'bat'],
+    jobTimeLeft: null, stageFill: 1.0, day: 6, standing: { district: 'PLAYA DORADA', pct: 100 },
+    crewCd: { tio: 0, dario: 0, lena: 0 },
     street: 'PLAYA DORADA — Ocean Boulevard', turf: 12, respect: 290, rank: 'HUSTLER',
     speaker: 'tio', dialogue: 'Dawn breaks over the marina, Mara. The boat is waiting — Puerto Lumen is ours.',
     toasts: [

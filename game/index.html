@@ -13,12 +13,26 @@
     font-family: Arial, Helvetica, sans-serif; }
   #gameCanvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   .panel { position: fixed; background: rgba(5, 10, 25, 0.82); border: 1px solid rgba(212, 175, 55, 0.45);
-    border-radius: 10px; color: #f2ede2; padding: 10px 12px; z-index: 10; }
+    border-radius: 10px; color: #f2ede2; padding: 9px 12px; z-index: 10; }
   /* Mission panel */
   #missionPanel { top: 12px; left: 12px; width: 330px; }
   #jobTitle { color: #ffd23e; font-size: 19px; font-weight: bold; line-height: 1.15; }
   #jobBrief { color: #f2ede2; font-size: 13px; margin-top: 4px; }
   #jobStage { color: #8ecbff; font-size: 12px; font-weight: bold; margin-top: 4px; }
+  #jobTimer { color: #ffd23e; font-size: 12px; font-weight: bold; margin-top: 3px; }
+  #stageBarWrap { height: 8px; background: rgba(255, 255, 255, 0.14); border-radius: 4px;
+    overflow: hidden; margin-top: 4px; }
+  #stageBar { height: 100%; background: #ffd23e; width: 0%; }
+  #crewChips { display: flex; gap: 6px; margin-top: 8px; }
+  .crew-chip { flex: 1; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px;
+    font-size: 10px; font-weight: bold; text-align: center; padding: 5px 2px; color: #f2ede2;
+    background: rgba(255, 255, 255, 0.06); line-height: 1.25; }
+  .crew-chip .chip-key { display: inline-block; background: #ffd23e; color: #1a1200;
+    border-radius: 3px; padding: 0 4px; margin-right: 2px; }
+  .crew-chip.ready { border-color: #3ddc5a; }
+  .crew-chip.ready .chip-cd { color: #3ddc5a; }
+  .crew-chip.cooling { opacity: 0.75; }
+  .crew-chip.cooling .chip-cd { color: #ffb02e; }
   #jobNext { color: #ffd23e; font-size: 12px; margin-top: 3px; }
   #jobBanner { display: none; background: #c22a1e; color: #fff; font-size: 13px; font-weight: bold;
     text-align: center; border-radius: 6px; padding: 5px 6px; margin-top: 6px; }
@@ -32,22 +46,26 @@
     border-radius: 20px; padding: 3px 12px; margin-top: 4px; }
   /* Money panel */
   #moneyPanel { top: 12px; right: 12px; width: 246px; text-align: right; }
+  #cashRow { display: flex; justify-content: flex-end; align-items: baseline; gap: 10px; }
   #cashText { color: #3ddc5a; font-size: 30px; font-weight: bold; line-height: 1; }
+  #clockText { color: #ffd23e; font-size: 14px; font-weight: bold; }
   #weaponLabel { font-size: 13px; font-weight: bold; margin-top: 4px; }
-  .weapon-slots { display: flex; gap: 6px; margin-top: 6px; }
-  .weapon-slot { flex: 1; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px;
-    font-size: 11px; font-weight: bold; text-align: center; padding: 5px 2px; color: #f2ede2;
-    background: rgba(255, 255, 255, 0.06); }
+  .weapon-slots { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .weapon-slot { flex: 1 1 30%; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px;
+    font-size: 10px; font-weight: bold; text-align: center; padding: 4px 1px; color: #f2ede2;
+    background: rgba(255, 255, 255, 0.06); line-height: 1.2; }
   .weapon-slot.active { background: #ffd23e; color: #1a1200; border-color: #ffd23e; }
-  .bar-label { color: #9aa3b2; font-size: 10px; letter-spacing: 2px; margin-top: 7px; text-align: left; }
-  .bar-track { height: 8px; background: rgba(255, 255, 255, 0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
+  .weapon-slot.locked { color: #9aa3b2; border-style: dashed; }
+  .bar-label { color: #9aa3b2; font-size: 10px; letter-spacing: 2px; margin-top: 5px; text-align: left; }
+  .bar-track { height: 7px; background: rgba(255, 255, 255, 0.14); border-radius: 4px; overflow: hidden; margin-top: 2px; }
   .bar-fill { height: 100%; border-radius: 4px; }
   #healthBar { background: #3ddc5a; width: 100%; }
   #armourBar { background: #4aa3ff; width: 0%; }
   #nosBar { background: #4aa3ff; width: 100%; }
-  #clockText { color: #ffd23e; font-size: 14px; font-weight: bold; margin-top: 7px; }
   /* Police panel */
-  #policePanel { left: 12px; top: 232px; width: 262px; }
+  /* Police panel: moved down (232 -> 262) so the taller mission panel
+     (timer + stage bar + crew chips) never overlaps it. */
+  #policePanel { left: 12px; top: 262px; width: 262px; }
   #policePanel h3 { color: #8ecbff; font-size: 13px; letter-spacing: 3px; font-weight: bold; margin-bottom: 6px; }
   .police-row { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; }
   .police-name { flex: 1; text-align: left; }
@@ -56,10 +74,13 @@
   .pill-chasing { background: #2f6fd0; }
   .pill-flanking { background: #7a4fd0; }
   .pill-spotlight { background: #ffd23e; color: #1a1200; }
+  .pill-roadblock { background: #e8590c; }
   .pill-enroute { background: #2f6fd0; }
   .pill-clear { background: #c22a1e; }
   /* Toasts */
-  #toasts { position: fixed; right: 12px; top: 232px; width: 246px; z-index: 10;
+  /* Toasts: top 244 so the taller money panel (six weapon slots) clears
+     them — at 232 the first toast covered the panel's NOS bar. */
+  #toasts { position: fixed; right: 12px; top: 244px; width: 246px; z-index: 10;
     display: flex; flex-direction: column; gap: 8px; }
   .toast { background: rgba(5, 10, 25, 0.88); border-left: 4px solid #3ddc5a; border-radius: 8px;
     padding: 8px 10px; }
@@ -81,6 +102,11 @@
   #respectBarWrap { width: 190px; height: 7px; background: rgba(255, 255, 255, 0.14);
     border-radius: 4px; overflow: hidden; margin-top: 3px; }
   #respectBar { height: 100%; background: #ff8c1a; width: 0%; }
+  #dayLine { color: #8ecbff; font-size: 12px; font-weight: bold; margin-top: 4px;
+    text-shadow: 1px 1px 2px #000; }
+  #standingBarWrap { width: 190px; height: 6px; background: rgba(255, 255, 255, 0.14);
+    border-radius: 3px; overflow: hidden; margin-top: 3px; }
+  #standingBar { height: 100%; background: #4aa3ff; width: 0%; }
   #streetText { position: fixed; left: 12px; bottom: 198px; z-index: 10;
     background: rgba(5, 10, 25, 0.82); border-radius: 8px; padding: 5px 10px;
     color: #f2ede2; font-size: 12px; font-weight: bold; }
@@ -92,8 +118,8 @@
   #dialogueBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
     width: 620px; z-index: 10; background: rgba(5, 10, 25, 0.82); border: 1px solid rgba(212, 175, 55, 0.45);
     border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; }
-  #dlgInitial { width: 42px; height: 42px; min-width: 42px; border-radius: 50%; background: #4aa3ff;
-    color: #fff; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+  #dlgFace { width: 42px; height: 42px; min-width: 42px; border-radius: 50%;
+    background: #4aa3ff; display: block; }
   #dlgName { color: #4aa3ff; font-size: 13px; font-weight: bold; }
   #dlgText { color: #f2ede2; font-size: 13px; margin-top: 2px; }
   /* Speed panel */
@@ -135,9 +161,16 @@
   <div id="jobTitle">JOB 1: FIRST KEYS</div>
   <div id="jobBrief">○ Steal the Comet GT from the marina</div>
   <div id="jobStage">STAGE 1/3 · +$800 · STORY 1/15 · REP 40</div>
+  <div id="jobTimer">⏱ --:--</div>
+  <div id="stageBarWrap"><div id="stageBar"></div></div>
   <div id="jobNext">NEXT: Deliver the Comet to Tio's garage.</div>
   <div id="jobBanner"></div>
   <div id="keysLine">[WASD] drive · [SPACE] handbrake · [E] exit · [M] map</div>
+  <div id="crewChips">
+    <div id="chip-tio" class="crew-chip ready"><span class="chip-key">Q</span> TIO · HEAT OFF <span class="chip-cd">READY</span></div>
+    <div id="chip-dario" class="crew-chip ready"><span class="chip-key">Z</span> DARIO · PIT CREW <span class="chip-cd">READY</span></div>
+    <div id="chip-lena" class="crew-chip ready"><span class="chip-key">X</span> LENA · DECOY <span class="chip-cd">READY</span></div>
+  </div>
 </div>
 
 <div id="wantedPanel" class="panel">
@@ -147,12 +180,15 @@
 </div>
 
 <div id="moneyPanel" class="panel">
-  <div id="cashText">$1,200</div>
+  <div id="cashRow"><span id="cashText">$1,200</span><span id="clockText">18:40</span></div>
   <div id="weaponLabel">PISTOL ∞</div>
   <div class="weapon-slots">
     <div id="slot-fists" class="weapon-slot">1 FISTS ∞</div>
     <div id="slot-pistol" class="weapon-slot active">2 PISTOL ∞</div>
     <div id="slot-smg" class="weapon-slot">3 SMG 30/120</div>
+    <div id="slot-shotgun" class="weapon-slot locked">4 SHOTGUN 🔒 $1,200</div>
+    <div id="slot-rifle" class="weapon-slot locked">5 RIFLE 🔒 $2,500</div>
+    <div id="slot-bat" class="weapon-slot locked">6 BAT 🔒 $300</div>
   </div>
   <div class="bar-label">HEALTH</div>
   <div class="bar-track"><div id="healthBar" class="bar-fill"></div></div>
@@ -160,7 +196,6 @@
   <div class="bar-track"><div id="armourBar" class="bar-fill"></div></div>
   <div class="bar-label">NOS</div>
   <div class="bar-track"><div id="nosBar" class="bar-fill"></div></div>
-  <div id="clockText">18:40</div>
 </div>
 
 <div id="policePanel" class="panel">
@@ -174,6 +209,8 @@
 <div id="respectBox">
   <span id="respectText">RESPECT · ROOKIE 0/550</span>
   <div id="respectBarWrap"><div id="respectBar"></div></div>
+  <div id="dayLine">DAY 1 · MARINA 0%</div>
+  <div id="standingBarWrap"><div id="standingBar"></div></div>
 </div>
 
 <div id="streetText">PLAYA DORADA — Ocean Boulevard</div>
@@ -181,7 +218,7 @@
 <div id="turfText">TURF 0/12</div>
 
 <div id="dialogueBar">
-  <div id="dlgInitial">M</div>
+  <canvas id="dlgFace" width="42" height="42"></canvas>
   <div>
     <div id="dlgName">MARA</div>
     <div id="dlgText">Welcome to Puerto Lumen.</div>
@@ -263,7 +300,7 @@
         <span class="choice-name">CONTROLS</span>
         <span class="choice-note">Keys, driving and combat</span>
       </button>
-      <div id="controlsDetail" hidden>WASD drive · SPACE handbrake · E exit car · M map · 1 / 2 / 3 switch weapons · Mouse aim · SHIFT NOS boost</div>
+      <div id="controlsDetail" hidden>WASD drive · SPACE handbrake · E exit car · M map · 1 / 2 / 3 / 4 / 5 / 6 switch weapons · Q / Z / X crew abilities · Mouse aim · SHIFT NOS boost</div>
     </div>
     <div class="save-card" id="savePanel">
       <div class="save-heading">SAVE FILE</div>
@@ -272,7 +309,7 @@
       <div class="slot-line slot-blank" id="saveSlot3">SLOT 3 — Empty</div>
     </div>
   </div>
-  <div class="title-foot">WASD drive · SPACE handbrake · E exit · M map · 1/2/3 weapons · Mouse aim</div>
+  <div class="title-foot">WASD drive · SPACE handbrake · E exit · M map · 1–6 weapons · Q/Z/X crew · Mouse aim</div>
 </div>
 
 <div id="pauseScreen">

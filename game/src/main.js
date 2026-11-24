@@ -7,8 +7,9 @@
 
 import * as THREE from 'three';
 import {
-  WORLD, AVENUES, JOBS, SAVE_KEY, START_CASH, POLICE_UNITS,
-  TRAFFIC_COLORS, streetNameAt, gearForSpeed,
+  WORLD, AVENUES, JOBS, SAVE_KEY, START_CASH, POLICE_UNITS, POLICE_EXTRA,
+  TRAFFIC_COLORS, WEAPONS, weaponOwned, CREW_ABILITIES,
+  streetNameAt, gearForSpeed,
 } from './config.js';
 import { makeRng, seedFromQuery } from './random.js';
 import { makeTextures } from './textures.js';
@@ -59,8 +60,15 @@ const state = {
   weapon: 'pistol',
   smgMag: 30,
   smgReserve: 120,
+  shotgunMag: 6,
+  shotgunReserve: 18,
+  rifleMag: 30,
+  rifleReserve: 60,
   jobIndex: 0,
   jobStage: 1,
+  jobTimeLeft: null,
+  jobTimeTotal: null,
+  crewCd: { tio: 0, dario: 0, lena: 0 },
   completed: [],
   turf: [],
   garageOwned: false,
@@ -136,6 +144,11 @@ for (let i = 0; i < 24; i++) {
 // Police cruisers, street officers, vault guards.
 const police = [];
 const officers = [];
+// Roadblock units: two cruisers parked across the boulevard ahead of
+// Mara while the heat is 4-5 stars. They hold their ground (they never
+// chase) and show up in the dispatch list as ROADBLOCK.
+const roadblocks = [];
+let roadblocksAnnounced = false;
 let currentCar = null; // null = on foot; otherwise the driven car group
 
 // Job marker: a floating gold octahedron over a tall translucent beam.
@@ -264,6 +277,39 @@ function setWanted(n) {
   ensurePolice();
 }
 
+// Roadblocks live only at 4-5 stars: two cruisers side by side across
+// the boulevard lanes, 70 m ahead of Mara in the direction she faces,
+// re-aimed every frame as she moves. They drop when the heat falls.
+function ensureRoadblocks() {
+  if (state.wanted >= 4) {
+    while (roadblocks.length < 2) {
+      const group = makeCruiser(textures);
+      scene.add(group);
+      const name = POLICE_EXTRA[roadblocks.length % POLICE_EXTRA.length];
+      roadblocks.push({ group, name });
+    }
+    const dir = Math.sin(state.player.heading) >= 0 ? 1 : -1;
+    const bx = Math.max(-40, Math.min(360, state.player.x + dir * 70));
+    const lanes = [211.5, 218.5];
+    for (let i = 0; i < roadblocks.length; i++) {
+      const rb = roadblocks[i];
+      rb.group.position.set(bx, 0, lanes[i]);
+      rb.group.rotation.y = Math.atan2(state.player.x - bx, state.player.z - lanes[i]);
+    }
+    if (!roadblocksAnnounced) {
+      roadblocksAnnounced = true;
+      hud.logLine('Roadblocks on the boulevard — LCPD sealed the road ahead.');
+      hud.toast('ROADBLOCKS AHEAD', 'LCPD sealed the boulevard — find another way', 'bad');
+    }
+  } else {
+    if (roadblocks.length) {
+      for (const rb of roadblocks) scene.remove(rb.group);
+      roadblocks.length = 0;
+    }
+    roadblocksAnnounced = false;
+  }
+}
+
 function busted() {
   state.wanted = 0;
   state.cash = Math.round(state.cash * 0.95);
@@ -289,31 +335,38 @@ function wasted() {
 function shoot() {
   if (!state.started || state.paused || state.frozen) return;
   if (state.player.inCar) return;
-  if (state.weapon === 'fists') {
-    // Melee: an officer within 2 metres takes the hit.
+  // Melee weapons: fists and the bat hit an officer within 2 metres.
+  if (state.weapon === 'fists' || state.weapon === 'bat') {
     for (const o of officers) {
       if (!o.alive) continue;
       const dx = o.group.position.x - state.player.x;
       const dz = o.group.position.z - state.player.z;
       if (dx * dx + dz * dz < 4) {
-        damageOfficer(o, 12);
+        damageOfficer(o, WEAPONS[state.weapon].damage);
         return;
       }
     }
     return;
   }
   const weapon = state.weapon;
-  if (weapon === 'smg') {
-    if (state.smgMag <= 0) {
-      if (state.smgReserve > 0) {
-        const take = Math.min(30, state.smgReserve);
-        state.smgMag = take;
-        state.smgReserve -= take;
+  // Magazine weapons reload from their reserve like the SMG does.
+  const mags = {
+    smg: ['smgMag', 'smgReserve', 30],
+    shotgun: ['shotgunMag', 'shotgunReserve', 6],
+    rifle: ['rifleMag', 'rifleReserve', 30],
+  };
+  const mag = mags[weapon];
+  if (mag) {
+    if (state[mag[0]] <= 0) {
+      if (state[mag[1]] > 0) {
+        const take = Math.min(mag[2], state[mag[1]]);
+        state[mag[0]] = take;
+        state[mag[1]] -= take;
       } else {
         return;
       }
     }
-    state.smgMag--;
+    state[mag[0]]--;
   }
   audio.shot();
   // Muzzle flash for 90 ms.
@@ -353,7 +406,7 @@ function shoot() {
   tracer.visible = true;
   tracerTimer = 0.15;
   if (best) {
-    const dmg = weapon === 'smg' ? 22 : 34;
+    const dmg = WEAPONS[weapon].damage;
     damageOfficer(best, dmg);
     // Floating red damage number over the hit.
     const v = new THREE.Vector3(best.group.position.x, 2.2, best.group.position.z).project(render.camera);
@@ -383,6 +436,56 @@ function damageOfficer(o, dmg) {
     state.guardsDown++;
     hud.logLine('Vault guard down — ' + state.guardsDown + '/4');
   }
+}
+
+// ---- crew abilities ---------------------------------------------------------
+// One key per crew member, each with a real effect and a cooldown. Tio
+// cuts one wanted star, Dario refills NOS and patches Mara to full
+// health, Lena's decoy jams the nearest cruiser for 8 seconds (it holds
+// its ground instead of chasing).
+function useCrewAbility(id) {
+  if (!state.started || state.paused || state.frozen) return { ok: false, reason: 'Not playing.' };
+  const ability = CREW_ABILITIES.find((a) => a.id === id);
+  if (!ability) return { ok: false, reason: 'No such crew member.' };
+  if (state.crewCd[id] > 0) return { ok: false, reason: ability.name + ' recharging — ' + Math.ceil(state.crewCd[id]) + 's.' };
+  if (id === 'tio') {
+    if (state.wanted <= 0) return { ok: false, reason: 'No heat to cut — you are clean.' };
+    setWanted(state.wanted - 1);
+    hud.toast('TIO · HEAT OFF', 'One star gone — Tio called in a favour', 'good');
+    hud.logLine('Tio cut one wanted star — heat is ' + state.wanted + '.');
+  } else if (id === 'dario') {
+    state.nos = 100;
+    state.health = 100;
+    hud.toast('DARIO · PIT CREW', 'NOS full, Mara patched up', 'good');
+    hud.logLine('Dario refilled the NOS tank and patched Mara up.');
+  } else if (id === 'lena') {
+    let best = null;
+    let bestD = Infinity;
+    for (const p of police) {
+      const d = Math.hypot(p.group.position.x - state.player.x, p.group.position.z - state.player.z);
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    if (!best) return { ok: false, reason: 'No cruiser to jam — the street is clear.' };
+    best.jammedUntil = performance.now() + 8000;
+    hud.toast('LENA · DECOY', best.name + ' is chasing ghosts for 8s', 'good');
+    hud.logLine('Lena jammed ' + best.name + ' — decoy out for 8s.');
+  }
+  state.crewCd[id] = ability.cooldown;
+  return { ok: true, reason: ability.name + ' used.' };
+}
+
+// ---- weapon selection ---------------------------------------------------------
+function selectWeapon(id) {
+  if (!WEAPONS[id]) return { ok: false, reason: 'No such weapon.' };
+  if (!weaponOwned(id, state)) {
+    const w = WEAPONS[id];
+    return { ok: false, reason: w.name + ' LOCKED — take ' + w.turf + ' turf to unlock ($' + w.price.toLocaleString('en-US') + ').' };
+  }
+  state.weapon = id;
+  return { ok: true, reason: WEAPONS[id].name + ' ready.' };
 }
 
 // ---- entering and exiting cars ----------------------------------------------
@@ -505,6 +608,18 @@ input.onKey = (code, down) => {
   if (code === 'Digit1') state.weapon = 'fists';
   if (code === 'Digit2') state.weapon = 'pistol';
   if (code === 'Digit3') state.weapon = 'smg';
+  if (code === 'Digit4' || code === 'Digit5' || code === 'Digit6') {
+    const id = code === 'Digit4' ? 'shotgun' : code === 'Digit5' ? 'rifle' : 'bat';
+    if (state.started && !state.paused && !state.frozen) {
+      const r = selectWeapon(id);
+      if (!r.ok) hud.toast('LOCKED', r.reason, 'bad');
+    }
+  }
+  if (code === 'KeyQ' || code === 'KeyZ' || code === 'KeyX') {
+    const id = code === 'KeyQ' ? 'tio' : code === 'KeyZ' ? 'dario' : 'lena';
+    const r = useCrewAbility(id);
+    if (!r.ok) hud.toast('CREW', r.reason, 'bad');
+  }
 };
 
 document.getElementById('playBtn').addEventListener('click', () => {
@@ -654,6 +769,9 @@ function updatePolice(dt) {
     const dz = pz - gz;
     const d = Math.sqrt(dx * dx + dz * dz) || 1;
     if (d < nearest) nearest = d;
+    // Lena's decoy: a jammed cruiser holds its ground for 8 seconds
+    // instead of chasing.
+    if (p.jammedUntil && performance.now() < p.jammedUntil) continue;
     const maxSpeed = 16 + 2.4 * state.wanted;
     const heading = Math.atan2(dx, dz);
     p.group.rotation.y = heading;
@@ -739,10 +857,14 @@ function updateHudView() {
   const speedKmh = p.inCar ? Math.abs(state.car.speed) * 3.6 : p.speed * 3.6;
   const gear = p.inCar ? gearForSpeed(speedKmh, 62 + engineBonusKmh(state.engineLevel)) : 0;
   const policeRows = [];
-  for (let i = 0; i < Math.min(4, police.length); i++) {
+  for (let i = 0; i < Math.min(3, police.length); i++) {
     const pc = police[i];
     const d = Math.round(Math.hypot(pc.group.position.x - p.x, pc.group.position.z - p.z));
     policeRows.push({ name: pc.name, dist: d, status: i < 2 ? 'CHASING' : 'FLANKING' });
+  }
+  for (const rb of roadblocks) {
+    const d = Math.round(Math.hypot(rb.group.position.x - p.x, rb.group.position.z - p.z));
+    policeRows.push({ name: rb.name, dist: d, status: 'ROADBLOCK' });
   }
   if (heli.visible) {
     const d = Math.round(Math.hypot(heli.position.x - p.x, heli.position.z - p.z));
@@ -764,6 +886,7 @@ function updateHudView() {
     street: streetNameAt(p.x, p.z),
     police: policeRows,
     policeExtra: 4,
+    race: { active: race.active, index: race.index, timeLeft: race.timeLeft },
     minimap,
   });
 }
@@ -791,6 +914,17 @@ function frame() {
 
   if (state.started && !state.paused) {
     state.clockMin += dt * 0.5;
+    // Crew cooldowns tick down; the job timer counts down on timed
+    // jobs (the race clock owns job 12's countdown).
+    for (const k of Object.keys(state.crewCd)) {
+      state.crewCd[k] = Math.max(0, state.crewCd[k] - dt);
+    }
+    if (race.active) {
+      state.jobTimeLeft = race.timeLeft;
+    } else if (state.jobTimeLeft != null && state.jobTimeLeft > 0) {
+      state.jobTimeLeft = Math.max(0, state.jobTimeLeft - dt);
+    }
+    ensureRoadblocks();
     updatePlayer(dt);
     updateTraffic(dt);
     updatePeds(dt);
@@ -866,7 +1000,15 @@ function snapshot() {
     storyComplete: state.storyComplete,
     smgMag: state.smgMag,
     smgReserve: state.smgReserve,
+    shotgunMag: state.shotgunMag,
+    shotgunReserve: state.shotgunReserve,
+    rifleMag: state.rifleMag,
+    rifleReserve: state.rifleReserve,
     policeActive: police.length,
+    roadblocks: roadblocks.length,
+    day: Math.floor(state.clockMin / 1440) + 1,
+    jobTimeLeft: state.jobTimeLeft,
+    crewCd: { ...state.crewCd },
     heliVisible: heli.visible,
   };
 }
@@ -892,9 +1034,11 @@ window.__lumen = {
   exitCar,
   setWanted,
   setWeapon(w) {
-    if (['fists', 'pistol', 'smg'].includes(w)) state.weapon = w;
+    if (WEAPONS[w]) return selectWeapon(w).ok ? state.weapon : state.weapon;
     return state.weapon;
   },
+  selectWeapon,
+  useCrew: useCrewAbility,
   burnNos() {
     state.nos = Math.max(0, state.nos - 30);
     return state.nos;
@@ -916,6 +1060,7 @@ const G = {
   peds: peds.map((p) => ({ group: p.group })),
   police: police.map((p) => ({ group: p.group })),
   officers: officers.map((o) => ({ group: o.group })),
+  roadblocks: roadblocks.map((r) => ({ group: r.group })),
   staged: [],
 };
 window.__lumenGame = G;

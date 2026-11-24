@@ -21,6 +21,10 @@ export function startJob(ctx, n) {
   state.jobIndex = n - 1;
   state.jobStage = 1;
   state.guardsDown = 0;
+  // Timed jobs (2, 12, 15) count down from the job clock; untimed jobs
+  // have no timer line. The race clock owns job 12's countdown live.
+  state.jobTimeLeft = job.time != null ? job.time : null;
+  state.jobTimeTotal = job.time != null ? job.time : null;
   // The arrival check only fires after Mara has left the target radius
   // at least once: spawning on top of a target must not complete it.
   state.jobArmed = false;
@@ -67,8 +71,13 @@ export function completeCurrentJob(ctx) {
   if (job.guards) ctx.state.guardsDown = job.guards;
   const done = completeJob(ctx, job, true);
   if (!done) return null;
-  const next = currentJob(ctx.state);
+  // Advance to the next job in story order. The old code re-read the
+  // current job here (same index) and restarted the job just finished,
+  // so the story could never get past job 1 — and turf, the timed jobs
+  // and the turf-unlocked weapons could never be reached in live play.
+  const next = JOBS[job.n]; // job.n is 1-based, so JOBS[job.n] is next
   if (next) startJob(ctx, next.n);
+  else ctx.state.jobIndex = JOBS.length;
   return done;
 }
 

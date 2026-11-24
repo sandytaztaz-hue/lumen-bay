@@ -32,6 +32,7 @@ function hideLiveWorld(game) {
   game.peds.forEach(hideEntry);
   (game.police || []).forEach(hideEntry);
   (game.officers || []).forEach(hideEntry);
+  (game.roadblocks || []).forEach(hideEntry);
   game.heli.visible = false;
   game.maraMesh.visible = false;
   game.heroCar.visible = false;

@@ -1,10 +1,108 @@
-import { DISTRICTS, WORLD, STREETS, AVENUES, formatCash, clockText, respectRank, RADIO_LINE, CREW, RESPECT_BAR_MAX } from './config.js';
-import { TURF_TOTAL } from './turf.js';
+import { DISTRICTS, WORLD, STREETS, AVENUES, formatCash, clockText, respectRank, RADIO_LINE, CREW, RESPECT_BAR_MAX, WEAPONS, WEAPON_ORDER, weaponOwned, CREW_ABILITIES } from './config.js';
+import { TURF_TOTAL, districtAt } from './turf.js';
 
 export { RADIO_LINE } from './config.js';
 
 function $(id) {
   return document.getElementById(id);
+}
+
+function formatTimer(seconds) {
+  const s = Math.max(0, Math.ceil(seconds));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function weaponLabelFor(id, mag, reserve) {
+  if (id === 'smg') return 'SMG ' + mag + '/' + reserve;
+  if (id === 'shotgun') return 'SHOTGUN ' + mag + '/' + reserve;
+  if (id === 'rifle') return 'RIFLE ' + mag + '/' + reserve;
+  if (id === 'bat') return 'BAT ∞';
+  if (id === 'pistol') return 'PISTOL ∞';
+  return 'FISTS ∞';
+}
+
+// Drawn portraits for the dialogue bar: simple canvas faces, one per
+// speaker, replacing the old letter circles. Every face is a skin disc
+// with eyes and a mouth, plus the speaker's own hair or headgear: Mara's
+// orange headband, Tio's teal flat cap and grey moustache, Lena's purple
+// side hair, Dario's green bandana and beard, dispatch's navy cap and
+// headset mic.
+function drawFace(canvas, speaker) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 42, 42);
+  const c = CREW[speaker] || CREW.mara;
+  ctx.fillStyle = c.color;
+  ctx.beginPath();
+  ctx.arc(21, 21, 21, 0, Math.PI * 2);
+  ctx.fill();
+  const skin = { mara: '#e8b88a', tio: '#d9a06b', lena: '#f0c8a0', dario: '#7a4a28', dispatch: '#e8b88a' }[speaker] || '#e8b88a';
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.arc(21, 23, 14, 0, Math.PI * 2);
+  ctx.fill();
+  if (speaker === 'mara') {
+    ctx.fillStyle = '#3a2415';
+    ctx.beginPath();
+    ctx.arc(21, 20, 14, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(7, 18, 4, 14);
+    ctx.fillRect(31, 18, 4, 14);
+    ctx.fillStyle = '#ff8c1a';
+    ctx.fillRect(8, 12, 26, 3);
+  } else if (speaker === 'tio') {
+    ctx.fillStyle = '#2e5d5a';
+    ctx.fillRect(6, 7, 30, 6);
+    ctx.fillStyle = '#1d3a38';
+    ctx.fillRect(5, 12, 32, 3);
+    ctx.fillStyle = '#c8c8c8';
+    ctx.beginPath();
+    ctx.ellipse(21, 30, 6, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (speaker === 'lena') {
+    ctx.fillStyle = '#7a3fd0';
+    ctx.fillRect(6, 16, 5, 20);
+    ctx.fillRect(31, 16, 5, 20);
+    ctx.beginPath();
+    ctx.arc(21, 19, 14, Math.PI, 0);
+    ctx.fill();
+  } else if (speaker === 'dario') {
+    ctx.fillStyle = '#2e7d32';
+    ctx.beginPath();
+    ctx.arc(21, 19, 14, Math.PI, 0);
+    ctx.fill();
+    ctx.strokeStyle = '#1c1c1c';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(21, 26, 8, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+  } else if (speaker === 'dispatch') {
+    ctx.fillStyle = '#1d2f5e';
+    ctx.beginPath();
+    ctx.arc(21, 19, 14, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(5, 12, 32, 3);
+    ctx.strokeStyle = '#1c1c1c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(21, 23, 16, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#1c1c1c';
+    ctx.beginPath();
+    ctx.arc(31, 31, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Eyes and mouth, same for everyone.
+  ctx.fillStyle = '#1c1c1c';
+  ctx.beginPath();
+  ctx.arc(15.5, 22, 1.8, 0, Math.PI * 2);
+  ctx.arc(26.5, 22, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#7a3a20';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(21, 28, 4, 0.15 * Math.PI, 0.85 * Math.PI);
+  ctx.stroke();
 }
 
 export class Hud {
@@ -63,11 +161,49 @@ export class Hud {
 
   dialogue(speaker, text) {
     const c = CREW[speaker] || CREW.mara;
-    $('dlgInitial').textContent = c.initial;
-    $('dlgInitial').style.background = c.color;
+    drawFace($('dlgFace'), speaker);
     $('dlgName').textContent = c.name;
     $('dlgName').style.color = c.color;
     $('dlgText').textContent = text;
+  }
+
+  // Crew ability chips: key, name, READY or the seconds left on the
+  // cooldown. The same renderer serves the pinned and the live HUD.
+  renderCrew(crewCd) {
+    for (const a of CREW_ABILITIES) {
+      const el = $('chip-' + a.id);
+      if (!el) continue;
+      const cd = Math.ceil(crewCd[a.id] || 0);
+      el.classList.toggle('ready', cd <= 0);
+      el.classList.toggle('cooling', cd > 0);
+      el.innerHTML = '<span class="chip-key">' + a.key + '</span> ' + a.name + ' <span class="chip-cd">' + (cd > 0 ? cd + 's' : 'READY') + '</span>';
+    }
+  }
+
+  // The six-slot weapon bar: owned slots show their ammo, locked slots
+  // show the price. `ammo` carries the current weapon's live label.
+  renderWeapons(owned, current, ammo) {
+    for (const id of WEAPON_ORDER) {
+      const el = $('slot-' + id);
+      if (!el) continue;
+      const w = WEAPONS[id];
+      const n = WEAPON_ORDER.indexOf(id) + 1;
+      const isOwned = owned.includes(id);
+      el.classList.toggle('active', current === id);
+      el.classList.toggle('locked', !isOwned);
+      if (!isOwned) {
+        el.textContent = n + ' ' + w.name + ' 🔒 $' + w.price.toLocaleString('en-US');
+      } else if (id === current) {
+        el.textContent = n + ' ' + ammo;
+      } else {
+        el.textContent = n + ' ' + w.label;
+      }
+    }
+  }
+
+  renderDayStanding(day, district, pct) {
+    $('dayLine').textContent = 'DAY ' + day + ' · ' + district + ' ' + pct + '%';
+    $('standingBar').style.width = pct + '%';
   }
 
   showMissionPassed(text) {
@@ -89,7 +225,7 @@ export class Hud {
     distEl.className = 'police-dist';
     distEl.textContent = dist ? dist + 'm' : '';
     const pillEl = document.createElement('span');
-    pillEl.className = 'police-pill ' + (status === 'CHASING' ? 'pill-chasing' : status === 'FLANKING' ? 'pill-flanking' : status === 'SPOTLIGHT' ? 'pill-spotlight' : status === 'CLEAR' ? 'pill-clear' : 'pill-enroute');
+    pillEl.className = 'police-pill ' + (status === 'CHASING' ? 'pill-chasing' : status === 'FLANKING' ? 'pill-flanking' : status === 'SPOTLIGHT' ? 'pill-spotlight' : status === 'ROADBLOCK' ? 'pill-roadblock' : status === 'CLEAR' ? 'pill-clear' : 'pill-enroute');
     pillEl.textContent = status;
     row.appendChild(nameEl);
     row.appendChild(distEl);
@@ -121,6 +257,15 @@ export class Hud {
     $('jobTitle').textContent = pin.jobTitle;
     $('jobBrief').textContent = '○ ' + pin.jobBrief;
     $('jobStage').textContent = 'STAGE ' + pin.stageText + ' · +' + formatCash(pin.reward) + ' · STORY ' + pin.story + ' · REP ' + pin.rep;
+    const timer = $('jobTimer');
+    if (pin.jobTimeLeft != null) {
+      timer.style.display = 'block';
+      timer.textContent = '⏱ ' + formatTimer(pin.jobTimeLeft);
+    } else {
+      timer.style.display = 'none';
+    }
+    $('stageBar').style.width = Math.round((pin.stageFill ?? 0) * 100) + '%';
+    this.renderCrew(pin.crewCd || { tio: 0, dario: 0, lena: 0 });
     $('jobNext').textContent = 'NEXT: ' + pin.nextText;
     const banner = $('jobBanner');
     if (pin.banner) {
@@ -133,15 +278,18 @@ export class Hud {
     $('cashText').textContent = formatCash(pin.cash);
     $('clockText').textContent = pin.clock;
     this.setWanted(pin.wanted);
-    $('weaponLabel').textContent = pin.weapon === 'smg' ? 'SMG 30/120' : pin.weapon === 'pistol' ? 'PISTOL ∞' : 'FISTS ∞';
-    $('slot-fists').classList.toggle('active', pin.weapon === 'fists');
-    $('slot-pistol').classList.toggle('active', pin.weapon === 'pistol');
-    $('slot-smg').classList.toggle('active', pin.weapon === 'smg');
+    const pinAmmo = pin.weapon === 'smg' ? weaponLabelFor('smg', 30, 120)
+      : pin.weapon === 'shotgun' ? weaponLabelFor('shotgun', 6, 24)
+      : pin.weapon === 'rifle' ? weaponLabelFor('rifle', 30, 90)
+      : weaponLabelFor(pin.weapon, 0, 0);
+    $('weaponLabel').textContent = pinAmmo;
+    this.renderWeapons(pin.weaponsOwned || ['fists', 'pistol', 'smg'], pin.weapon, pinAmmo);
     $('speedText').textContent = String(pin.speed);
     $('gearText').textContent = pin.inCar ? 'GEAR ' + pin.gear : 'ON FOOT';
     $('carNameText').textContent = pin.inCar ? pin.carName : 'ON FOOT';
     $('streetText').textContent = pin.street;
     $('turfText').textContent = 'TURF ' + pin.turf + '/' + TURF_TOTAL;
+    this.renderDayStanding(pin.day || 1, pin.standing ? pin.standing.district : 'MARINA', pin.standing ? pin.standing.pct : 0);
     $('respectText').textContent = 'RESPECT · ' + pin.rank + ' ' + pin.respect + '/' + RESPECT_BAR_MAX;
     $('respectBar').style.width = Math.min(100, pin.respect / RESPECT_BAR_MAX * 100) + '%';
     $('healthBar').style.width = '100%';
@@ -182,11 +330,25 @@ export class Hud {
       $('jobTitle').textContent = 'JOB ' + job.n + ': ' + job.title;
       $('jobBrief').textContent = '○ ' + job.brief;
       $('jobStage').textContent = 'STAGE ' + state.jobStage + '/3 · +' + formatCash(job.reward) + ' · STORY ' + job.n + '/15 · REP ' + job.rep;
+      const tl = view.race && view.race.active ? view.race.timeLeft : state.jobTimeLeft;
+      const timer = $('jobTimer');
+      if (tl != null) {
+        timer.style.display = 'block';
+        timer.textContent = '⏱ ' + formatTimer(tl);
+      } else {
+        timer.style.display = 'none';
+      }
+      const fill = view.race && view.race.active ? view.race.index / 8 : state.jobStage / 3;
+      $('stageBar').style.width = Math.round(fill * 100) + '%';
+      this.renderCrew(state.crewCd || { tio: 0, dario: 0, lena: 0 });
       $('jobNext').textContent = 'NEXT: ' + job.next;
     } else {
       $('jobTitle').textContent = 'STORY COMPLETE';
       $('jobBrief').textContent = 'El puerto es nuestro — Puerto Lumen is yours';
       $('jobStage').textContent = 'STAGE 15/15 · +$8,000 · REP 290';
+      $('jobTimer').style.display = 'none';
+      $('stageBar').style.width = '100%';
+      this.renderCrew(state.crewCd || { tio: 0, dario: 0, lena: 0 });
       $('jobNext').textContent = 'NEXT: Free roam — rob, race, take turf.';
     }
     $('jobBanner').style.display = 'none';
@@ -194,15 +356,30 @@ export class Hud {
     $('clockText').textContent = clockText(state.clockMin);
     this.setWanted(state.wanted);
     const w = state.weapon;
-    $('weaponLabel').textContent = w === 'smg' ? 'SMG ' + state.mag + '/' + state.reserve : w === 'pistol' ? 'PISTOL ∞' : 'FISTS ∞';
-    $('slot-fists').classList.toggle('active', w === 'fists');
-    $('slot-pistol').classList.toggle('active', w === 'pistol');
-    $('slot-smg').classList.toggle('active', w === 'smg');
+    const ammo = weaponLabelFor(w, state.smgMag, state.smgReserve);
+    $('weaponLabel').textContent = w === 'shotgun'
+      ? weaponLabelFor('shotgun', state.shotgunMag, state.shotgunReserve)
+      : w === 'rifle'
+        ? weaponLabelFor('rifle', state.rifleMag, state.rifleReserve)
+        : ammo;
+    const owned = WEAPON_ORDER.filter((id) => weaponOwned(id, state));
+    const curAmmo = w === 'shotgun'
+      ? weaponLabelFor('shotgun', state.shotgunMag, state.shotgunReserve)
+      : w === 'rifle'
+        ? weaponLabelFor('rifle', state.rifleMag, state.rifleReserve)
+        : ammo;
+    this.renderWeapons(owned, w, curAmmo);
     $('speedText').textContent = String(Math.round(view.speedKmh || 0));
     $('gearText').textContent = view.inCar ? 'GEAR ' + view.gear : 'ON FOOT';
     $('carNameText').textContent = view.inCar ? view.carName : 'ON FOOT';
     $('streetText').textContent = view.street || '';
     $('turfText').textContent = 'TURF ' + (state.turf ? state.turf.length : 0) + '/' + TURF_TOTAL;
+    const day = Math.floor(state.clockMin / 1440) + 1;
+    const district = view.minimap ? districtAt(view.minimap.playerX, view.minimap.playerZ) : { name: 'MARINA' };
+    const standing = state.turf && state.turf.includes(district.name)
+      ? 100
+      : Math.min(95, Math.floor(state.rep / 15));
+    this.renderDayStanding(day, district.name, standing);
     $('respectText').textContent = 'RESPECT · ' + respectRank(state.rep) + ' ' + state.rep + '/' + RESPECT_BAR_MAX;
     $('respectBar').style.width = Math.min(100, state.rep / RESPECT_BAR_MAX * 100) + '%';
     $('healthBar').style.width = Math.max(0, state.health) + '%';

@@ -11,8 +11,8 @@ An original open-world crime caper in the browser. You are Mara Solis, getaway d
 - **A city to explore** — twelve districts, four rows of procedural buildings, the Torre Lumen clock tower, the lighthouse, the marina pier, palms, markets and beaches, all built from a seed so the same seed always builds the same Puerto Lumen.
 - **On foot and by car** — third-person walking with a mouse-orbit camera, arcade driving with a chase camera, handbrake, NOS boost and a garage that sells engine levels, armour, NOS tanks and repairs.
 - **Traffic and pedestrians** — twelve AI traffic cars, twenty-four strolling pedestrians who flee gunfire, police bikes and the helicopter AIR-1 with its spotlight.
-- **Wanted, police, combat** — a 0–5 star wanted level, cruisers that chase and ram, BUSTED and WASTED, three weapons (fists, pistol, SMG) with hitscan shooting, tracers, muzzle flashes and floating damage numbers.
-- **Missions and a story** — fifteen jobs worth $38,500, turf to take district by district, a respect ladder from ROOKIE to KINGPIN, an eight-checkpoint street race, vault guards and a full city map with a dashed gold escape route from the vault to the boat.
+- **Wanted, police, combat** — a 0–5 star wanted level, cruisers that chase and ram, roadblocks across the boulevard at 4–5 stars, BUSTED and WASTED, six weapons (fists, pistol, SMG, shotgun, rifle, bat — the last three unlock with turf) with hitscan shooting, tracers, muzzle flashes and floating damage numbers.
+- **Missions and a story** — fifteen jobs worth $38,500, timed jobs with a countdown and a stage progress bar, crew abilities on keys Q / Z / X (Tio cuts a wanted star, Dario refills NOS and repairs, Lena jams the nearest cruiser), a day counter and a district standing meter, turf to take district by district, a respect ladder from ROOKIE to KINGPIN, an eight-checkpoint street race, vault guards and a full city map with a dashed gold escape route from the vault to the boat.
 - **HUD and sound** — mission panel, wanted stars, money and weapon panels, LCPD response list, toasts, event log, respect bar, street label, live minimap, dialogue bar and speed panel; all audio is synthesized with WebAudio (engine hum, siren, gunshots, mission stinger, Radio Sol 101.9).
 - **Save** — progress saves to localStorage; CONTINUE resumes where you left off.
 
@@ -26,7 +26,7 @@ Open http://localhost:8091 and press PLAY.
 
 - **WASD** move / drive · **mouse drag** orbit camera · **Shift** run / NOS
 - **Space** handbrake · **E** steal or exit a car · **Click** shoot
-- **1 / 2 / 3** fists / pistol / SMG · **M** city map · **P / Esc** pause · **R** radio
+- **1 / 2 / 3 / 4 / 5 / 6** fists / pistol / SMG / shotgun / rifle / bat · **Q / Z / X** crew abilities · **M** city map · **P / Esc** pause · **R** radio
 
 ## Screenshots
 
