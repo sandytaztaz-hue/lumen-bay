@@ -326,13 +326,16 @@ function stageShot2(game) {
   // ahead of her and one close on the sand edge beside her, the far
   // cruiser on the right as before, and two motorcycles flanking her
   // near — a ring the viewer can read at a glance. No unit covers Mara,
-  // the body on the ground, or the two pedestrians on the road.
+  // the body on the ground, or the two pedestrians on the road. The
+  // second motorcycle sits in open sand to the right of Mara, clear of
+  // the toast panels and any palm trunk, so it reads as its own shape
+  // with its rider.
   place(game, makeCruiser(game.textures), 106, 206, WEST);
   place(game, makeCruiser(game.textures), 116, 209, WEST);
   place(game, makeCruiser(game.textures), 112, 223, WEST);
   place(game, makeCruiser(game.textures), 130, 230, WEST);
   place(game, makePoliceBike(), 106, 227, -1.25);
-  place(game, makePoliceBike(), 106, 232, -2.36);
+  place(game, makePoliceBike(), 106, 230, -2.36);
 
   // Hero Comet at the left edge as a foreground anchor, NOS flames off.
   const hero = game.heroCar;
