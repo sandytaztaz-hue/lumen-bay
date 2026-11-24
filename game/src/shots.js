@@ -338,12 +338,33 @@ function stageShot2(game) {
   heli.rotation.y = Math.PI;
   heli.visible = true;
 
+  // R5 fix round 3: the heli spotlights Mara, the hero in the red shirt.
+  // The helicopter's own straight-down beam would land on the road, so
+  // hide it and draw the aimed beam from the belly down to Mara instead,
+  // the wide end landing on her.
+  heli.userData.beam.visible = false;
+  addBeam(game, { x: 122, y: 17, z: 208 }, { x: 100, y: 1.0, z: 229 });
+
   // Mara on foot, facing east, gun out with the muzzle flash showing.
   const mara = game.maraMesh;
   mara.position.set(100, 0, 229);
   mara.rotation.y = EAST;
   mara.visible = true;
   showMuzzleFlash(mara);
+
+  // R5 fix round 3: the spotlight's landing pool on the sand at Mara's
+  // feet, a flat pale disc so the beam visibly ends on the hero.
+  const spotPool = new THREE.Mesh(
+    new THREE.CircleGeometry(3.2, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xfff2c8, transparent: true, opacity: 0.35,
+      side: THREE.DoubleSide, depthWrite: false,
+    })
+  );
+  spotPool.rotation.x = -Math.PI / 2;
+  spotPool.position.set(100, 0.06, 229);
+  game.scene.add(spotPool);
+  game.staged.push(spotPool);
 
   // One downed officer flat in the open foreground centre, head east.
   place(game, makeDownedOfficer(), 94, 227, WEST);
@@ -354,7 +375,14 @@ function stageShot2(game) {
   // Exactly two pedestrians on the road, bright yellow and bright cyan,
   // facing the camera. No formation, no cordon anywhere.
   dressPerson(game, 0xffd21c, 120, 215, WEST, true);
-  dressPerson(game, 0x19c8e8, 122, 217, WEST, true);
+  // R5 fix round 3: the cyan pedestrian stood at (122, 217), where the
+  // lamppost pole crossed his head and a cash bill covered his face.
+  // The first move, (127, 218), hid him behind the (112, 223) cruiser,
+  // and (122, 214) put him on the yellow pedestrian's sightline, so he
+  // stands at (118, 213) instead: on the open road between the
+  // (116, 209) cruiser and the yellow pedestrian, his face showing,
+  // still facing the camera.
+  dressPerson(game, 0x19c8e8, 118, 213, WEST, true);
 
   // Police cordon closing in around Mara (r30): cruisers on the road
   // ahead of her and one close on the sand edge beside her, the far
