@@ -250,8 +250,11 @@ export class Hud {
 
   setWanted(n) {
     $('wantedLabel').textContent = n > 0 ? 'WANTED' : 'NOT WANTED';
-    $('wantedLabel').style.color = n > 0 ? '#ff5a4e' : '#8ecbff';
+    $('wantedLabel').style.color = n > 0 ? '#ff5a4e' : '#10233f';
     this.setStars(n);
+    if (n === 0) {
+      for (const s of $('wantedStars').children) s.style.color = '#10233f';
+    }
     $('wantedPill').style.display = n > 0 ? 'block' : 'none';
   }
 

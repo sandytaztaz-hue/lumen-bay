@@ -594,6 +594,38 @@ function stageShot4(game) {
     um.position.set(spot[0], 0, spot[1]);
     um.visible = true;
   });
+  // Shot-4 fix: the yellow, green and blue umbrellas above read as
+  // umbrellas standing on the dawn boat's deck — the yellow at the
+  // boat's left edge, the green mid-boat, the blue at its right edge —
+  // so hide those three for this shot only. The red umbrella on the
+  // left beach stays. One small radius per spot, so no other umbrella
+  // is touched.
+  clearUmbrellas(game, -42, 254, 3);
+  clearUmbrellas(game, -20, 272, 3);
+  clearUmbrellas(game, -36, 272, 3);
+  // Shot-4 fix: two small gulls in the dawn sky, one where each of the
+  // two red marks sat above the boat, right of the sun. Simple dark
+  // silhouettes — a shallow V of two thin wings and a tiny body — small
+  // only, high above the boat and clear of the sun and every HUD label.
+  // Unlit and fog-free so they stay dark against the bright sky.
+  for (const [bx, by, bz, tilt] of [[-34, 17, 284, 0.35], [-40, 16, 284, -0.3]]) {
+    const gull = new THREE.Group();
+    const gullMat = new THREE.MeshBasicMaterial({ color: 0x1c222c, fog: false });
+    const leftWing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.35), gullMat);
+    leftWing.position.set(-0.7, 0.28, 0);
+    leftWing.rotation.z = 0.5;
+    gull.add(leftWing);
+    const rightWing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.35), gullMat);
+    rightWing.position.set(0.7, 0.28, 0);
+    rightWing.rotation.z = -0.5;
+    gull.add(rightWing);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.22), gullMat);
+    gull.add(body);
+    gull.position.set(bx, by, bz);
+    gull.rotation.y = tilt;
+    game.scene.add(gull);
+    game.staged.push(gull);
+  }
   // Extra boats sit in the visible band below the SAVE FILE panel, clear
   // of the orange ally and the beachgoers, so they read as boats on the
   // shore instead of hiding behind the big boat and the panel. Out in
