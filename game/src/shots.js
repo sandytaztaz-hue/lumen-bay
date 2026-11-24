@@ -279,6 +279,10 @@ function stageShot1(game) {
   // full-frame view, clear of the police panel and the motorcycle.
   dressPerson(game, 0xffd21c, 108, 209, WEST, true);
   dressPerson(game, 0x19c8e8, 116, 209.5, WEST, true);
+  // Two more pedestrians further east on the north sidewalk strip,
+  // extending the foot traffic toward the cruiser pack.
+  dressPerson(game, 0x4ade80, 122, 209, WEST, true);
+  dressPerson(game, 0xff7a1a, 127, 209.5, WEST, true);
 
   // Armored tank in the middle of the road with a clear line of sight:
   // forward of the south sidewalk and its lamp posts, centred on the
@@ -291,6 +295,14 @@ function stageShot1(game) {
   // at full size as one complete olive tank.
   place(game, makeTank(), 122, 213.5, -0.97);
 
+  // Parked cars lining the north curb, filling the empty kerb between
+  // the pedestrians and the cruiser pack — the boulevard reads as a
+  // lived-in street, not an empty set. All three sit north of the
+  // cruiser rows and clear of the tank, the beam and the hero.
+  place(game, makeSedan(0xc9a227, game.textures), 135, 208, WEST);
+  place(game, makeSedan(0x3a5a8a, game.textures), 155, 208, WEST);
+  place(game, makeSedan(0x8a8f96, game.textures), 175, 208, WEST);
+
   // Three people on the south sidewalk, unchanged: pink, green, purple.
   dressPerson(game, 0xff5a8a, 108, 225, 0, false);
   dressPerson(game, 0x4ade80, 108, 228, 0, false);
@@ -300,6 +312,7 @@ function stageShot1(game) {
   const beachgoers = [
     [168, 230, 0xffd21c], [171, 232, 0x4aa3ff], [174, 230, 0xff5a8a],
     [177, 232, 0x4ade80], [180, 230, 0xf2f2ee],
+    [186, 231, 0xffd21c], [190, 230, 0x4aa3ff],
   ];
   for (const [x, z, shirt] of beachgoers) {
     dressPerson(game, shirt, x, z, Math.PI, false);
@@ -360,6 +373,14 @@ function stageShot2(game) {
   place(game, makeCruiser(game.textures), 130, 230, WEST);
   place(game, makePoliceBike(), 106, 227, -1.25);
   place(game, makePoliceBike(), 106, 230, -2.36);
+
+  // One more cruiser far east to close the ring on the open side, and a
+  // second downed officer plus a smaller cash burst on the sand — the
+  // shootout reads as a finished fight, not a single body. All three sit
+  // clear of Mara, the first body, the pedestrians and the cash burst.
+  place(game, makeCruiser(game.textures), 138, 222, WEST);
+  place(game, makeDownedOfficer(), 124, 226, WEST);
+  place(game, makeCashBurst(12, game.rng), 108, 224, 0);
 
   // Hero Comet at the left edge as a foreground anchor, NOS flames off.
   const hero = game.heroCar;
@@ -433,6 +454,23 @@ function makeBeachPalm(lean) {
     palm.add(nut);
   }
   return palm;
+}
+
+// A flat pale foam rim around a moored boat, so the water reads as surf
+// lapping the hull instead of a flat plane. The geometry is baked flat,
+// so the mesh only needs its heading; it sits a hair above the water
+// (y 0.06) so it never z-fights the sea, and the hull hides its middle.
+function makeFoam(x, z, heading) {
+  const geo = new THREE.CircleGeometry(1, 24);
+  geo.rotateX(-Math.PI / 2);
+  const foam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.28,
+    side: THREE.DoubleSide, depthWrite: false,
+  }));
+  foam.position.set(x, 0.06, z);
+  foam.rotation.y = heading;
+  foam.scale.set(2.8, 1, 6.5);
+  return foam;
 }
 
 // ---------------------------------------------------------------------------
@@ -514,6 +552,7 @@ function stageShot4(game) {
     [-18, 247, 0xffd21c], [-40, 246, 0x19c8e8], [-14, 262, 0xff5a8a],
     [-44, 262, 0x4ade80], [-24, 264, 0xc07bff], [-50, 250, 0xf2f2ee],
     [-8, 246, 0xff7a1a], [-42, 270, 0x4aa3ff],
+    [-12, 250, 0xffd21c], [-48, 258, 0x19c8e8],
   ];
   for (const [x, z, shirt] of beachgoers) {
     dressPerson(game, shirt, x, z, Math.PI, true);
@@ -530,11 +569,18 @@ function stageShot4(game) {
   // shore instead of hiding behind the big boat and the panel. Out in
   // the sea (z 252+) and near the centre line, so both sit fully in
   // frame instead of one running off the right edge.
-  const beachBoats = [[-30, 252, 0.6, 1.5], [-38, 254, 0.4, 1.5]];
+  const beachBoats = [[-30, 252, 0.6, 1.5], [-38, 254, 0.4, 1.5], [-26, 258, 0.6, 1.5], [-34, 260, 0.4, 1.5]];
   for (const [x, z, heading, s] of beachBoats) {
     const boat = makeBoat();
     boat.scale.setScalar(s);
     place(game, boat, x, z, heading);
+  }
+  // Pale surf rims around the four moored boats, so the water reads as
+  // lapping the hulls instead of a flat plane.
+  for (const [x, z, heading] of [[-30, 252, 0.6], [-38, 254, 0.4], [-26, 258, 0.6], [-34, 260, 0.4]]) {
+    const foam = makeFoam(x, z, heading);
+    game.scene.add(foam);
+    game.staged.push(foam);
   }
   // Marina pier (r30): the long wooden deck reads as a wall-like band
   // across the middle of the frame, so hide it — the backdrop is beach

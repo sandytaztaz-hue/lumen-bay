@@ -469,31 +469,8 @@ export class Hud {
         ctx.lineTo(190, mapZ(z));
       }
       ctx.stroke();
-      ctx.font = 'bold 10px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      for (let i = 0; i < DISTRICTS.length; i++) {
-        const d = DISTRICTS[i];
-        // Rim labels sit clear of the circle: the four names nearest the
-        // edge had their outer letters clipped by the ring, so each is
-        // nudged inward (PLAYA DORADA, MERCADO VIEJO and MARINA right,
-        // FAROL ROJO left).
-        const rimNudge = { 'PLAYA DORADA': 14, 'MERCADO VIEJO': 16, MARINA: 14, 'FAROL ROJO': -12 }[d.name] || 0;
-        const lx = mapX(d.x) + rimNudge;
-        // Lift each name so neighbours never share a baseline: with four
-        // names per row, the lift steps 0, 12 or 24 pixels up, chosen by
-        // the diagonal (row plus column) modulo three, so long neighbours
-        // like MERCADO VIEJO and FAROL ROJO sit on different heights.
-        const gridRow = (i / 4) | 0;
-        const gridCol = i - gridRow * 4;
-        const lift = 12 * ((gridRow + gridCol) % 3);
-        const ly = mapZ(d.z) - lift;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.strokeText(d.name, lx, ly);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(d.name, lx, ly);
-      }
+      // District names are drawn after the markers, below, so no marker
+      // ever covers a letter. (Text is never overlapped.)
       if (mm.target) {
         ctx.beginPath();
         ctx.arc(mapX(mm.target.x), mapZ(mm.target.z), 6, 0, Math.PI * 2);
@@ -545,6 +522,36 @@ export class Hud {
       ctx.lineWidth = 1;
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.stroke();
+    }
+    // District names paint last, over the markers: the police dots and
+    // the player diamond sit on the districts they mark, and a marker
+    // must never cover a letter.
+    if (!mm.miniMap) {
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i < DISTRICTS.length; i++) {
+        const d = DISTRICTS[i];
+        // Rim labels sit clear of the circle: the four names nearest the
+        // edge had their outer letters clipped by the ring, so each is
+        // nudged inward (PLAYA DORADA, MERCADO VIEJO and MARINA right,
+        // FAROL ROJO left).
+        const rimNudge = { 'PLAYA DORADA': 14, 'MERCADO VIEJO': 16, MARINA: 14, 'FAROL ROJO': -12 }[d.name] || 0;
+        const lx = mapX(d.x) + rimNudge;
+        // Lift each name so neighbours never share a baseline: with four
+        // names per row, the lift steps 0, 12 or 24 pixels up, chosen by
+        // the diagonal (row plus column) modulo three, so long neighbours
+        // like MERCADO VIEJO and FAROL ROJO sit on different heights.
+        const gridRow = (i / 4) | 0;
+        const gridCol = i - gridRow * 4;
+        const lift = 12 * ((gridRow + gridCol) % 3);
+        const ly = mapZ(d.z) - lift;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(d.name, lx, ly);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(d.name, lx, ly);
+      }
     }
     ctx.beginPath();
     ctx.arc(95, 95, 93.5, 0, Math.PI * 2);
@@ -687,6 +694,14 @@ export class Hud {
     ctx.fillText('$', 844, 435);
     ctx.fillText('$', 619, 498);
     ctx.fillText('$', 840, 499);
+    // Two quiet annotations in the map's empty corners: the state name
+    // up in the north-west, and the bay's name on the open water
+    // bottom-right. Both sit clear of every label, line and marker.
+    ctx.font = '12px Arial';
+    ctx.fillStyle = '#c8c8c8';
+    ctx.textAlign = 'center';
+    ctx.fillText('LEONIDA', 440, 60);
+    ctx.fillText('LUMEN BAY', 820, 545);
     ctx.textBaseline = 'alphabetic';
     ctx.font = 'bold 13px Arial';
     ctx.textAlign = 'left';
