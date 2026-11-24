@@ -97,20 +97,25 @@
   .log-line { background: rgba(5, 10, 25, 0.82); border-radius: 8px; padding: 7px 10px;
     font-size: 12px; color: #f2ede2; }
   /* Respect / street / turf / minimap */
-  #respectBox { position: fixed; left: 12px; bottom: 222px; z-index: 10; }
+  /* Respect stack lifted so its bottom edge clears the street pill below
+     it with daylight, and the pill in turn clears the minimap circle. */
+  #respectBox { position: fixed; left: 12px; bottom: 232px; z-index: 10; }
   #respectText { color: #ffd23e; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-  #respectBarWrap { width: 190px; height: 7px; background: rgba(255, 255, 255, 0.14);
+  #respectBarWrap { width: 160px; height: 7px; background: rgba(255, 255, 255, 0.14);
     border-radius: 4px; overflow: hidden; margin-top: 3px; }
   #respectBar { height: 100%; background: #ff8c1a; width: 0%; }
   #dayLine { color: #8ecbff; font-size: 12px; font-weight: bold; margin-top: 4px;
     text-shadow: 1px 1px 2px #000; }
-  #standingBarWrap { width: 190px; height: 6px; background: rgba(255, 255, 255, 0.14);
+  #standingBarWrap { width: 160px; height: 6px; background: rgba(255, 255, 255, 0.14);
     border-radius: 3px; overflow: hidden; margin-top: 3px; }
   #standingBar { height: 100%; background: #4aa3ff; width: 0%; }
   #streetText { position: fixed; left: 12px; bottom: 198px; z-index: 10;
     background: rgba(5, 10, 25, 0.82); border-radius: 8px; padding: 5px 10px;
     color: #f2ede2; font-size: 12px; font-weight: bold; }
-  #minimap { position: fixed; left: 12px; bottom: 18px; width: 190px; height: 190px; z-index: 10;
+  /* Minimap display shrunk to 160px (canvas stays 190 internal, so the
+     drawing scales down cleanly): its top edge now sits 20px below the
+     street pill instead of touching it, in every shot. */
+  #minimap { position: fixed; left: 12px; bottom: 18px; width: 160px; height: 160px; z-index: 10;
     border-radius: 50%; border: 3px solid #fff; background: #1d4a2a; }
   #turfText { position: fixed; left: 12px; bottom: 0; z-index: 10; color: #3ddc5a;
     font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
