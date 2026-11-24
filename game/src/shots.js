@@ -274,15 +274,12 @@ function stageShot1(game) {
   place(game, makePoliceBike(), 94, 208.5, EAST);
   place(game, makePoliceBike(), 96, 221.5, EAST);
 
-  // Two pedestrians on the open north sidewalk strip, mid-distance ahead
-  // of the hero, in bright yellow and bright cyan shirts that read at
-  // full-frame view, clear of the police panel and the motorcycle.
-  dressPerson(game, 0xffd21c, 108, 209, WEST, true);
-  dressPerson(game, 0x19c8e8, 116, 209.5, WEST, true);
-  // Two more pedestrians further east on the north sidewalk strip,
-  // extending the foot traffic toward the cruiser pack.
-  dressPerson(game, 0x4ade80, 122, 209, WEST, true);
-  dressPerson(game, 0xff7a1a, 127, 209.5, WEST, true);
+  // Exactly ONE pedestrian in shot 1, slightly left in the frame and
+  // clearly ON the north sidewalk: z 206.5 sits well north of the road
+  // edge (the old four at z 209 read as standing in the middle of the
+  // road), bright yellow shirt so the single figure reads at full-frame
+  // size, clear of the police bike at (94, 208.5) and the hero car.
+  dressPerson(game, 0xffd21c, 100, 206.5, WEST, true);
 
   // Armored tank in the middle of the road with a clear line of sight:
   // forward of the south sidewalk and its lamp posts, centred on the
