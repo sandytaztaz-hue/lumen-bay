@@ -376,10 +376,13 @@ function stageShot2(game) {
 
   // One more cruiser far east to close the ring on the open side, and a
   // second downed officer plus a smaller cash burst on the sand — the
-  // shootout reads as a finished fight, not a single body. All three sit
-  // clear of Mara, the first body, the pedestrians and the cash burst.
+  // shootout reads as a finished fight, not a single body. The officer
+  // sits at (118,233) in open sand north of Mara's sightline: the first
+  // spot tried, (124,226), lay directly behind Mara from this camera
+  // and was invisible. All three sit clear of Mara, the first body, the
+  // pedestrians and the cash burst.
   place(game, makeCruiser(game.textures), 138, 222, WEST);
-  place(game, makeDownedOfficer(), 124, 226, WEST);
+  place(game, makeDownedOfficer(), 118, 233, WEST);
   place(game, makeCashBurst(12, game.rng), 108, 224, 0);
 
   // Hero Comet at the left edge as a foreground anchor, NOS flames off.
