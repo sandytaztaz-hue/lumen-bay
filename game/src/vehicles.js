@@ -536,51 +536,136 @@ export function makeHeli(textures) {
 export function makeBoat() {
   const boat = new THREE.Group();
   boat.name = 'boat';
-  const white = std(0xf5f2ea, { roughness: 0.35, metalness: 0.25 });
-  const red = std(0xd21c1c, { roughness: 0.4, metalness: 0.3 });
-  const darkGlass = std(0x0d1420, { roughness: 0.15, metalness: 0.6 });
 
-  // White hull with a red stripe, tapered bow cone. Length 6.4.
-  const hull = box(2.2, 0.9, 4.6, white);
-  hull.position.set(0, 0.55, -0.6);
+  // A sleek modern speedboat, built from the side profile out: the hull
+  // is a side-view shape — low at the transom, its sheer line rising to
+  // a pointed bow — extruded across the beam, so the silhouette reads
+  // as a real boat from the side, the stern and the bow alike, and
+  // never as a block or a crate. Local space: +z is the bow, +y is up.
+  const hullShape = new THREE.Shape();
+  hullShape.moveTo(-3.4, 0.18); // transom bottom
+  hullShape.lineTo(-3.4, 1.0); // transom top
+  hullShape.lineTo(-1.5, 1.04); // sheer, rising gently forward
+  hullShape.lineTo(1.5, 1.14);
+  hullShape.lineTo(3.6, 1.48); // bow tip, sheer at its highest
+  hullShape.lineTo(3.0, 0.38); // bow rake
+  hullShape.lineTo(1.8, 0.14); // forefoot curve
+  hullShape.lineTo(0, 0.06);
+  hullShape.lineTo(-3.4, 0.18);
+  const hullGeo = new THREE.ExtrudeGeometry(hullShape, {
+    depth: 2.2, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.12, bevelSegments: 2,
+  });
+  hullGeo.translate(0, 0, -1.1);
+  hullGeo.rotateY(-Math.PI / 2); // shape +x (bow) becomes local +z
+  const hull = new THREE.Mesh(hullGeo, std(0xf5f1e6, { roughness: 0.35, metalness: 0.1 }));
   hull.castShadow = true;
   boat.add(hull);
-  // Tapered bow cone, long and proud so the boat reads as a boat and
-  // not a white box, with the red stripe carried onto it.
-  const bow = new THREE.Mesh(new THREE.ConeGeometry(1.15, 2.6, 4), white);
-  bow.rotation.x = Math.PI / 2;
-  bow.rotation.y = Math.PI / 4;
-  bow.scale.set(1, 1, 0.55);
-  bow.position.set(0, 0.55, 2.9);
-  bow.castShadow = true;
-  boat.add(bow);
-  const bowStripe = new THREE.Mesh(new THREE.ConeGeometry(1.17, 0.9, 4), red);
-  bowStripe.rotation.x = Math.PI / 2;
-  bowStripe.rotation.y = Math.PI / 4;
-  bowStripe.scale.set(1, 1, 0.55);
-  bowStripe.position.set(0, 0.62, 2.35);
-  boat.add(bowStripe);
-  const stripe = box(2.26, 0.22, 4.6, red);
-  stripe.position.set(0, 0.75, -0.6);
-  boat.add(stripe);
-  const deck = box(2.0, 0.18, 4.4, white);
-  deck.position.set(0, 1.08, -0.6);
+
+  // Coloured accent stripe along the sheer on both sides, tilted to
+  // follow the rising sheer line.
+  const stripeMat = std(0xd9382b, { roughness: 0.4 });
+  for (const side of [-1, 1]) {
+    const stripe = box(0.07, 0.18, 6.6, stripeMat);
+    stripe.position.set(side * 1.24, 1.08, 0);
+    stripe.rotation.x = -0.055;
+    boat.add(stripe);
+    // Dark rub strake low on the hull side.
+    const strake = box(0.06, 0.1, 6.4, std(0x2a2f36, { roughness: 0.6 }));
+    strake.position.set(side * 1.23, 0.5, -0.1);
+    boat.add(strake);
+  }
+
+  // Deck, foredeck hatch and anchor cleat.
+  const deck = box(1.9, 0.1, 4.4, std(0xe8e4d8, { roughness: 0.5 }));
+  deck.position.set(0, 1.06, -0.7);
   boat.add(deck);
-  // Low cabin with a dark roof so the top reads as a boat, not a crate.
-  const cabin = box(1.6, 0.55, 1.6, white);
-  cabin.position.set(0, 1.42, -1.2);
-  cabin.castShadow = true;
-  boat.add(cabin);
-  const cabinRoof = box(1.7, 0.08, 1.7, std(0x14161c, { roughness: 0.5 }));
-  cabinRoof.position.set(0, 1.73, -1.2);
-  boat.add(cabinRoof);
-  const windshield = box(1.5, 0.42, 0.06, darkGlass);
-  windshield.position.set(0, 1.45, -0.38);
-  boat.add(windshield);
-  const motor = box(0.7, 1.0, 0.5, std(0x14161c, { roughness: 0.5, metalness: 0.5 }));
-  motor.position.set(0, 0.7, -3.1);
-  motor.castShadow = true;
-  boat.add(motor);
+  const hatch = box(1.2, 0.06, 1.4, std(0xdcd8cc, { roughness: 0.5 }));
+  hatch.position.set(0, 1.22, 1.9);
+  boat.add(hatch);
+  const cleat = box(0.25, 0.06, 0.12, std(0x2a2f36, { roughness: 0.5 }));
+  cleat.position.set(0, 1.33, 2.6);
+  boat.add(cleat);
+
+  // Open cockpit: a dark tub with two helm seats and a rear bench.
+  const tub = box(1.5, 0.28, 2.3, std(0x16222e, { roughness: 0.9 }));
+  tub.position.set(0, 1.12, -0.9);
+  boat.add(tub);
+  const seatMat = std(0xd8d4c8, { roughness: 0.6 });
+  for (const side of [-1, 1]) {
+    const seat = box(0.6, 0.5, 0.45, seatMat);
+    seat.position.set(side * 0.38, 1.35, -1.15);
+    boat.add(seat);
+    const back = box(0.6, 0.55, 0.12, seatMat);
+    back.position.set(side * 0.38, 1.5, -1.42);
+    boat.add(back);
+  }
+  const bench = box(1.4, 0.4, 0.4, seatMat);
+  bench.position.set(0, 1.3, -1.95);
+  boat.add(bench);
+  const benchBack = box(1.4, 0.5, 0.12, seatMat);
+  benchBack.position.set(0, 1.45, -2.15);
+  boat.add(benchBack);
+
+  // Sloped dark windshield ahead of the cockpit, leaning back, with a
+  // low console under it.
+  const shield = box(1.7, 0.6, 0.07, std(0x16283a, {
+    roughness: 0.15, metalness: 0.6, transparent: true, opacity: 0.85,
+  }));
+  shield.position.set(0, 1.5, 0.45);
+  shield.rotation.x = -0.45;
+  boat.add(shield);
+  const consoleBox = box(0.9, 0.5, 0.5, std(0x2a2f36, { roughness: 0.5 }));
+  consoleBox.position.set(0, 1.3, 0.15);
+  boat.add(consoleBox);
+
+  // Two outboard motors on the transom: dark cowlings with a red cap,
+  // shaft and fin dropping below the hull.
+  for (const side of [-1, 1]) {
+    const cowling = box(0.5, 0.75, 0.4, std(0x23272c, { roughness: 0.4, metalness: 0.3 }));
+    cowling.position.set(side * 0.62, 0.75, -3.5);
+    boat.add(cowling);
+    const cap = box(0.42, 0.22, 0.34, std(0xd9382b, { roughness: 0.4 }));
+    cap.position.set(side * 0.62, 1.2, -3.5);
+    boat.add(cap);
+    const shaft = box(0.16, 0.7, 0.18, std(0x23272c, { roughness: 0.4, metalness: 0.3 }));
+    shaft.position.set(side * 0.62, 0.15, -3.55);
+    boat.add(shaft);
+    const fin = box(0.06, 0.5, 0.5, std(0x23272c, { roughness: 0.4, metalness: 0.3 }));
+    fin.position.set(side * 0.62, -0.1, -3.6);
+    boat.add(fin);
+  }
+
+  // Thin stainless railing along the gunwale: a bow rail and a rail
+  // each side of the cockpit, on short posts.
+  const railMat = std(0xc8cdd4, { metalness: 0.7, roughness: 0.3 });
+  function railRun(x, y, z, len) {
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, len, 8), railMat);
+    rail.rotation.x = Math.PI / 2;
+    rail.position.set(x, y, z);
+    rail.castShadow = true;
+    boat.add(rail);
+  }
+  function railPost(x, y, z) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 8), railMat);
+    post.position.set(x, y, z);
+    post.castShadow = true;
+    boat.add(post);
+  }
+  for (const side of [-1, 1]) {
+    railRun(side * 1.05, 1.62, 1.6, 3.0); // bow rail
+    for (const z of [0.3, 1.5, 2.7]) railPost(side * 1.05, 1.45, z);
+    railRun(side * 1.05, 1.5, -0.9, 2.6); // cockpit side rail
+    for (const z of [-2.0, -0.9, 0.2]) railPost(side * 1.05, 1.33, z);
+  }
+
+  // Small white bow light on the tip of the foredeck.
+  const bowLight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 8, 8),
+    std(0xffffff, { emissive: 0xfff2c0, emissiveIntensity: 0.8 }),
+  );
+  bowLight.position.set(0, 1.56, 3.3);
+  boat.add(bowLight);
+
   return boat;
 }
 

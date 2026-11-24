@@ -582,6 +582,20 @@ function stageShot4(game) {
     game.scene.add(foam);
     game.staged.push(foam);
   }
+
+  // HERO DAWN BOAT (r32 fix 2): the sleek speedboat Mara boards, out in
+  // the open water beyond the moored boats, side-on to the camera
+  // (heading PI/2, bow east) so the pointed bow, the rising sheer, the
+  // red sheer stripe, the open cockpit, the sloped windshield and the
+  // twin outboards all read in profile at full-frame size. At (-28,
+  // 269), scale 2.0, it clears the umbrellas at (-20, 272)/(-36, 272),
+  // the beachgoers and the palms, and it touches no HUD text.
+  const heroBoat = makeBoat();
+  heroBoat.scale.setScalar(2.0);
+  place(game, heroBoat, -28, 269, Math.PI / 2);
+  const heroFoam = makeFoam(-28, 269, Math.PI / 2);
+  game.scene.add(heroFoam);
+  game.staged.push(heroFoam);
   // Marina pier (r30): the long wooden deck reads as a wall-like band
   // across the middle of the frame, so hide it — the backdrop is beach
   // only now. It is found by its position in the city group, not by
