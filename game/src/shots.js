@@ -322,15 +322,17 @@ function stageShot2(game) {
   dressPerson(game, 0xffd21c, 120, 215, WEST, true);
   dressPerson(game, 0x19c8e8, 122, 217, WEST, true);
 
-  // Police closing in around Mara from the road side: a cruiser on the
-  // near side angled south-east toward her, and two police motorcycles
-  // beside it, also angled toward her. The flanking cruiser and the
-  // cruiser on the right stay where they were.
+  // Police cordon closing in around Mara (r30): cruisers on the road
+  // ahead of her and one close on the sand edge beside her, the far
+  // cruiser on the right as before, and two motorcycles flanking her
+  // near — a ring the viewer can read at a glance. No unit covers Mara,
+  // the body on the ground, or the two pedestrians on the road.
   place(game, makeCruiser(game.textures), 106, 206, WEST);
+  place(game, makeCruiser(game.textures), 116, 209, WEST);
+  place(game, makeCruiser(game.textures), 112, 223, WEST);
   place(game, makeCruiser(game.textures), 130, 230, WEST);
-  place(game, makeCruiser(game.textures), 99, 213, 0.15);
-  place(game, makePoliceBike(), 104, 216, -0.3);
-  place(game, makePoliceBike(), 107, 219, -0.6);
+  place(game, makePoliceBike(), 106, 227, -1.25);
+  place(game, makePoliceBike(), 106, 232, -2.36);
 
   // Hero Comet at the left edge as a foreground anchor, NOS flames off.
   const hero = game.heroCar;
@@ -407,13 +409,18 @@ function makeBeachPalm(lean) {
 }
 
 // ---------------------------------------------------------------------------
-// Shot 4 — title / start screen over the dawn boat scene. The 3D backdrop
-// is the dawn scene exactly as staged before: the big speedboat centre
-// frame, the hero Comet in the foreground with its nose to the boat, two
-// allies flanking the car, the low sun, the warm sand. The title screen
-// itself is shown (with the completed-save state) and every gameplay HUD
-// panel is hidden for the shot, while the money panel's cash text still
-// holds the pinned $21,400 so the capture tool's freshness check passes.
+// Shot 4 — title / start screen over the dawn beach scene. The 3D
+// backdrop is beach only (r30): the big speedboat is gone — seen
+// stern-on it read as a beige building block with a red stripe — and the
+// marina pier is hidden too, so nothing in the background can read as a
+// building, a wall, or a house. What is left is open beach: sand, sea,
+// the low sun, palm trees, beachgoers, umbrellas, and the two small
+// boats at the west end, which read clearly as boats. The hero Comet
+// sits in the foreground with two allies flanking the car. The title
+// screen itself is shown (with the completed-save state) and every
+// gameplay HUD panel is hidden for the shot, while the money panel's
+// cash text still holds the pinned $21,400 so the capture tool's
+// freshness check passes.
 // ---------------------------------------------------------------------------
 const HUD_PANELS = [
   'missionPanel', 'wantedPanel', 'moneyPanel', 'policePanel', 'toasts',
@@ -429,17 +436,17 @@ function stageShot4(game) {
   // used to sit so close to the lens that its front ran off the bottom
   // edge. The pullback is kept short on purpose — any further back and
   // the palm trunk just west of the camera crowds into the right of the
-  // frame and hides the orange ally. The boat stays centre frame and
-  // the allies still flank the car.
+  // frame and hides the orange ally. The allies still flank the car.
   camera.position.set(-28, 5.0, 224);
   camera.lookAt(-22, 1.2, 252);
 
-  // Speedboat, big and centre frame, turned slightly.
-  const boat = makeBoat();
-  boat.scale.setScalar(3.6);
-  place(game, boat, -29, 252, -1.27);
+  // No big speedboat any more (r30): at 3.6x scale, seen stern-on, its
+  // white hull, red stripe, cabin and dark outboard motor read as one
+  // big beige building block with a red stripe and a dark block beside
+  // it. It is removed rather than left as an ambiguous shape; the two
+  // small boats below stay — they read clearly as boats.
 
-  // Hero Comet in the foreground, rear to the camera, nose to the boat.
+  // Hero Comet in the foreground, rear to the camera, nose to the sea.
   const hero = game.heroCar;
   hero.position.set(-28, 0, 235);
   hero.rotation.y = 0;
@@ -495,6 +502,19 @@ function stageShot4(game) {
     const boat = makeBoat();
     boat.scale.setScalar(s);
     place(game, boat, x, z, heading);
+  }
+  // Marina pier (r30): the long wooden deck reads as a wall-like band
+  // across the middle of the frame, so hide it — the backdrop is beach
+  // only now. It is found by its position in the city group, not by
+  // name, so the live city itself is untouched.
+  if (game.city && game.city.group) {
+    for (const child of game.city.group.children) {
+      if (child.type === 'Group'
+        && Math.abs(child.position.x + 18) < 0.5
+        && Math.abs(child.position.z - 256) < 0.5) {
+        child.visible = false;
+      }
+    }
   }
   const sand = game.city && game.city.sandMat;
   if (sand && sand.emissive) {
