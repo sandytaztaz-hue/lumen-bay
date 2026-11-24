@@ -216,7 +216,7 @@ function showMuzzleFlash(mara) {
 
 // ---------------------------------------------------------------------------
 // Shot 1 — bright daylight boulevard chase (r31: the night preset became
-// the day preset in the shot pin, clock 16:00). Hero Comet at (90, 215) facing east,
+// the day preset in the shot pin, clock 16:00). Hero Comet at (92, 215) facing east,
 // camera low behind and above it, eight cruisers in two staggered rows
 // ahead, a roadblock pair, three oncoming sedans, two police bikes, the
 // helicopter overhead with its beam on the hero's roof, three people on
@@ -232,8 +232,10 @@ function stageShot1(game) {
   camera.lookAt(120, -0.9, 215);
 
   // Hero car, rear to the camera, with a warm fill light so the red reads.
+  // Parked 2 m further forward (x 92) so its rear bumper clears the
+  // bottom dialogue bar with a visible margin.
   const hero = game.heroCar;
-  hero.position.set(90, 0, 215);
+  hero.position.set(92, 0, 215);
   hero.rotation.y = EAST;
   hero.visible = true;
   game.render.setFill(82, 3.5, 215, 38);
@@ -249,8 +251,8 @@ function stageShot1(game) {
   heli.rotation.y = 0;
   heli.visible = true;
   addHeliLightPanel(game);
-  addBeam(game, { x: 140, y: 16, z: 214 }, { x: 90, y: 1.8, z: 215 });
-  addRoofPool(game, 90, 1.8, 215);
+  addBeam(game, { x: 140, y: 16, z: 214 }, { x: 92, y: 1.8, z: 215 });
+  addRoofPool(game, 92, 1.8, 215);
 
   // Eight-cruiser pack in two staggered rows, all facing west, plus the
   // roadblock pair side by side further east.

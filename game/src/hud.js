@@ -474,7 +474,12 @@ export class Hud {
       ctx.textBaseline = 'middle';
       for (let i = 0; i < DISTRICTS.length; i++) {
         const d = DISTRICTS[i];
-        const lx = mapX(d.x);
+        // Rim labels sit clear of the circle: the four names nearest the
+        // edge had their outer letters clipped by the ring, so each is
+        // nudged inward (PLAYA DORADA, MERCADO VIEJO and MARINA right,
+        // FAROL ROJO left).
+        const rimNudge = { 'PLAYA DORADA': 14, 'MERCADO VIEJO': 16, MARINA: 14, 'FAROL ROJO': -12 }[d.name] || 0;
+        const lx = mapX(d.x) + rimNudge;
         // Lift each name so neighbours never share a baseline: with four
         // names per row, the lift steps 0, 12 or 24 pixels up, chosen by
         // the diagonal (row plus column) modulo three, so long neighbours
@@ -593,18 +598,18 @@ export class Hud {
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#ffffff';
     ctx.fillText('MARINA', 505, 130);
-    ctx.fillText('MERCADO VIEJO', 620, 130);
+    ctx.fillText('MERCADO VIEJO', 575, 130);
     // TORRE drops a row below MERCADO VIEJO: the two ran together as
     // one word at the same height. A leader line points back up to its row.
     ctx.fillText('TORRE', 745, 158);
     ctx.fillText('FAROL ROJO', 905, 130);
-    ctx.fillText('TALLER', 520, 310);
+    ctx.fillText('TALLER', 488, 310);
     // OLD TOWN lifts above CASINO ROW: the two ran together at the same
     // height. A leader line points back down to its row.
     ctx.fillText('OLD TOWN', 625, 282);
     ctx.fillText('CASINO ROW', 745, 310);
     ctx.fillText('FESTIVAL SQ', 885, 310);
-    ctx.fillText('PLAYA DORADA', 445, 463);
+    ctx.fillText('PLAYA DORADA', 455, 463);
     // NORTH DOCKS drops below PLAYA DORADA: the two ran together at the
     // same height. A leader line points back up to its row.
     ctx.fillText('NORTH DOCKS', 630, 491);
@@ -621,10 +626,10 @@ export class Hud {
     // above the block's top edge. A leader line points back down to the
     // street it names.
     ctx.fillText('PLAYA DR', 612, 326);
-    ctx.fillText('MIRAMAR STRIP', 662, 437);
+    ctx.fillText('MIRAMAR STRIP', 662, 447);
     for (const street of [['OCEAN BLVD', 570], ['PALM AVE', 685], ['MERCADO ST', 765], ['CASINO AVE', 837], ['TORRE BLVD', 910]]) {
       ctx.save();
-      ctx.translate(street[1], 325);
+      ctx.translate(street[1], 390);
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.fillText(street[0], 0, 4);
@@ -679,7 +684,7 @@ export class Hud {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('$', 553, 203);
-    ctx.fillText('$', 844, 379);
+    ctx.fillText('$', 844, 435);
     ctx.fillText('$', 619, 498);
     ctx.fillText('$', 840, 499);
     ctx.textBaseline = 'alphabetic';
