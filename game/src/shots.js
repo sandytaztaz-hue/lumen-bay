@@ -587,13 +587,15 @@ function stageShot4(game) {
   // the open water beyond the moored boats, side-on to the camera
   // (heading PI/2, bow east) so the pointed bow, the rising sheer, the
   // red sheer stripe, the open cockpit, the sloped windshield and the
-  // twin outboards all read in profile at full-frame size. At (-28,
-  // 269), scale 2.0, it clears the umbrellas at (-20, 272)/(-36, 272),
-  // the beachgoers and the palms, and it touches no HUD text.
+  // twin outboards all read in profile at full-frame size. At (-30,
+  // 276), scale 2.3, it sits a full water gap beyond the moored boats
+  // instead of overlapping them in frame, and it clears the umbrellas
+  // at (-20, 272)/(-36, 272), the beachgoers and the palms, and it
+  // touches no HUD text.
   const heroBoat = makeBoat();
-  heroBoat.scale.setScalar(2.0);
-  place(game, heroBoat, -28, 269, Math.PI / 2);
-  const heroFoam = makeFoam(-28, 269, Math.PI / 2);
+  heroBoat.scale.setScalar(2.3);
+  place(game, heroBoat, -30, 276, Math.PI / 2);
+  const heroFoam = makeFoam(-30, 276, Math.PI / 2);
   game.scene.add(heroFoam);
   game.staged.push(heroFoam);
   // Marina pier (r30): the long wooden deck reads as a wall-like band
